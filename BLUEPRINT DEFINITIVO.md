@@ -1942,7 +1942,7 @@ Perfeito! Vamos detalhar a **UI de cada tela do AgentOS**, considerando o projet
 
 ---
 
-## 8️⃣ Tela de Chat Avançado
+## 8️⃣ 
 
 **Objetivo:** interagir diretamente com o modelo ou CEO Agent
 
@@ -1954,6 +1954,7 @@ Perfeito! Vamos detalhar a **UI de cada tela do AgentOS**, considerando o projet
 * Seleção de agente
 * Feedback visual de streaming de tokens
 * Opção de enviar arquivos ou trechos de código para análise
+* use modelos que conseguem "ver e interpretar fotos" tem modelos de IA prontos pra isso por exemplo enviar uma foto por um icone ou copiando e colando a foto
 
 ---
 
