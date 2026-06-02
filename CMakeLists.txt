@@ -7,6 +7,14 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 # Includes
 include_directories(include)
 
+# Configuração do JUCE
+include(FetchContent)
+FetchContent_Declare(
+    juce
+    URL "https://github.com/juce-framework/JUCE/archive/refs/tags/8.0.0.zip"
+)
+FetchContent_MakeAvailable(juce)
+
 # Define as subpastas (módulos)
 add_subdirectory(src/UI)
 add_subdirectory(src/AgentEngine)
@@ -26,12 +34,26 @@ add_subdirectory(src/ResearchEngine)
 add_subdirectory(src/MonitoringEngine)
 add_subdirectory(src/PersistenceEngine)
 
-# Executável Principal
-add_executable(AgentOS src/main.cpp)
+# Executável Principal JUCE
+juce_add_gui_app(AgentOS
+    PRODUCT_NAME "AgentOS"
+    VERSION 1.0.0
+)
 
-# (Futuro: Configuração de dependências como JUCE, SQLite, llama.cpp, FAISS, Clang AST)
+target_sources(AgentOS PRIVATE src/main.cpp)
 
-target_link_libraries(AgentOS PRIVATE AgentEngine EventBus)
+target_link_libraries(AgentOS PRIVATE 
+    AgentEngine 
+    EventBus 
+    MemoryEngine 
+    sqlite
+    juce::juce_gui_extra
+    juce::juce_gui_basics
+    juce::juce_graphics
+    juce::juce_events
+    juce::juce_core
+    juce::juce_data_structures
+)
 
 add_library(sqlite STATIC libs/sqlite/sqlite3.c)
 target_include_directories(sqlite PUBLIC libs/sqlite)

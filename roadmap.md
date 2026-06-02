@@ -29,7 +29,7 @@ Baseado no [BLUEPRINT DEFINITIVO.md](./BLUEPRINT%20DEFINITIVO.md).
 - [ ] **Knowledge Graph Engine**: Construção automática de relações
 
 ### Ferramentas & Código
-- [ ] **Tool Engine**: Interface para ferramentas de sistema e desenvolvimento
+- [x] **Tool Engine**: Interface para ferramentas de sistema e desenvolvimento
 - [ ] **Workspace Engine**: Controle isolado de ambientes
 - [ ] **Git Engine**: Controle de versão automatizado para agentes
 - [ ] **AST Engine**: Parser de código usando Clang AST
