@@ -2003,3 +2003,4 @@ Perfeito! Vamos detalhar a **UI de cada tela do AgentOS**, considerando o projet
 ---
 
 
+a ui do projeto esta na pasta da ui
