@@ -2835,3 +2835,200 @@ SemanticSearch
 ```
 
 sem exigir alterações significativas na arquitetura que você já construiu.
+
+
+
+Perfeito! Vamos criar uma **extensão crítica do blueprint** para lidar com **execução de código, criação de arquivos e builds de forma totalmente segura**, garantindo que você, como usuário, **não se exponha a riscos**.
+
+---
+
+# **Blueprint – Extensão Crítica de Segurança para Tool Engine**
+
+## **1️⃣ Objetivo**
+
+Garantir que todos os agentes possam executar ações no sistema **sem comprometer a integridade do PC**, incluindo:
+
+* Rodar scripts Python, C++ ou terminal
+* Criar, editar, ler e compilar arquivos
+* Operações Git (commits, branches)
+* Build de projetos
+* Acesso controlado à memória e workflow
+
+Tudo isso respeitando **sandboxing, permissões e auditoria**.
+
+---
+
+## **2️⃣ Camadas de Segurança**
+
+### **2.1 Workspace Isolado por Agente**
+
+* Cada agente tem seu **workspace virtual**, separado do PC principal.
+* Estrutura:
+
+```
+workspace/<AgenteID>/
+├─ input/
+├─ output/
+├─ scripts/
+├─ temp/
+└─ logs/
+```
+
+* Agente só enxerga seus próprios diretórios.
+* Evita que scripts acessem arquivos do sistema ou de outros agentes.
+
+---
+
+### **2.2 Execução em Sandbox**
+
+1. **Processo isolado**
+
+   * Cada script roda em um **processo filho** separado.
+   * Limites aplicados:
+
+     * CPU (ex.: 25% do núcleo)
+     * Memória (ex.: 1GB)
+     * Tempo de execução (timeout)
+
+2. **Containers opcionais**
+
+   * Para máxima segurança, cada agente pode rodar em **Docker/WSL**.
+   * Limita acesso a arquivos, rede e recursos do sistema.
+
+3. **Permissões aplicadas**
+
+   * Antes de executar:
+
+     * Verifica se o agente tem permissão para criar/editar/rodar arquivos.
+     * Bloqueia comandos perigosos (`rm -rf /`, `shutdown`, `mv /etc`, etc.)
+
+---
+
+### **2.3 Sistema de Permissões**
+
+Cada agente tem um **set de permissões finas**:
+
+| Permissão             | Função                                  |
+| --------------------- | --------------------------------------- |
+| Ler arquivos          | Pode abrir arquivos do workspace        |
+| Criar arquivos        | Pode criar arquivos dentro do workspace |
+| Editar arquivos       | Pode modificar arquivos existentes      |
+| Executar scripts      | Rodar Python/C++/Terminal               |
+| Criar sub-agentes     | Criar agentes filhos                    |
+| Acessar Memory Engine | Consultar histórico e contexto          |
+| Delegar tarefas       | Passar tarefas a outros agentes         |
+| Git operations        | Commit, branch, merge (restrito)        |
+| Build / Compile       | Executar builds do projeto              |
+
+---
+
+### **2.4 Auditoria e Logging**
+
+* Todos os comandos do agente são registrados:
+
+```
+Timestamp | AgentID | Comando | Resultado | Status
+```
+
+* Permite **rollback** e revisão de ações.
+* Histórico de erros é preservado em **Memory Engine**.
+
+---
+
+## **3️⃣ Fluxo de Execução Seguro**
+
+1. **Receber Tarefa**
+
+   * AgentEngine envia tarefa
+   * Tool Engine valida permissões
+
+2. **Preparar Sandbox**
+
+   * Cria workspace isolado
+   * Copia arquivos necessários
+
+3. **Executar Script/Build**
+
+   * Processo filho ou container
+   * Limites de CPU/Memória/Tempo
+   * Logs atualizados em tempo real
+
+4. **Validar Resultados**
+
+   * Verifica integridade do output
+   * Atualiza Memory Engine
+
+5. **Limpar Workspace**
+
+   * Arquivos temporários deletados
+   * Saída preservada apenas no `output/` ou Memory Engine
+
+---
+
+## **4️⃣ Implementação Técnica (Exemplos)**
+
+**Python – subprocess com limites**
+
+```python
+import subprocess, resource
+
+# Limitar memória e CPU
+resource.setrlimit(resource.RLIMIT_AS, (1024*1024*1024, 1024*1024*1024)) # 1GB
+resource.setrlimit(resource.RLIMIT_CPU, (30, 30)) # 30 segundos CPU
+
+# Rodar script no workspace isolado
+subprocess.run(["python", "scripts/task.py"], cwd="workspace/agent_001", timeout=60)
+```
+
+**C++ – fork + exec**
+
+```cpp
+pid_t pid = fork();
+if (pid == 0) {
+    chdir("/workspace/agent_001");
+    // Limites de memória e CPU aplicados
+    execl("/usr/bin/python3", "python3", "scripts/task.py", nullptr);
+    _exit(1);
+}
+```
+
+**Docker – isolamento extremo**
+
+```bash
+docker run --rm -v /workspace/agent_001:/workspace \
+           --memory=1g --cpus=1 \
+           agentos-agent:latest python /workspace/scripts/task.py
+```
+
+---
+
+## **5️⃣ Integração com AgentOS**
+
+* **AgentEngine** envia tarefas → Tool Engine
+* **Tool Engine** valida permissões → executa em sandbox
+* **Memory Engine** registra histórico
+* **Workflow Engine** recebe status e delega tarefas
+
+---
+
+## **6️⃣ Benefícios**
+
+* Segurança máxima: nada fora do workspace é acessível
+* Controle total de recursos e tempo de execução
+* Histórico auditável para revisão ou rollback
+* Multiagentes podem rodar em paralelo sem interferência
+* Preparado para futuras integrações (Git, Build, Python, C++)
+
+---
+
+Se você quiser, posso criar **um diagrama em texto mostrando todo o fluxo do AgentOS com Sandbox Virtual**, incluindo:
+
+* Agente recebendo tarefa
+* Sandbox workspace
+* Execução segura
+* Auditoria
+* Atualização do Workflow
+
+Isso ajuda a visualizar claramente a arquitetura antes de implementar.
+
+Quer que eu faça esse diagrama agora?
