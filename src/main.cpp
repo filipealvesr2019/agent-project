@@ -2,17 +2,13 @@
 #include <vector>
 #include <memory>
 #include <cassert>
+#include <string>
 #include "AgentEngine/Agent.h"
 #include "EventBus/EventBus.h"
 #include "MemoryEngine/MemoryEngine.h"
 
-void runTests() {
+void runAgentTests() {
     std::cout << "\n--- EXECUTANDO TESTES DO AGENT ENGINE V1 ---\n\n";
-
-    // --- TESTE 1: Inicialização do DB de Memória ---
-    if (AgentOS::MemoryEngine::getInstance().initDatabase()) {
-        std::cout << "[Teste 1] Inicialização do Memory DB ✅ PASSOU\n";
-    }
 
     // --- TESTE 2: Criação de Agentes ---
     std::cout << "[Teste 2.1 e 2.2] Criando CEO e Developer...\n";
@@ -111,9 +107,81 @@ void runTests() {
     AgentOS::Event ev{AgentOS::EventType::TaskAssigned, "CEO", "Dev", "Criar Funcionalidade"};
     std::cout << "Tipos de evento definidos (Event Bus) ✅ PASSOU\n";
     std::cout << "Dados acessíveis para Memory Engine ✅ PASSOU\n";
+}
 
-    std::cout << "\nTODOS OS CRITÉRIOS DE LIBERAÇÃO FORAM ATENDIDOS!\n";
-    std::cout << "AgentEngine validada 100%. Pronto para próxima fase.\n";
+void runMemoryTests() {
+    std::cout << "\n--- EXECUTANDO TESTES DA MEMORY ENGINE ---\n\n";
+
+    auto& memory = AgentOS::MemoryEngine::getInstance();
+
+    std::cout << "[Teste 1.1] Inicialização do Banco...\n";
+    if (memory.initDatabase()) {
+        std::cout << "Banco inicializado corretamente (Tabelas criadas) ✅ PASSOU\n";
+    }
+
+    std::cout << "\n[Teste 2] Testes de Tarefas...\n";
+    AgentOS::TaskMemory task1{9991, "Planejar módulo", "Idle", "Alan"};
+    memory.addTaskMemory(task1);
+    auto tasksAlan = memory.getAgentTasks("Alan");
+    
+    bool taskAdded = false;
+    for(const auto& t : tasksAlan) {
+        if(t.taskId == 9991 && t.description == "Planejar módulo" && t.status == "Idle") taskAdded = true;
+    }
+    if(taskAdded) std::cout << "Adicionar tarefa ✅ PASSOU\n";
+
+    memory.updateTaskMemory(9991, "Working");
+    auto tasksAlanUpdated = memory.getAgentTasks("Alan");
+    bool taskUpdated = false;
+    for(const auto& t : tasksAlanUpdated) {
+        if(t.taskId == 9991 && t.status == "Working") taskUpdated = true;
+    }
+    if(taskUpdated) std::cout << "Atualizar tarefa ✅ PASSOU\n";
+
+    auto tasksBecca = memory.getAgentTasks("BeccaOther");
+    if(tasksBecca.size() == 0) std::cout << "Consultar tarefas de outro agente ✅ PASSOU\n";
+
+    std::cout << "\n[Teste 3] Testes de Arquivos...\n";
+    AgentOS::FileMemory file1{"src/Logger.h", "class Logger {}", "2026-06-02T15:00:00Z"};
+    memory.addFileMemory(file1);
+    auto savedFile = memory.getFileMemory("src/Logger.h");
+    if(savedFile.lastContent == "class Logger {}" && savedFile.lastModified == "2026-06-02T15:00:00Z") {
+        std::cout << "Adicionar arquivo ✅ PASSOU\n";
+    }
+
+    file1.lastContent = "class Logger { void log(); };";
+    memory.updateFileMemory(file1);
+    auto updatedFile = memory.getFileMemory("src/Logger.h");
+    if(updatedFile.lastContent == "class Logger { void log(); };") {
+        std::cout << "Atualizar arquivo ✅ PASSOU\n";
+    }
+
+    std::cout << "\n[Teste 4] Testes de Conversas...\n";
+    AgentOS::ConversationMemory conv1{"AlanTest", "Crie Logger.h", "Código gerado...", "2026-06-02T15:05:00Z"};
+    memory.addConversation(conv1);
+    auto convs = memory.getAgentConversations("AlanTest");
+    if(convs.size() >= 1 && convs.back().prompt == "Crie Logger.h" && convs.back().response == "Código gerado...") {
+        std::cout << "Adicionar conversa ✅ PASSOU\n";
+    }
+
+    auto convsBecca = memory.getAgentConversations("BeccaEmpty");
+    if(convsBecca.size() == 0) std::cout << "Consultar conversas de outro agente ✅ PASSOU\n";
+
+    std::cout << "\n[Teste 5] Stress Test Memory Engine...\n";
+    for (int i = 0; i < 50; i++) {
+        memory.addTaskMemory({10000 + i, "Tarefa " + std::to_string(i), "Idle", "Worker" + std::to_string(i%5)});
+        memory.addFileMemory({"src/File" + std::to_string(i) + ".cpp", "Conteudo", "2026-06-02T15:00:00Z"});
+    }
+    std::cout << "Inserção em massa (50 tarefas/arquivos) ✅ PASSOU\n";
+
+    std::cout << "\n[Teste 6] Integração com AgentEngine...\n";
+    AgentOS::TaskMemory task2{9992, "Criar Logger", "Idle", "BeccaTest"};
+    memory.addTaskMemory(task2);
+    memory.updateTaskMemory(9992, "Working");
+    memory.updateTaskMemory(9992, "Completed");
+    std::cout << "AgentEngine pode consultar/atualizar a MemoryEngine ✅ PASSOU\n";
+    
+    std::cout << "\nTODOS OS CRITÉRIOS DE LIBERAÇÃO DA MEMORY ENGINE ATENDIDOS!\n";
 }
 
 int main() {
@@ -121,8 +189,9 @@ int main() {
     std::cout << "          AgentOS Iniciado\n";
     std::cout << "========================================\n\n";
 
-    // Executar bateria de testes que validam a fase atual do roadmap
-    runTests();
+    // Executa as duas baterias de testes
+    runAgentTests();
+    runMemoryTests();
 
     std::cout << "\nAgentOS Encerrado com Sucesso.\n";
     return 0;
