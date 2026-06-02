@@ -227,3 +227,652 @@ engine.registerAgent(worker);
 
 ---
 
+# EXTENSÃO CRÍTICA — FLUXO COMPLETO DO AGENTOS COM SANDBOX VIRTUAL
+
+Esta arquitetura assume que os agentes terão capacidade de:
+
+```text
+✓ Criar arquivos
+✓ Editar arquivos
+✓ Rodar Python
+✓ Rodar Builds
+✓ Executar Testes
+✓ Usar Git
+✓ Fazer Pesquisa
+✓ Colaborar
+```
+
+sem colocar o computador do usuário em risco.
+
+---
+
+# VISÃO GERAL DA ARQUITETURA
+
+```text
+┌─────────────────────────────────────────────┐
+│                 USUÁRIO                      │
+└─────────────────────────────────────────────┘
+                     │
+                     ▼
+┌─────────────────────────────────────────────┐
+│                   CEO                        │
+└─────────────────────────────────────────────┘
+                     │
+                     ▼
+┌─────────────────────────────────────────────┐
+│              WORKFLOW ENGINE                 │
+│                                               │
+│ Planejamento                                 │
+│ Delegação                                    │
+│ Dependências                                 │
+│ Aprovação                                    │
+└─────────────────────────────────────────────┘
+                     │
+                     ▼
+┌─────────────────────────────────────────────┐
+│               MANAGERS                       │
+└─────────────────────────────────────────────┘
+                     │
+                     ▼
+┌─────────────────────────────────────────────┐
+│             WORKER AGENTS                    │
+└─────────────────────────────────────────────┘
+                     │
+                     ▼
+┌─────────────────────────────────────────────┐
+│                TOOL ENGINE                   │
+└─────────────────────────────────────────────┘
+                     │
+                     ▼
+┌─────────────────────────────────────────────┐
+│              SECURITY LAYER                  │
+└─────────────────────────────────────────────┘
+                     │
+                     ▼
+┌─────────────────────────────────────────────┐
+│             SANDBOX MANAGER                  │
+└─────────────────────────────────────────────┘
+                     │
+                     ▼
+┌─────────────────────────────────────────────┐
+│              EXECUTION LAYER                 │
+└─────────────────────────────────────────────┘
+```
+
+---
+
+# FLUXO REAL DE UMA TAREFA
+
+Exemplo:
+
+```text
+"Implementar Compressor.cpp"
+```
+
+---
+
+## ETAPA 1 — CEO
+
+```text
+Usuário
+    ↓
+CEO
+```
+
+CEO analisa:
+
+```text
+Objetivo:
+Criar Compressor.cpp
+```
+
+Produz:
+
+```text
+Plano
+Subtarefas
+Dependências
+```
+
+---
+
+## ETAPA 2 — WORKFLOW ENGINE
+
+Recebe:
+
+```text
+Criar Compressor.cpp
+```
+
+Transforma em:
+
+```text
+Task #001
+    ↓
+Criar Header
+
+Task #002
+    ↓
+Implementar Classe
+
+Task #003
+    ↓
+Compilar
+
+Task #004
+    ↓
+Testar
+
+Task #005
+    ↓
+Documentar
+```
+
+---
+
+## ETAPA 3 — DELEGAÇÃO
+
+```text
+CEO
+│
+└── Engineering Manager
+        │
+        ├── Backend Developer
+        ├── QA Tester
+        └── Documentation Agent
+```
+
+---
+
+## ETAPA 4 — AGENTE RECEBE TAREFA
+
+```text
+Backend Developer
+
+Estado:
+Working
+```
+
+Solicita:
+
+```text
+Criar arquivo
+```
+
+---
+
+# TOOL ENGINE
+
+Recebe:
+
+```text
+create_file("Compressor.cpp")
+```
+
+MAS...
+
+NÃO executa diretamente.
+
+---
+
+# SECURITY GATE
+
+Primeira barreira.
+
+Verifica:
+
+```text
+Agente pode criar arquivos?
+```
+
+Exemplo:
+
+```text
+Permissões
+
+✓ Criar Arquivos
+✓ Editar Arquivos
+
+Resultado:
+
+AUTORIZADO
+```
+
+---
+
+# POLICY ENGINE
+
+Segunda barreira.
+
+Analisa:
+
+```text
+Destino do arquivo
+```
+
+Exemplo permitido:
+
+```text
+workspace/project/src/
+```
+
+Exemplo bloqueado:
+
+```text
+C:\Windows
+```
+
+Resultado:
+
+```text
+PERMITIDO
+```
+
+---
+
+# SANDBOX MANAGER
+
+Cria ambiente isolado.
+
+```text
+workspace/
+│
+├── project/
+│
+├── agent_001/
+│
+├── agent_002/
+│
+└── agent_003/
+```
+
+Backend Developer recebe:
+
+```text
+workspace/agent_001/
+```
+
+Ele só enxerga isso.
+
+---
+
+# EXECUÇÃO
+
+```text
+Backend Developer
+    ↓
+Tool Engine
+    ↓
+Sandbox
+    ↓
+Filesystem Virtual
+```
+
+Arquivo criado:
+
+```text
+workspace/agent_001/src/Compressor.cpp
+```
+
+---
+
+# LOG ENGINE
+
+Tudo é registrado.
+
+```text
+[12:15:01]
+
+Agent:
+Backend Developer
+
+Action:
+Create File
+
+File:
+Compressor.cpp
+
+Status:
+Success
+```
+
+---
+
+# MEMORY ENGINE
+
+Recebe:
+
+```text
+Arquivo criado
+```
+
+Salva:
+
+```text
+Histórico
+Contexto
+Versões
+```
+
+---
+
+# VERIFICATION ENGINE
+
+Nova etapa crítica.
+
+Recebe:
+
+```text
+Compressor.cpp
+```
+
+Analisa:
+
+```text
+Compila?
+Tem erros?
+Quebrou padrões?
+```
+
+Resultado:
+
+```text
+PASSOU
+```
+
+ou
+
+```text
+FALHOU
+```
+
+---
+
+# AUTO CORREÇÃO
+
+Se falhar:
+
+```text
+Verification Engine
+        │
+        ▼
+Backend Developer
+```
+
+Novo ciclo:
+
+```text
+Corrigir erro
+Compilar novamente
+Testar novamente
+```
+
+até:
+
+```text
+Completed
+```
+
+---
+
+# BUILD FLOW
+
+Exemplo:
+
+```text
+Compilar Projeto
+```
+
+---
+
+## Pedido
+
+```text
+Backend Developer
+    ↓
+Tool Engine
+```
+
+---
+
+## Verificação
+
+```text
+Tem permissão?
+```
+
+```text
+✓ Build
+```
+
+---
+
+## Sandbox
+
+Build ocorre em:
+
+```text
+workspace/build/
+```
+
+NUNCA:
+
+```text
+Projeto real
+```
+
+---
+
+## Resultado
+
+```text
+build.log
+artifacts/
+errors/
+```
+
+---
+
+# EXECUÇÃO PYTHON
+
+Exemplo:
+
+```text
+Gerar Dataset
+```
+
+---
+
+## Agente
+
+```text
+Research Agent
+```
+
+Solicita:
+
+```python
+generate_dataset.py
+```
+
+---
+
+## Security Layer
+
+Verifica:
+
+```text
+Pode executar Python?
+```
+
+---
+
+## Sandbox
+
+Executa em:
+
+```text
+workspace/agent_007/
+```
+
+---
+
+## Limites
+
+```text
+RAM:
+1 GB
+
+CPU:
+1 Core
+
+Tempo:
+60 segundos
+
+Rede:
+Bloqueada
+```
+
+---
+
+## Resultado
+
+```text
+dataset.csv
+```
+
+---
+
+# GIT ENGINE
+
+Outra área crítica.
+
+---
+
+## Nunca permitir
+
+```text
+git push automático
+```
+
+por padrão.
+
+---
+
+Fluxo seguro:
+
+```text
+Agente
+    ↓
+Commit
+    ↓
+Review
+    ↓
+Usuário aprova
+    ↓
+Push
+```
+
+---
+
+# CAMADAS DE SEGURANÇA
+
+```text
+CAMADA 1
+Permissões do Agente
+
+CAMADA 2
+Policy Engine
+
+CAMADA 3
+Tool Engine
+
+CAMADA 4
+Sandbox Manager
+
+CAMADA 5
+Verification Engine
+
+CAMADA 6
+Logs
+
+CAMADA 7
+Aprovação Humana
+```
+
+---
+
+# ARQUITETURA FINAL
+
+```text
+Usuário
+    │
+    ▼
+CEO
+    │
+    ▼
+Workflow Engine
+    │
+    ▼
+Managers
+    │
+    ▼
+Workers
+    │
+    ▼
+Tool Engine
+    │
+    ▼
+Permission Engine
+    │
+    ▼
+Policy Engine
+    │
+    ▼
+Sandbox Manager
+    │
+    ▼
+Execution Engine
+    │
+    ▼
+Verification Engine
+    │
+    ▼
+Memory Engine
+    │
+    ▼
+Event Bus
+    │
+    ▼
+Workflow Engine
+```
+
+---
+
+## Regras que eu considero obrigatórias para o AgentOS
+
+```text
+✓ Nenhum agente acessa fora do workspace
+
+✓ Nenhum agente faz git push sozinho
+
+✓ Nenhum agente executa comandos administrativos
+
+✓ Nenhum agente acessa System32
+
+✓ Nenhum agente acessa Registro do Windows
+
+✓ Nenhum agente acessa diretórios pessoais fora do projeto
+
+✓ Todo comando gera log
+
+✓ Todo build ocorre em sandbox
+
+✓ Toda execução Python ocorre em sandbox
+
+✓ Todo resultado passa pelo Verification Engine
+
+✓ O usuário sempre possui poder de veto
+```
+
+Essa extensão provavelmente é uma das mais importantes do blueprint inteiro, porque quando você chegar na fase de Tool Engine, Git Engine e execução de código, os riscos deixam de ser arquiteturais e passam a ser riscos reais para a máquina que está rodando o AgentOS.
