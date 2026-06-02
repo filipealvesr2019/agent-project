@@ -2375,3 +2375,463 @@ O usuário define:
 * Agentes personalizados
 
 Enquanto o sistema executa automaticamente a coordenação, delegação, revisão e entrega das tarefas.
+# EXTENSÃO AVANÇADA DO BLUEPRINT
+
+# Sistema de Organização Corporativa Multiagente
+
+---
+
+# VISÃO GERAL
+
+O AgentOS deixa de ser apenas um sistema de agentes.
+
+Ele passa a ser uma plataforma para criação de organizações digitais autônomas.
+
+O usuário poderá construir:
+
+* Empresas de Software
+* Estúdios de Games
+* Empresas de Plugins de Áudio
+* Laboratórios de Pesquisa
+* Agências de Marketing
+* Equipes Personalizadas
+
+Cada organização possui:
+
+```text
+CEO
+Managers
+Times
+Agentes Especializados
+```
+
+Todos configuráveis.
+
+---
+
+# TELA 01 — CRIAÇÃO DA EMPRESA
+
+Quando criar um projeto novo:
+
+```text
+┌────────────────────────────────────────────┐
+│ NOVA ORGANIZAÇÃO DIGITAL                   │
+├────────────────────────────────────────────┤
+│ Nome da Organização                        │
+│ [_____________________________]            │
+│                                            │
+│ Tipo                                        │
+│                                            │
+│ ○ Empresa de Software                      │
+│ ○ Estúdio de Games                         │
+│ ○ Empresa de Plugins de Áudio              │
+│ ○ Laboratório de Pesquisa                  │
+│ ○ Organização Personalizada                │
+│                                            │
+│ [Criar Organização]                        │
+└────────────────────────────────────────────┘
+```
+
+---
+
+# TELA 02 — CRIAÇÃO DO CEO
+
+Todo projeto possui pelo menos um CEO.
+
+O CEO é o responsável máximo.
+
+O usuário escolhe:
+
+```text
+┌────────────────────────────────────────────┐
+│ CRIAR CEO                                  │
+├────────────────────────────────────────────┤
+│ Nome                                       │
+│ [Atlas]                                    │
+│                                            │
+│ Cargo                                      │
+│ [CEO]                                      │
+│                                            │
+│ Modelo de IA                               │
+│ [DeepSeek-R1 ▼]                            │
+│                                            │
+│ Personalidade                              │
+│ [Estratégico ▼]                            │
+│                                            │
+│ Temperatura                                │
+│ [0.3]                                      │
+│                                            │
+│ [Criar CEO]                                │
+└────────────────────────────────────────────┘
+```
+
+---
+
+# TELA 03 — CRIAÇÃO DE DEPARTAMENTOS
+
+O CEO cria departamentos.
+
+Exemplo:
+
+```text
+CEO
+│
+├── Engenharia
+├── Design
+├── QA
+├── Pesquisa
+├── Operações
+└── Documentação
+```
+
+Interface:
+
+```text
+┌────────────────────────────────────────────┐
+│ DEPARTAMENTOS                              │
+├────────────────────────────────────────────┤
+│ [+ Novo Departamento]                      │
+│                                            │
+│ Engenharia                                 │
+│ Design                                     │
+│ QA                                         │
+│ Pesquisa                                   │
+│ Operações                                  │
+└────────────────────────────────────────────┘
+```
+
+---
+
+# TELA 04 — CRIAÇÃO DE MANAGERS
+
+Cada departamento pode ter um ou mais managers.
+
+Exemplo:
+
+```text
+CEO
+│
+├── Engineering Manager
+├── QA Manager
+├── Design Manager
+└── Research Manager
+```
+
+Criação:
+
+```text
+┌────────────────────────────────────────────┐
+│ CRIAR MANAGER                              │
+├────────────────────────────────────────────┤
+│ Nome                                       │
+│ [________________________________]         │
+│                                            │
+│ Departamento                               │
+│ [Engineering ▼]                            │
+│                                            │
+│ Modelo                                     │
+│ [Qwen Coder ▼]                             │
+│                                            │
+│ Reporta para                               │
+│ [CEO ▼]                                    │
+│                                            │
+│ [Criar Manager]                            │
+└────────────────────────────────────────────┘
+```
+
+---
+
+# TELA 05 — CRIAÇÃO DE TIMES
+
+Cada manager pode possuir vários times.
+
+Exemplo:
+
+```text
+Engineering Manager
+│
+├── Backend Team
+├── Frontend Team
+├── DSP Team
+├── AI Team
+└── Infrastructure Team
+```
+
+---
+
+# TELA 06 — CRIAÇÃO DE AGENTES
+
+O usuário pode criar qualquer agente.
+
+Exemplos:
+
+```text
+Backend Developer
+DSP Engineer
+Tube Modeling Specialist
+JUCE Developer
+Frontend Developer
+QA Tester
+Security Auditor
+Research Agent
+Documentation Agent
+Marketing Agent
+```
+
+---
+
+# FORMULÁRIO COMPLETO
+
+```text
+┌────────────────────────────────────────────┐
+│ CRIAR AGENTE                               │
+├────────────────────────────────────────────┤
+│ Nome                                       │
+│ [________________________________]         │
+│                                            │
+│ Cargo                                      │
+│ [DSP Engineer]                             │
+│                                            │
+│ Departamento                               │
+│ [Engineering ▼]                            │
+│                                            │
+│ Time                                       │
+│ [DSP Team ▼]                               │
+│                                            │
+│ Reporta Para                               │
+│ [DSP Manager ▼]                            │
+│                                            │
+│ Modelo IA                                  │
+│ [DeepSeek Coder ▼]                         │
+│                                            │
+│ Temperatura                                │
+│ [0.2]                                      │
+│                                            │
+│ Context Window                             │
+│ [32000]                                    │
+│                                            │
+│ Autonomia                                  │
+│ ○ Baixa                                    │
+│ ○ Média                                    │
+│ ○ Alta                                     │
+│                                            │
+│ [Criar Agente]                             │
+└────────────────────────────────────────────┘
+```
+
+---
+
+# SISTEMA DE PERMISSÕES
+
+Cada agente possui permissões próprias.
+
+```text
+PERMISSÕES
+
+☑ Ler Arquivos
+☑ Editar Arquivos
+☑ Criar Arquivos
+
+☑ Executar Build
+
+☑ Executar Testes
+
+☑ Consultar Memória
+
+☑ Pesquisar na Internet
+
+☑ Criar Branch Git
+
+☑ Fazer Commit
+
+☐ Fazer Deploy
+
+☐ Criar Agentes
+
+☐ Alterar Workflow
+```
+
+---
+
+# DASHBOARD ORGANIZACIONAL
+
+Visualização principal:
+
+```text
+CEO
+│
+├── Engineering Manager
+│   │
+│   ├── Backend Team
+│   │   ├── Backend Dev 01
+│   │   ├── Backend Dev 02
+│   │   └── Backend Dev 03
+│   │
+│   ├── DSP Team
+│   │   ├── DSP Engineer
+│   │   ├── Tube Specialist
+│   │   └── Circuit Analyst
+│   │
+│   └── Infrastructure Team
+│
+├── Design Manager
+│   │
+│   ├── UI Designer
+│   └── UX Designer
+│
+├── QA Manager
+│   │
+│   ├── QA Tester
+│   └── Automation Tester
+│
+└── Research Manager
+    │
+    ├── Research Agent
+    └── Paper Analysis Agent
+```
+
+---
+
+# STATUS DOS AGENTES
+
+```text
+⚪ Idle
+
+🔵 Planning
+
+🟡 Working
+
+🟣 Reviewing
+
+🟢 Completed
+
+🔴 Failed
+
+⚫ Blocked
+```
+
+---
+
+# SISTEMA DE MODELOS POR AGENTE
+
+Cada agente pode utilizar um modelo diferente.
+
+Exemplo:
+
+```text
+CEO
+→ Qwen 3 32B
+
+Engineering Manager
+→ DeepSeek V3
+
+DSP Engineer
+→ DeepSeek Coder
+
+Research Agent
+→ Qwen Research
+
+QA Agent
+→ Gemma
+
+Documentation Agent
+→ Qwen Instruct
+```
+
+O Model Router escolhe o modelo correto automaticamente.
+
+---
+
+# CRIAÇÃO DE EMPRESAS COMPLETAS (TEMPLATES)
+
+Exemplo:
+
+```text
+[+ Nova Empresa]
+
+Escolha um Template
+
+○ Software Company
+
+○ Audio Plugin Company
+
+○ Game Studio
+
+○ Research Lab
+
+○ Custom Organization
+```
+
+Ao selecionar:
+
+```text
+Audio Plugin Company
+```
+
+O sistema cria automaticamente:
+
+```text
+CEO
+
+DSP Manager
+JUCE Manager
+QA Manager
+
+DSP Team
+UI Team
+QA Team
+
+DSP Engineers
+Tube Specialists
+Circuit Analysts
+JUCE Developers
+QA Testers
+Documentation Agents
+```
+
+---
+
+# OBJETIVO FINAL
+
+Permitir que qualquer usuário monte uma organização de IA completa, onde:
+
+```text
+Usuário
+    ↓
+CEO
+    ↓
+Managers
+    ↓
+Times
+    ↓
+Agentes Especializados
+```
+
+e cada agente possui:
+
+```text
+✓ Modelo próprio
+✓ Memória própria
+✓ Ferramentas próprias
+✓ Permissões próprias
+✓ Hierarquia própria
+✓ Workflow próprio
+✓ Capacidade de colaboração
+✓ Capacidade de auto-correção
+```
+
+Tudo integrado ao:
+
+```text
+AgentEngine
+EventBus
+MemoryEngine
+WorkflowEngine
+ToolEngine
+ModelRouter
+VerificationEngine
+KnowledgeGraph
+SemanticSearch
+```
+
+sem exigir alterações significativas na arquitetura que você já construiu.

@@ -1,21 +1,26 @@
-Perfeito! Vamos montar uma **blueprint detalhada** da funcionalidade de **criação de agentes personalizados**, incluindo tanto **UI** quanto **backend**, totalmente integrada ao AgentOS.
+Perfeito! Vamos criar uma **versão completa do Blueprint: Criação de Agentes Personalizados**, agora incluindo toda a **nova estrutura corporativa**:
+
+* O usuário pode criar **CEO**, **Managers**, **Times** e **agentes individuais**.
+* Cada agente pode ter **permissões, habilidades, autonomia e hierarquia**.
+* A estrutura suporta **vários níveis** de gerenciamento e equipes.
 
 ---
 
-# **Blueprint: Criação de Agentes Personalizados**
+# **Blueprint Completo: Criação de Agentes Personalizados**
 
 ## **1️⃣ Objetivo**
 
-Permitir que o usuário crie agentes personalizados, definindo:
+Permitir que o usuário configure uma **empresa digital autônoma** com:
 
-* Nome, função e departamento
-* Hierarquia (quem ele reporta)
-* Permissões e restrições
-* Habilidades (skills)
-* Fluxo de tarefas
-* Nível de autonomia
-
-Todos os dados devem ser persistidos via **Memory Engine** e integrados ao **AgentEngine**.
+* **CEO(s)**: líder do projeto ou empresa
+* **Managers / Team Leads**: coordenam equipes
+* **Team / Worker Agents**: executam tarefas
+* **Hierarquia personalizável**: quem reporta a quem
+* **Permissões detalhadas**
+* **Habilidades / Skills**
+* **Autonomia ou dependência de workflow**
+* **Fluxo de tarefas e delegação automática**
+* **Persistência via Memory Engine** e integração com AgentEngine
 
 ---
 
@@ -27,6 +32,7 @@ Todos os dados devem ser persistidos via **Memory Engine** e integrados ao **Age
 ┌─────────────────────────────────────────────┐
 │ Criar Novo Agente                            │
 ├─────────────────────────────────────────────┤
+│ Tipo de Agente:  [Dropdown: CEO/Manager/Worker] │
 │ Nome:            [____________________]      │
 │ Função/Cargo:    [Dropdown/Texto]           │
 │ Departamento:    [Dropdown/Texto]           │
@@ -39,7 +45,7 @@ Todos os dados devem ser persistidos via **Memory Engine** e integrados ao **Age
 │ [ ] Criar arquivos                           │
 │ [ ] Editar arquivos                          │
 │ [ ] Executar scripts (Python/C++/Terminal)   │
-│ [ ] Criar subagentes                          │
+│ [ ] Criar sub-agentes                          │
 │ [ ] Acessar Memory Engine                     │
 │ [ ] Delegar tarefas                           │
 ├─────────────────────────────────────────────┤
@@ -52,18 +58,53 @@ Todos os dados devem ser persistidos via **Memory Engine** e integrados ao **Age
 
 **Observações de UI:**
 
-* O formulário deve validar campos obrigatórios (Nome, Função, Departamento).
-* Dropdown “Reporta a” deve mostrar **somente agentes existentes**.
-* Multi-select skills pode puxar da **Skill Library**.
-* Permissões limitam o que o agente pode executar no **Tool Engine**.
+* Campos obrigatórios: Nome, Função, Tipo de Agente
+* Dropdown “Reporta a” mostra apenas agentes existentes compatíveis
+* Skills puxadas da Skill Library
+* Permissões definem o que o agente pode executar
+
+---
+
+### **Dashboard e Árvore Hierárquica**
+
+```
+┌───────────────────────────────┐
+│ DASHBOARD DE AGENTES          │
+├───────────────┬───────────────┤
+│ Nome          │ Função        │
+├───────────────┼───────────────┤
+│ Alan          │ CEO           │
+│ Beth          │ Manager       │
+│ Becca         │ Backend Dev   │
+│ Clara         │ UI/UX         │
+└───────────────┴───────────────┘
+
+ÁRVORE HIERÁRQUICA:
+
+CEO: Alan
+├── Manager: Beth
+│   ├── Backend Developer: Becca
+│   ├── Frontend Developer: Carl
+│   └── DSP Engineer: Dave
+├── Design Manager: Clara
+│   ├── UI Designer: Eve
+│   └── UX Designer: Frank
+└── QA Manager: Grace
+    ├── QA Tester: Hannah
+    └── Automation Tester: Ian
+```
+
+* Status de cada agente visível (Idle, Working, Reviewing, Completed, Failed)
+* Interativo: clicar para editar permissões, skills ou autonomia
+* Permite criar sub-agentes diretamente na árvore
 
 ---
 
 ## **3️⃣ Backend: Estrutura de Dados**
 
-### **Structs/Classes C++**
-
 ```cpp
+enum class AgentType { CEO, Manager, Worker };
+
 struct AgentPermissions {
     bool canReadFiles;
     bool canWriteFiles;
@@ -74,22 +115,24 @@ struct AgentPermissions {
 };
 
 struct AgentSkill {
-    std::string skillName;
-    int skillLevel; // opcional
+    std::string name;
+    int level; // opcional
 };
 
 class CustomAgent {
 public:
     std::string name;
+    AgentType type;
     std::string role;
     std::string department;
-    std::string reportsTo; // nome do agente superior
+    std::string reportsTo; // ID do superior
     int priorityLevel;
     bool isAutonomous;
     AgentPermissions permissions;
     std::vector<AgentSkill> skills;
+    std::vector<std::string> subAgents;
 
-    CustomAgent(const std::string& name);
+    CustomAgent(const std::string& name, AgentType type);
     void assignTask(const TaskMemory& task);
     void executeTask();
 };
@@ -97,105 +140,90 @@ public:
 
 ---
 
-### **4️⃣ Integração com Memory Engine**
+## **4️⃣ Integração com Memory Engine**
 
-* Quando o usuário clicar **Criar Agente**, o backend deve:
+* Cada novo agente criado é persistido no SQLite:
 
 ```cpp
 MemoryEngine memory("Database/agent_memory.db");
 
-CustomAgent newAgent("Becca");
-newAgent.role = "Backend Developer";
-newAgent.department = "Engineering";
-newAgent.reportsTo = "CEO";
-newAgent.priorityLevel = 3;
-newAgent.isAutonomous = true;
-newAgent.permissions.canReadFiles = true;
-newAgent.permissions.canWriteFiles = true;
-newAgent.skills.push_back({"C++", 5});
+CustomAgent ceo("Alan", AgentType::CEO);
+ceo.role = "Project Owner";
+ceo.department = "Executive";
+ceo.isAutonomous = true;
 
-memory.addAgentMemory(newAgent);
+memory.addAgentMemory(ceo);
 ```
 
-* **MemoryEngine** deve armazenar:
+* Estrutura de tabelas:
 
-```text
+```
 Agents Table
 ├─ AgentID
 ├─ Name
+├─ Type (CEO/Manager/Worker)
 ├─ Role
 ├─ Department
 ├─ ReportsTo
 ├─ PriorityLevel
 ├─ IsAutonomous
-├─ Permissions (serialized JSON ou colunas separadas)
-├─ Skills (JSON ou tabela relacionada)
+├─ Permissions (JSON ou colunas separadas)
+├─ Skills (JSON ou tabela separada)
+├─ SubAgents (JSON ou tabela relacionada)
 ```
 
 ---
 
 ## **5️⃣ Integração com AgentEngine**
 
-* Após criar o agente, registrar no **AgentEngine**:
-
 ```cpp
 AgentEngine engine;
-engine.registerAgent(newAgent);
+engine.registerAgent(ceo);
+engine.registerAgent(manager);
+engine.registerAgent(worker);
 ```
 
-* O AgentEngine passa a gerenciar o ciclo de vida do agente (Idle → Working → Reviewing → Completed) respeitando as **permissões** e **autonomia** definidas.
+* AgentEngine gerencia **ciclo de vida** de cada agente
+* Respeita **permissões e hierarquia**
+* Workflow automático: CEO → Manager → Worker
 
 ---
 
-## **6️⃣ Dashboard de Agentes**
-
-* Um painel visual para mostrar todos os agentes:
-
-```
-┌─────────────┬──────────────┬─────────────┬─────────────┬─────────────┐
-│ Nome        │ Função       │ Departamento│ Estado      │ Reporta a   │
-├─────────────┼──────────────┼─────────────┼─────────────┼─────────────┤
-│ Alan        │ CEO          │ Exec        │ Planning    │ -           │
-│ Becca       │ Backend Dev  │ Eng         │ Working     │ Alan        │
-│ Clara       │ UI/UX        │ Design      │ Idle        │ Alan        │
-└─────────────┴──────────────┴─────────────┴─────────────┴─────────────┘
-```
-
-* Mostrar **cor do estado** (Idle = cinza, Working = azul, Reviewing = amarelo, Completed = verde, Failed = vermelho)
-* Permitir **clicar em um agente** para editar suas permissões, skills ou autonomia.
-
----
-
-## **7️⃣ Funcionalidades avançadas**
+## **6️⃣ Funcionalidades Avançadas**
 
 1. **Criação de sub-agentes**
 
-   * Usuário cria agente “pai” com autonomia parcial.
-   * Agente “pai” pode gerar “filhos” para tarefas específicas.
-2. **Delegação visual**
+   * Agentes Managers podem gerar sub-agentes
+2. **Delegação visual de tarefas**
 
-   * Arrastar e soltar tarefas entre agentes.
-   * Mostrar fluxo hierárquico de quem reporta a quem.
+   * Drag & drop no dashboard/arvore
 3. **Validação de permissões**
 
-   * Antes do agente executar ação, o sistema verifica MemoryEngine + AgentEngine para ver se ele tem permissão.
-4. **Persistência**
+   * Antes de executar qualquer ação, verifica acesso
+4. **Persistência completa**
 
-   * Todos os agentes e configurações salvos no SQLite.
-   * Carregamento automático ao iniciar o AgentOS.
+   * Agentes carregados e salvos automaticamente pelo Memory Engine
+5. **Templates de empresas**
 
----
+   * Carrega CEOs, Managers e Teams predefinidos
+6. **Agentes personalizados**
 
-### ✅ Resumo
-
-* **UI:** Formulário de criação + Dashboard de agentes
-* **Backend:** `CustomAgent` + MemoryEngine + AgentEngine
-* **Permissões:** Controlam acesso a arquivos, scripts e habilidades
-* **Autonomia:** Pode trabalhar sozinho ou depender de tarefas de outros agentes
-* **Hierarquia:** Reporta a outros agentes, define fluxo de trabalho
+   * Usuário define modelo IA para cada agente, habilidades, permissões e autonomia
 
 ---
 
-Se você quiser, posso **criar um diagrama em texto da tela do formulário + dashboard**, mostrando exatamente onde ficam os botões, campos e fluxos de interação, como blueprint visual mas em texto, pronto para implementar no JUCE.
+## **7️⃣ Resumo**
 
-Quer que eu faça isso agora?
+| Componente         | Função                                                                 |
+| ------------------ | ---------------------------------------------------------------------- |
+| **UI**             | Formulário de criação + Dashboard + Árvore Hierárquica                 |
+| **Backend**        | CustomAgent + AgentEngine + MemoryEngine                               |
+| **Hierarquia**     | CEO → Managers → Teams → Workers                                       |
+| **Permissões**     | Controlam acesso a arquivos, scripts e ferramentas                     |
+| **Autonomia**      | Agentes podem trabalhar sozinhos ou depender de fluxos                 |
+| **Fluxo**          | CEO define estratégia → Managers distribuem tarefas → Workers executam |
+| **Templates**      | Empresas pré-configuradas para inicialização rápida                    |
+| **Personalização** | Usuário pode criar qualquer agente, atribuir IA, skills e restrições   |
+
+---
+
