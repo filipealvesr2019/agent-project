@@ -876,3 +876,397 @@ Workflow Engine
 ```
 
 Essa extensão provavelmente é uma das mais importantes do blueprint inteiro, porque quando você chegar na fase de Tool Engine, Git Engine e execução de código, os riscos deixam de ser arquiteturais e passam a ser riscos reais para a máquina que está rodando o AgentOS.
+
+
+
+Excelente ideia. Eu considero isso tão importante quanto bloquear commits automáticos.
+
+Na prática, quando você começar a usar agentes de verdade, o problema não será o agente criar código ruim. O problema será:
+
+```text
+"O agente alterou 37 arquivos e agora não sei voltar atrás."
+```
+
+Por isso eu adicionaria uma nova seção crítica ao blueprint.
+
+---
+
+# EXTENSÃO CRÍTICA — CHANGE MANAGEMENT & RECOVERY SYSTEM
+
+## Objetivo
+
+Garantir que toda modificação feita por agentes seja:
+
+```text
+✓ Rastreável
+✓ Reversível
+✓ Auditável
+✓ Recuperável
+✓ Segura
+```
+
+Mesmo sem Git.
+
+---
+
+# SISTEMA DE SNAPSHOTS
+
+Antes de qualquer alteração:
+
+```text
+Agent
+   ↓
+Tool Engine
+   ↓
+Snapshot Engine
+```
+
+O sistema salva automaticamente:
+
+```text
+Arquivo Original
+Timestamp
+Agente
+TaskID
+```
+
+Exemplo:
+
+```text
+snapshots/
+
+├── task_001/
+│   ├── Compressor.cpp.bak
+│   └── Compressor.h.bak
+│
+├── task_002/
+│   └── TubeStage.cpp.bak
+```
+
+---
+
+# REVERSÃO POR ARQUIVO
+
+O usuário pode selecionar:
+
+```text
+Compressor.cpp
+```
+
+e visualizar:
+
+```text
+Histórico
+
+Versão 1
+Versão 2
+Versão 3
+Versão Atual
+```
+
+Interface:
+
+```text
+┌──────────────────────────────┐
+│ HISTÓRICO DO ARQUIVO         │
+├──────────────────────────────┤
+│ Compressor.cpp               │
+│                              │
+│ V1 - Original                │
+│ V2 - Agent Backend           │
+│ V3 - Agent DSP               │
+│ Atual                        │
+│                              │
+│ [Comparar]                   │
+│ [Restaurar V1]               │
+│ [Restaurar V2]               │
+└──────────────────────────────┘
+```
+
+---
+
+# REVERSÃO TOTAL DO PROJETO
+
+Botão de emergência:
+
+```text
+RESTAURAR PROJETO
+```
+
+Interface:
+
+```text
+┌──────────────────────────────┐
+│ RESTAURAÇÃO GLOBAL           │
+├──────────────────────────────┤
+│                              │
+│ Últimos Snapshots            │
+│                              │
+│ 14:30                        │
+│ 15:05                        │
+│ 16:10                        │
+│                              │
+│ [Restaurar Snapshot]         │
+└──────────────────────────────┘
+```
+
+Fluxo:
+
+```text
+Projeto Atual
+        ↓
+Selecionar Snapshot
+        ↓
+Restaurar
+        ↓
+Projeto volta exatamente ao estado anterior
+```
+
+---
+
+# CHANGESET SYSTEM
+
+Nenhuma alteração vai diretamente para o projeto.
+
+Fluxo:
+
+```text
+Agente
+    ↓
+Changeset
+    ↓
+Aprovação
+    ↓
+Aplicação
+```
+
+Exemplo:
+
+```text
+Task #17
+
+Arquivos Alterados
+
++ Compressor.cpp
++ Compressor.h
+* DSPEngine.cpp
+```
+
+---
+
+# DIFF VIEWER
+
+Tela de revisão:
+
+```text
+┌──────────────────────────────────────┐
+│ ALTERAÇÕES PROPOSTAS                 │
+├──────────────────────────────────────┤
+│ Compressor.cpp                       │
+│                                      │
+│ - old line                           │
+│ + new line                           │
+│                                      │
+│ [Aceitar]                            │
+│ [Rejeitar]                           │
+└──────────────────────────────────────┘
+```
+
+---
+
+# MODO PÂNICO
+
+Botão especial:
+
+```text
+EMERGENCY RECOVERY
+```
+
+Função:
+
+```text
+Parar todos os agentes
+
+Cancelar tarefas
+
+Bloquear Tool Engine
+
+Restaurar Snapshot
+
+Voltar para último estado seguro
+```
+
+Fluxo:
+
+```text
+Usuário
+    ↓
+EMERGENCY RECOVERY
+    ↓
+Todos agentes pausados
+    ↓
+Rollback
+    ↓
+Sistema estabilizado
+```
+
+---
+
+# PROTEÇÃO DE ARQUIVOS CRÍTICOS
+
+Nova política:
+
+```text
+Protected Files
+```
+
+Exemplo:
+
+```text
+CMakeLists.txt
+
+build_scripts/
+
+deployment/
+
+release/
+
+config/
+
+credentials/
+
+.env
+```
+
+Agentes não podem alterar.
+
+Mesmo com permissão.
+
+---
+
+# NÍVEIS DE PROTEÇÃO
+
+```text
+Nível 0
+Livre
+
+Nível 1
+Requer Aprovação
+
+Nível 2
+Somente Leitura
+
+Nível 3
+Bloqueado
+```
+
+---
+
+# AUDITORIA COMPLETA
+
+Cada modificação gera:
+
+```text
+Timestamp
+
+Agente
+
+Task
+
+Arquivo
+
+Mudança
+
+Resultado
+```
+
+Exemplo:
+
+```text
+[2027-08-14 15:30]
+
+Agent:
+DSP Engineer
+
+Task:
+#17
+
+File:
+Compressor.cpp
+
+Action:
+Modified
+
+Lines:
++120
+-20
+
+Result:
+Success
+```
+
+---
+
+# POLÍTICA GLOBAL RECOMENDADA
+
+Para o AgentOS:
+
+```text
+✓ Snapshots automáticos
+
+✓ Reversão por arquivo
+
+✓ Reversão global
+
+✓ Diff Viewer
+
+✓ Changesets
+
+✓ Aprovação humana
+
+✓ Emergency Recovery
+
+✓ Arquivos protegidos
+
+✓ Auditoria completa
+
+✓ Sem commits automáticos
+
+✓ Sem push automático
+
+✓ Sem merge automático
+```
+
+---
+
+# NOVA CAMADA DA ARQUITETURA
+
+```text
+Tool Engine
+      │
+      ▼
+Permission Engine
+      │
+      ▼
+Policy Engine
+      │
+      ▼
+Snapshot Engine
+      │
+      ▼
+Changeset Engine
+      │
+      ▼
+Sandbox Manager
+      │
+      ▼
+Execution Engine
+      │
+      ▼
+Verification Engine
+      │
+      ▼
+Memory Engine
+```
+
+Essa extensão transforma o AgentOS de um sistema que apenas executa tarefas em um sistema onde **qualquer ação feita por qualquer agente pode ser inspecionada, aprovada, revertida por arquivo ou revertida completamente**, o que é essencial quando você for usar dezenas de agentes trabalhando no mesmo projeto.
