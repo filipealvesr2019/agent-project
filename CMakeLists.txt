@@ -430,3 +430,27 @@ if(BUILD_BENCHMARK_RUNNER)
     target_link_libraries(AgentOS_BenchmarkRunner PRIVATE sqlite)
     target_compile_features(AgentOS_BenchmarkRunner PRIVATE cxx_std_20)
 endif()
+
+# Phase 16.11 Memory Leak Apocalypse
+option(BUILD_MEMORY_LEAK_APOCALYPSE "Build AgentOS Memory Leak Test" ON)
+if(BUILD_MEMORY_LEAK_APOCALYPSE)
+    add_executable(AgentOS_MemoryLeakApocalypse
+        tests/memory_leak_apocalypse.cpp
+        src/OrganizationEngine/OrganizationEngine.cpp
+        src/ProjectManager/ProjectManager.cpp
+        src/AgentEngine/Agent.cpp
+        src/ReasoningTimelineEngine/ReasoningTimelineEngine.cpp
+        src/EventBus/EventBus.cpp
+        src/MemoryEngine/MemoryEngine.cpp
+        src/KnowledgeGraphEngine/KnowledgeGraphEngine.cpp
+        src/ContextEngine/ContextEngine.cpp
+        src/ModelRouter/ModelRouter.cpp
+        src/LocalRuntime/LocalRuntimeEngine.cpp
+        src/LocalRuntime/TaskScheduler.cpp
+        src/LocalRuntime/ModelPoolManager.cpp
+    )
+    target_link_libraries(AgentOS_MemoryLeakApocalypse PRIVATE psapi)
+    target_include_directories(AgentOS_MemoryLeakApocalypse PRIVATE include libs/sqlite)
+    target_link_libraries(AgentOS_MemoryLeakApocalypse PRIVATE sqlite)
+    target_compile_features(AgentOS_MemoryLeakApocalypse PRIVATE cxx_std_20)
+endif()
