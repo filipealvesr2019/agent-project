@@ -29,7 +29,20 @@ private:
     juce::TextEditor detailsDisplay_;
 };
 
-class GraphCanvasComponent : public juce::Component {
+struct LayoutNode {
+    std::string id;
+    std::string title;
+    std::string subtitle;
+    juce::Colour color;
+    
+    // Auto-layout fields
+    float subtreeWidth = 0.0f;
+    juce::Rectangle<int> bounds;
+    
+    std::vector<LayoutNode> children;
+};
+
+class GraphCanvasComponent : public juce::Component, public juce::Timer {
 public:
     GraphCanvasComponent();
     void paint(juce::Graphics& g) override;
@@ -41,11 +54,21 @@ public:
     
     // For interacting with the UI
     std::function<void(const std::string&)> onAgentSelected;
+    void timerCallback() override;
+
 private:
     float zoomFactor_ = 1.0f;
     juce::Point<float> panOffset_{0.0f, 0.0f};
     juce::Point<float> lastMousePos_;
     
+    LayoutNode rootNode_;
+    
+    void refreshLayout();
+    float calculateSubtreeWidth(LayoutNode& node);
+    void positionNode(LayoutNode& node, float centerX, float y);
+    void drawLayoutNode(juce::Graphics& g, const LayoutNode& node);
+    LayoutNode* findNodeAt(LayoutNode& node, juce::Point<float> pos);
+
     void drawConnection(juce::Graphics& g, juce::Point<float> start, juce::Point<float> end, juce::Colour colour);
     void drawNode(juce::Graphics& g, juce::Rectangle<int> bounds, const std::string& title, const std::string& subtitle, juce::Colour colour);
 };
