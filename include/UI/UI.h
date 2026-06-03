@@ -6,6 +6,14 @@
 #include "GovernanceEngine/GovernanceEngine.h"
 #include "Sandbox/Sandbox.h"
 #include "ChangeManagement/ChangeManagement.h"
+#include "PlannerEngine/PlannerEngine.h"
+#include "ModelRouter/ModelRouter.h"
+#include "AgentProfiles/AgentProfiles.h"
+#include "ReasoningEngine/ReasoningEngine.h"
+#include "ContextEngine/ContextEngine.h"
+#include "PromptEngine/PromptEngine.h"
+#include "ObjectiveEngine/ObjectiveEngine.h"
+#include "CostMonitor/CostMonitor.h"
 #include <vector>
 #include <map>
 #include <memory>

@@ -1,0 +1,2 @@
+add_library(ContextEngine STATIC ContextEngine.cpp)
+target_link_libraries(ContextEngine PUBLIC MemoryEngine)

@@ -36,6 +36,12 @@ add_subdirectory(src/PersistenceEngine)
 add_subdirectory(src/GovernanceEngine)
 add_subdirectory(src/Sandbox)
 add_subdirectory(src/ChangeManagement)
+add_subdirectory(src/AgentProfiles)
+add_subdirectory(src/ReasoningEngine)
+add_subdirectory(src/ContextEngine)
+add_subdirectory(src/PromptEngine)
+add_subdirectory(src/ObjectiveEngine)
+add_subdirectory(src/CostMonitor)
 
 # Executável Principal JUCE
 juce_add_gui_app(AgentOS
@@ -48,11 +54,20 @@ juce_add_gui_app(AgentOS
 target_link_libraries(AgentOS PRIVATE 
     UI
     AgentEngine 
+    WorkflowEngine
     EventBus 
     MemoryEngine 
     GovernanceEngine
     Sandbox
     ChangeManagement
+    AgentProfiles
+    PlannerEngine
+    ModelRouter
+    ReasoningEngine
+    ContextEngine
+    PromptEngine
+    ObjectiveEngine
+    CostMonitor
     sqlite
 )
 
@@ -72,10 +87,73 @@ if(BUILD_INTEGRATION_TESTS)
         src/ChangeManagement/ChangeManagement.cpp
         src/GovernanceEngine/GovernanceEngine.cpp
         src/Sandbox/Sandbox.cpp
+        src/WorkflowEngine/WorkflowEngine.cpp
+        src/PlannerEngine/PlannerEngine.cpp
+        src/ModelRouter/ModelRouter.cpp
+        src/AgentProfiles/AgentProfiles.cpp
+        src/ReasoningEngine/ReasoningEngine.cpp
+        src/ContextEngine/ContextEngine.cpp
+        src/PromptEngine/PromptEngine.cpp
+        src/ObjectiveEngine/ObjectiveEngine.cpp
+        src/CostMonitor/CostMonitor.cpp
     )
     target_include_directories(AgentOS_Integration PRIVATE include libs/sqlite)
     target_link_libraries(AgentOS_Integration PRIVATE sqlite)
     target_compile_features(AgentOS_Integration PRIVATE cxx_std_20)
+endif()
+
+# Workflow test suite
+option(BUILD_WORKFLOW_TESTS "Build AgentOS workflow test" OFF)
+if(BUILD_WORKFLOW_TESTS)
+    add_executable(AgentOS_WorkflowTest
+        tests/test_workflow_full.cpp
+        src/AgentEngine/Agent.cpp
+        src/EventBus/EventBus.cpp
+        src/MemoryEngine/MemoryEngine.cpp
+        src/ToolEngine/ToolEngine.cpp
+        src/ChangeManagement/ChangeManagement.cpp
+        src/GovernanceEngine/GovernanceEngine.cpp
+        src/Sandbox/Sandbox.cpp
+        src/WorkflowEngine/WorkflowEngine.cpp
+        src/PlannerEngine/PlannerEngine.cpp
+        src/ModelRouter/ModelRouter.cpp
+        src/AgentProfiles/AgentProfiles.cpp
+        src/ReasoningEngine/ReasoningEngine.cpp
+        src/ContextEngine/ContextEngine.cpp
+        src/PromptEngine/PromptEngine.cpp
+        src/ObjectiveEngine/ObjectiveEngine.cpp
+        src/CostMonitor/CostMonitor.cpp
+    )
+    target_include_directories(AgentOS_WorkflowTest PRIVATE include libs/sqlite)
+    target_link_libraries(AgentOS_WorkflowTest PRIVATE sqlite)
+    target_compile_features(AgentOS_WorkflowTest PRIVATE cxx_std_20)
+endif()
+
+# Phase 6 test suite
+option(BUILD_PHASE6_TESTS "Build AgentOS Phase 6 tests" OFF)
+if(BUILD_PHASE6_TESTS)
+    add_executable(AgentOS_Phase6
+        tests/test_phase6.cpp
+        src/AgentEngine/Agent.cpp
+        src/EventBus/EventBus.cpp
+        src/MemoryEngine/MemoryEngine.cpp
+        src/ToolEngine/ToolEngine.cpp
+        src/ChangeManagement/ChangeManagement.cpp
+        src/GovernanceEngine/GovernanceEngine.cpp
+        src/Sandbox/Sandbox.cpp
+        src/WorkflowEngine/WorkflowEngine.cpp
+        src/PlannerEngine/PlannerEngine.cpp
+        src/ModelRouter/ModelRouter.cpp
+        src/AgentProfiles/AgentProfiles.cpp
+        src/ReasoningEngine/ReasoningEngine.cpp
+        src/ContextEngine/ContextEngine.cpp
+        src/PromptEngine/PromptEngine.cpp
+        src/ObjectiveEngine/ObjectiveEngine.cpp
+        src/CostMonitor/CostMonitor.cpp
+    )
+    target_include_directories(AgentOS_Phase6 PRIVATE include libs/sqlite)
+    target_link_libraries(AgentOS_Phase6 PRIVATE sqlite)
+    target_compile_features(AgentOS_Phase6 PRIVATE cxx_std_20)
 endif()
 
 # Test runner (opcional, compilar com -DBUILD_TESTS=ON)

@@ -1,0 +1,80 @@
+1|Becca|Tue Jun  2 22:09:49 2026|tests/workflow_test/important.txt|Antes da alteracao critica|3bef2aa1|27
+2|Becca|Tue Jun  2 22:09:49 2026|tests/workflow_test/important.txt|Change proposal #1|3bef2aa1|27
+3|Becca|Tue Jun  2 22:10:02 2026|tests/test_snapshot.txt|Antes da alteracao|9a65520d|27
+4|Becca|Tue Jun  2 22:10:02 2026|tests/test_snapshot.txt|Change proposal #1|9a65520d|27
+5|SYSTEM|Tue Jun  2 22:10:02 2026|EMERGENCY|Falha critica simulada - agente Becca em loop|00001505|0
+6|Becca|Tue Jun  2 22:23:28 2026|tests/workflow_test/important.txt|Antes da alteracao critica|3bef2aa1|27
+7|Becca|Tue Jun  2 22:23:28 2026|tests/workflow_test/important.txt|Change proposal #1|3bef2aa1|27
+8|TestAgent|Tue Jun  2 22:26:07 2026|tests/phase6_recovery_test.txt|Recovery test|ff95d67b|17
+9|TestAgent|Tue Jun  2 22:26:07 2026|tests/phase6_plan_rollback.txt|Plan rollback test|48f82f08|48
+10|Becca|Tue Jun  2 22:26:07 2026|tests/phase6_ceo_approval.txt|CEO approval test|ff95d67b|17
+11|Becca|Tue Jun  2 22:26:07 2026|tests/phase6_ceo_approval.txt|Change proposal #1|ff95d67b|17
+12|TestAgent|Tue Jun  2 22:28:12 2026|tests/phase6_recovery_test.txt|Recovery test|ff95d67b|17
+13|TestAgent|Tue Jun  2 22:28:12 2026|tests/phase6_plan_rollback.txt|Plan rollback test|48f82f08|48
+14|Becca|Tue Jun  2 22:28:12 2026|tests/phase6_ceo_approval.txt|CEO approval test|ff95d67b|17
+15|Becca|Tue Jun  2 22:28:12 2026|tests/phase6_ceo_approval.txt|Change proposal #1|ff95d67b|17
+16|Becca|Tue Jun  2 22:28:29 2026|tests/workflow_test/important.txt|Antes da alteracao critica|3bef2aa1|27
+17|Becca|Tue Jun  2 22:28:29 2026|tests/workflow_test/important.txt|Change proposal #1|3bef2aa1|27
+18|Dev1|Tue Jun  2 22:28:32 2026|test_cm01.txt|teste inicial|5ad2169b|17
+19|Dev1|Tue Jun  2 22:28:32 2026|test_cm01.txt|segundo snapshot|bae44c32|17
+20|Dev1|Tue Jun  2 22:28:32 2026|test_cm03.txt|Change proposal #1|5ad2169b|17
+21|Dev1|Tue Jun  2 22:28:32 2026|test_cm04.txt|Change proposal #2|5ad2169b|17
+22|Dev1|Tue Jun  2 22:28:32 2026|test_cm05.txt|antes da alteracao|5ad2169b|17
+23|SYSTEM|Tue Jun  2 22:28:32 2026|EMERGENCY|Falha crítica na execução|00001505|0
+24|Dev1|Tue Jun  2 22:28:32 2026|test_cm07a.txt|snap A|80562edb|10
+25|Dev1|Tue Jun  2 22:28:32 2026|test_cm07b.txt|snap B|8460bffc|10
+26|Dev1|Tue Jun  2 22:28:48 2026|test_cm01.txt|teste inicial|5ad2169b|17
+27|Dev1|Tue Jun  2 22:28:48 2026|test_cm01.txt|segundo snapshot|bae44c32|17
+28|Dev1|Tue Jun  2 22:28:48 2026|test_cm03.txt|Change proposal #1|5ad2169b|17
+29|Dev1|Tue Jun  2 22:28:48 2026|test_cm04.txt|Change proposal #2|5ad2169b|17
+30|Dev1|Tue Jun  2 22:28:48 2026|test_cm05.txt|antes da alteracao|5ad2169b|17
+31|SYSTEM|Tue Jun  2 22:28:48 2026|EMERGENCY|Falha crítica na execução|00001505|0
+32|Dev1|Tue Jun  2 22:28:48 2026|test_cm07a.txt|snap A|80562edb|10
+33|Dev1|Tue Jun  2 22:28:48 2026|test_cm07b.txt|snap B|8460bffc|10
+34|Becca|Tue Jun  2 22:29:00 2026|tests/test_snapshot.txt|Antes da alteracao|9a65520d|27
+35|Becca|Tue Jun  2 22:29:00 2026|tests/test_snapshot.txt|Change proposal #1|9a65520d|27
+36|SYSTEM|Tue Jun  2 22:29:00 2026|EMERGENCY|Falha critica simulada - agente Becca em loop|00001505|0
+37|Becca|Tue Jun  2 22:29:27 2026|tests/workflow_test/important.txt|Antes da alteracao critica|3bef2aa1|27
+38|Becca|Tue Jun  2 22:29:27 2026|tests/workflow_test/important.txt|Change proposal #1|3bef2aa1|27
+39|Dev1|Tue Jun  2 22:30:35 2026|test_cm01.txt|teste inicial|5ad2169b|17
+40|Dev1|Tue Jun  2 22:30:35 2026|test_cm01.txt|segundo snapshot|bae44c32|17
+41|Dev1|Tue Jun  2 22:30:35 2026|test_cm03.txt|Change proposal #1|5ad2169b|17
+42|Dev1|Tue Jun  2 22:30:35 2026|test_cm04.txt|Change proposal #2|5ad2169b|17
+43|Dev1|Tue Jun  2 22:30:35 2026|test_cm05.txt|antes da alteracao|5ad2169b|17
+44|SYSTEM|Tue Jun  2 22:30:35 2026|EMERGENCY|Falha crítica na execução|00001505|0
+45|Dev1|Tue Jun  2 22:30:35 2026|test_cm07a.txt|snap A|80562edb|10
+46|Dev1|Tue Jun  2 22:30:35 2026|test_cm07b.txt|snap B|8460bffc|10
+47|Becca|Tue Jun  2 22:30:41 2026|tests/test_snapshot.txt|Antes da alteracao|9a65520d|27
+48|Becca|Tue Jun  2 22:30:41 2026|tests/test_snapshot.txt|Change proposal #1|9a65520d|27
+49|SYSTEM|Tue Jun  2 22:30:41 2026|EMERGENCY|Falha critica simulada - agente Becca em loop|00001505|0
+50|Becca|Tue Jun  2 22:31:04 2026|tests/workflow_test/important.txt|Antes da alteracao critica|3bef2aa1|27
+51|Becca|Tue Jun  2 22:31:04 2026|tests/workflow_test/important.txt|Change proposal #1|3bef2aa1|27
+52|TestAgent|Tue Jun  2 22:32:43 2026|tests/phase6_recovery_test.txt|Recovery test|ff95d67b|17
+53|TestAgent|Tue Jun  2 22:32:43 2026|tests/phase6_plan_rollback.txt|Plan rollback test|48f82f08|48
+54|Becca|Tue Jun  2 22:32:43 2026|tests/phase6_ceo_approval.txt|CEO approval test|ff95d67b|17
+55|Becca|Tue Jun  2 22:32:43 2026|tests/phase6_ceo_approval.txt|Change proposal #1|ff95d67b|17
+56|Dev1|Tue Jun  2 22:32:57 2026|test_cm01.txt|teste inicial|5ad2169b|17
+57|Dev1|Tue Jun  2 22:32:57 2026|test_cm01.txt|segundo snapshot|bae44c32|17
+58|Dev1|Tue Jun  2 22:32:57 2026|test_cm03.txt|Change proposal #1|5ad2169b|17
+59|Dev1|Tue Jun  2 22:32:57 2026|test_cm04.txt|Change proposal #2|5ad2169b|17
+60|Dev1|Tue Jun  2 22:32:57 2026|test_cm05.txt|antes da alteracao|5ad2169b|17
+61|SYSTEM|Tue Jun  2 22:32:57 2026|EMERGENCY|Falha crítica na execução|00001505|0
+62|Dev1|Tue Jun  2 22:32:57 2026|test_cm07a.txt|snap A|80562edb|10
+63|Dev1|Tue Jun  2 22:32:57 2026|test_cm07b.txt|snap B|8460bffc|10
+64|Becca|Tue Jun  2 22:33:03 2026|tests/test_snapshot.txt|Antes da alteracao|9a65520d|27
+65|Becca|Tue Jun  2 22:33:03 2026|tests/test_snapshot.txt|Change proposal #1|9a65520d|27
+66|SYSTEM|Tue Jun  2 22:33:03 2026|EMERGENCY|Falha critica simulada - agente Becca em loop|00001505|0
+67|Becca|Tue Jun  2 22:33:25 2026|tests/workflow_test/important.txt|Antes da alteracao critica|3bef2aa1|27
+68|Becca|Tue Jun  2 22:33:25 2026|tests/workflow_test/important.txt|Change proposal #1|3bef2aa1|27
+69|TestAgent|Tue Jun  2 22:35:12 2026|tests/phase6_recovery_test.txt|Recovery test|ff95d67b|17
+70|TestAgent|Tue Jun  2 22:35:12 2026|tests/phase6_plan_rollback.txt|Plan rollback test|48f82f08|48
+71|Becca|Tue Jun  2 22:35:12 2026|tests/phase6_ceo_approval.txt|CEO approval test|ff95d67b|17
+72|Becca|Tue Jun  2 22:35:12 2026|tests/phase6_ceo_approval.txt|Change proposal #1|ff95d67b|17
+73|Dev1|Tue Jun  2 22:35:26 2026|test_cm01.txt|teste inicial|5ad2169b|17
+74|Dev1|Tue Jun  2 22:35:26 2026|test_cm01.txt|segundo snapshot|bae44c32|17
+75|Dev1|Tue Jun  2 22:35:26 2026|test_cm03.txt|Change proposal #1|5ad2169b|17
+76|Dev1|Tue Jun  2 22:35:26 2026|test_cm04.txt|Change proposal #2|5ad2169b|17
+77|Dev1|Tue Jun  2 22:35:26 2026|test_cm05.txt|antes da alteracao|5ad2169b|17
+78|SYSTEM|Tue Jun  2 22:35:26 2026|EMERGENCY|Falha crítica na execução|00001505|0
+79|Dev1|Tue Jun  2 22:35:26 2026|test_cm07a.txt|snap A|80562edb|10
+80|Dev1|Tue Jun  2 22:35:26 2026|test_cm07b.txt|snap B|8460bffc|10

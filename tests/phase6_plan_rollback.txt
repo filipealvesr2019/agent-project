@@ -1,0 +1,4 @@
+Plano: Criar Fuzz Face
+1. Pesquisar
+2. DSP
+3. UI

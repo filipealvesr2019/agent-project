@@ -64,6 +64,20 @@ void UI::init(DashboardComponent* dashboard) {
     EventBus::getInstance().subscribe(EventType::ReviewRequested,
         [this](const Event& e) { onEvent(e); });
 
+    // Init Phase 6 engines
+    {
+        ProfileRegistry::getInstance().loadDefaults();
+        ModelRouter::getInstance().loadDefaults();
+        logMessage("AgentProfiles: " + juce::String((int)ProfileRegistry::getInstance().getRegisteredRoles().size()) + " perfis carregados");
+        logMessage("ModelRouter: " + juce::String((int)ModelRouter::getInstance().getAllRoutes().size()) + " rotas configuradas");
+        logMessage("PlannerEngine: pronto para decompor objetivos");
+        logMessage("ReasoningEngine: pronto");
+        logMessage("ContextEngine: pronto");
+        logMessage("PromptEngine: pronto");
+        logMessage("ObjectiveEngine: pronto");
+        logMessage("CostMonitor: monitorando recursos");
+    }
+
     logMessage("AgentOS UI inicializado");
     logMessage("MemoryEngine: SQLite pronto");
     logMessage("Sandbox: workspace/ pronto");
