@@ -1,4 +1,5 @@
 #include "LocalRuntime/LocalRuntimeEngine.h"
+#include "LocalRuntime/TaskScheduler.h"
 #include <chrono>
 
 namespace AgentOS {
@@ -77,8 +78,8 @@ std::future<std::string> LocalRuntimeEngine::executeAsync(int modelId, const std
         return p.get_future();
     }
     
-    // Dispatch to a new async thread
-    return std::async(std::launch::async, [instance, prompt]() {
+    // Dispatch to centralized Thread Pool
+    return TaskScheduler::getInstance().enqueue([instance, prompt]() {
         return instance->runTask(prompt);
     });
 }

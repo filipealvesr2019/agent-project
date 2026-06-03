@@ -117,8 +117,13 @@ void runHellBreaker(const std::string& levelName, int numModels, int numOrgs, in
     generateReport(res);
 }
 
+#include "LocalRuntime/TaskScheduler.h"
+
 int main(int argc, char** argv) {
     std::cout << "AgentOS Scalability & Benchmark Framework (Phase 16.8)\n";
+    
+    // Initialize Runtime Hardening Task Scheduler (Phase 16.9)
+    TaskScheduler::getInstance().init(16); // 16 worker threads
     
     MemoryEngine::getInstance().initDatabase();
     
