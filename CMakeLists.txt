@@ -56,6 +56,7 @@ add_subdirectory(src/LocalRuntime)
 add_subdirectory(src/ProjectManager)
 add_subdirectory(src/OrganizationEngine)
 add_subdirectory(src/ReasoningTimelineEngine)
+add_subdirectory(src/Cognitive)
 
 # Executável Principal JUCE
 # juce_add_gui_app(AgentOS
@@ -538,3 +539,15 @@ set(LLAMA_BUILD_TESTS OFF CACHE BOOL "Disable llama tests")
 set(LLAMA_BUILD_EXAMPLES OFF CACHE BOOL "Disable llama examples")
 set(LLAMA_BUILD_SERVER OFF CACHE BOOL "Disable llama server")
 add_subdirectory(libs/llama.cpp)
+
+# Phase 1: Cognitive Engine / Model Registry Test
+option(BUILD_COGNITIVE_TESTS "Build AgentOS Cognitive Tests" ON)
+if(BUILD_COGNITIVE_TESTS)
+    add_executable(AgentOS_ModelRegistryTest
+        tests/test_model_registry.cpp
+    )
+    target_include_directories(AgentOS_ModelRegistryTest PRIVATE include)
+    target_link_libraries(AgentOS_ModelRegistryTest PRIVATE Cognitive)
+    target_compile_features(AgentOS_ModelRegistryTest PRIVATE cxx_std_20)
+endif()
+
