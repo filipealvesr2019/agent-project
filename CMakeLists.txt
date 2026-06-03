@@ -303,6 +303,24 @@ if(BUILD_PHASE15_TESTS)
     target_compile_features(AgentOS_PluginMarketplaceTest PRIVATE cxx_std_20)
 endif()
 
+# Hardening & Validation test suite
+option(BUILD_HARDENING_TESTS "Build AgentOS Hardening tests" OFF)
+if(BUILD_HARDENING_TESTS)
+    add_executable(AgentOS_HardeningTest
+        tests/test_hardening_validation.cpp
+        src/MultiAgentCollaboration/MultiAgentCollaboration.cpp
+        src/PluginManager/PluginManager.cpp
+        src/MemoryEngine/MemoryEngine.cpp
+        src/MemoryAPI/MemoryAPI.cpp
+        src/KnowledgeGraphEngine/KnowledgeGraphEngine.cpp
+        src/LocalRuntime/LocalRuntimeEngine.cpp
+        src/ToolEngine/Phase11Tools.cpp
+    )
+    target_include_directories(AgentOS_HardeningTest PRIVATE include libs/sqlite)
+    target_link_libraries(AgentOS_HardeningTest PRIVATE sqlite)
+    target_compile_features(AgentOS_HardeningTest PRIVATE cxx_std_20)
+endif()
+
 # Test runner (opcional, compilar com -DBUILD_TESTS=ON)
 option(BUILD_TESTS "Build AgentOS test runner" OFF)
 if(BUILD_TESTS)
