@@ -18,4 +18,6 @@ target_link_libraries(UI PUBLIC
     AgentEngine
     EventBus
     MemoryEngine
+    GovernanceEngine
+    Sandbox
 )

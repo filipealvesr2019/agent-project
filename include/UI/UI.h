@@ -3,6 +3,8 @@
 #include "AgentEngine/Agent.h"
 #include "EventBus/EventBus.h"
 #include "MemoryEngine/MemoryEngine.h"
+#include "GovernanceEngine/GovernanceEngine.h"
+#include "Sandbox/Sandbox.h"
 #include <vector>
 #include <map>
 #include <memory>

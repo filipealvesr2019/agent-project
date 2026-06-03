@@ -13,6 +13,20 @@ void UI::init(DashboardComponent* dashboard) {
     dashboard_ = dashboard;
     MemoryEngine::getInstance().initDatabase();
 
+    Sandbox::getInstance().init("workspace");
+
+    auto getReportsToFn = [this](const std::string& name) -> std::string {
+        return getReportsTo(name);
+    };
+    GovernanceEngine::getInstance().init(getReportsToFn);
+
+    GovernanceEngine::getInstance().onComplianceAlert = [this](const std::string& msg) {
+        logMessage("[Governance] " + msg);
+    };
+    GovernanceEngine::getInstance().onDriftAlert = [this](const std::string& msg) {
+        logMessage("[DRIFT] " + msg);
+    };
+
     EventBus::getInstance().subscribe(EventType::TaskAssigned,
         [this](const Event& e) { onEvent(e); });
     EventBus::getInstance().subscribe(EventType::TaskCompleted,
@@ -26,6 +40,8 @@ void UI::init(DashboardComponent* dashboard) {
 
     logMessage("AgentOS UI inicializado");
     logMessage("MemoryEngine: SQLite pronto");
+    logMessage("Sandbox: workspace/ pronto");
+    logMessage("GovernanceEngine: monitorando agentes");
     logMessage("EventBus: ouvindo eventos");
 
     auto ceo = createAgent("Atlas", "CEO", "Exec", "");
@@ -37,11 +53,19 @@ void UI::init(DashboardComponent* dashboard) {
     createAgent("Carl", "Backend Dev", "Engineering", "Alan");
     createAgent("Dave", "QA Tester", "QA", "Eve");
 
+    Sandbox::getInstance().onAuditEntry = [this](const AuditEntry& entry) {
+        if (!entry.allowed) {
+            logMessage("[SANDBOX] " + entry.action + " | " + entry.agentName + " -> " + entry.target + " | " + entry.result);
+        }
+    };
+
     refreshDashboard();
     logMessage("Agentes iniciais criados");
 }
 
 void UI::shutdown() {
+    GovernanceEngine::getInstance().shutdown();
+    Sandbox::getInstance().shutdown();
     dashboard_ = nullptr;
 }
 
@@ -52,6 +76,9 @@ Agent* UI::createAgent(const std::string& name, const std::string& role,
     auto* ptr = agent.get();
     reportsTo_[name] = reportsTo;
     agents_.push_back(std::move(agent));
+
+    Sandbox::getInstance().getOrCreateWorkspace(name);
+
     logMessage("Agente criado: " + name + " (" + role + ")");
     if (onAgentsChanged) onAgentsChanged();
     return ptr;
@@ -68,6 +95,7 @@ void UI::removeAgent(const std::string& name) {
         if ((*it)->getName() == name) {
             agents_.erase(it);
             reportsTo_.erase(name);
+            Sandbox::getInstance().cleanWorkspace(name);
             logMessage("Agente removido: " + name);
             if (onAgentsChanged) onAgentsChanged();
             return;
@@ -97,6 +125,8 @@ void UI::refreshDashboard() {
 }
 
 void UI::onEvent(const Event& e) {
+    GovernanceEngine::getInstance().handleEvent(e);
+
     juce::String typeStr;
     switch (e.type) {
         case EventType::TaskCreated: typeStr = "TaskCreated"; break;

@@ -1,13 +1,16 @@
 #include "UI/AgentListComponent.h"
 #include "UI/UI.h"
+#include "GovernanceEngine/GovernanceEngine.h"
 
 namespace AgentOS {
 
 AgentListComponent::AgentListComponent() {
-    table_.getHeader().addColumn("Nome", ColName, 160);
-    table_.getHeader().addColumn("Cargo", ColRole, 140);
-    table_.getHeader().addColumn("Status", ColStatus, 100);
-    table_.getHeader().addColumn("Reporta a", ColReportsTo, 120);
+    table_.getHeader().addColumn("Nome", ColName, 140);
+    table_.getHeader().addColumn("Cargo", ColRole, 130);
+    table_.getHeader().addColumn("Status", ColStatus, 80);
+    table_.getHeader().addColumn("Trust", ColTrust, 70);
+    table_.getHeader().addColumn("Compliance", ColCompliance, 90);
+    table_.getHeader().addColumn("Reporta a", ColReportsTo, 110);
     table_.setModel(this);
     table_.setColour(juce::ListBox::backgroundColourId, juce::Colour(0xFF16213e));
     addAndMakeVisible(table_);
@@ -35,7 +38,7 @@ void AgentListComponent::paintCell(juce::Graphics& g, int rowNumber, int columnI
     if (rowNumber < 0 || rowNumber >= (int)agents.size()) return;
 
     auto& agent = agents[rowNumber];
-    g.setFont(juce::Font(14.0f));
+    g.setFont(juce::Font(13.0f));
 
     juce::String text;
     juce::Colour textColour = juce::Colours::white;
@@ -51,8 +54,28 @@ void AgentListComponent::paintCell(juce::Graphics& g, int rowNumber, int columnI
             auto status = agent->getStateAsString();
             auto colour = getStatusColour(status);
             g.setColour(colour);
-            g.fillEllipse(8, (height - 10) / 2, 10, 10);
+            g.fillEllipse(6, (height - 8) / 2, 8, 8);
             text = " " + status;
+            break;
+        }
+        case ColTrust: {
+            auto ts = GovernanceEngine::getInstance().getTrustScore(agent->getName());
+            text = juce::String((int)ts.score) + "/100";
+            auto scoreColour = ts.score >= 80 ? juce::Colour(0xFF32cd32) :
+                               ts.score >= 50 ? juce::Colour(0xFFf0c040) :
+                                                juce::Colour(0xFFdc143c);
+            textColour = scoreColour;
+            break;
+        }
+        case ColCompliance: {
+            auto ts = GovernanceEngine::getInstance().getTrustScore(agent->getName());
+            if (ts.nonCompliantActions > 0 || ts.drifts > 0) {
+                text = "⚠ NON-COMPLIANT";
+                textColour = juce::Colour(0xFFdc143c);
+            } else {
+                text = "✅ COMPLIANT";
+                textColour = juce::Colour(0xFF32cd32);
+            }
             break;
         }
         case ColReportsTo: {
@@ -64,7 +87,7 @@ void AgentListComponent::paintCell(juce::Graphics& g, int rowNumber, int columnI
     }
 
     g.setColour(textColour);
-    g.drawText(text, 22, 0, width - 24, height, juce::Justification::centredLeft, true);
+    g.drawText(text, columnId == ColStatus ? 18 : 6, 0, width - 10, height, juce::Justification::centredLeft, true);
 }
 
 void AgentListComponent::cellClicked(int rowNumber, int, const juce::MouseEvent&) {

@@ -17,7 +17,7 @@ public:
 
 private:
     juce::TableListBox table_;
-    enum ColumnIds { ColName = 1, ColRole, ColStatus, ColReportsTo };
+    enum ColumnIds { ColName = 1, ColRole, ColStatus, ColTrust, ColCompliance, ColReportsTo };
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(AgentListComponent)
 };
 

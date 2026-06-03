@@ -33,6 +33,8 @@ add_subdirectory(src/GitEngine)
 add_subdirectory(src/ResearchEngine)
 add_subdirectory(src/MonitoringEngine)
 add_subdirectory(src/PersistenceEngine)
+add_subdirectory(src/GovernanceEngine)
+add_subdirectory(src/Sandbox)
 
 # Executável Principal JUCE
 juce_add_gui_app(AgentOS
@@ -47,6 +49,8 @@ target_link_libraries(AgentOS PRIVATE
     AgentEngine 
     EventBus 
     MemoryEngine 
+    GovernanceEngine
+    Sandbox
     sqlite
 )
 
