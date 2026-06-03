@@ -4,10 +4,17 @@
 
 namespace AgentOS {
 
+struct Team {
+    std::string name;
+    std::string manager;
+    std::vector<std::string> agents;
+};
+
 struct ProjectInfo {
     std::string name;
     std::string path;
-    std::vector<std::string> agents;
+    std::vector<std::string> agents; // Deprecated: move to teams
+    std::vector<Team> teams;
     std::vector<std::string> models;
     std::string description;
     std::string organizationName;

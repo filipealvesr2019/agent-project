@@ -99,7 +99,7 @@ int main() {
 
         std::error_code ec;
         std::filesystem::create_directories("test_ve_build", ec);
-        BuildResult result = ve.buildCode(code, "test_ve_build");
+        VisionBuildResult result = ve.buildCode(code, "test_ve_build");
         CHECK(result.success);
         CHECK(!result.log.empty());
         CHECK(!result.outputPath.empty());

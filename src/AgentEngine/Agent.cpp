@@ -1,12 +1,13 @@
 #include "AgentEngine/Agent.h"
 #include "EventBus/EventBus.h"
 #include "MemoryEngine/MemoryEngine.h"
+#include "ReasoningTimelineEngine/ReasoningTimelineEngine.h"
 #include <iostream>
 
 namespace AgentOS {
 
-Agent::Agent(std::string name, std::string role, std::string department, std::string organization)
-    : name_(std::move(name)), role_(std::move(role)), department_(std::move(department)), organization_(std::move(organization)), currentState_(AgentState::Idle) {
+Agent::Agent(std::string name, std::string role, std::string department, std::string organization, std::string team)
+    : name_(std::move(name)), role_(std::move(role)), department_(std::move(department)), organization_(std::move(organization)), team_(std::move(team)), currentState_(AgentState::Idle) {
     // Evento de criação emitido se necessário
 }
 
@@ -43,6 +44,15 @@ void Agent::handleEvent(const Event& event) {
 void Agent::setState(AgentState newState) {
     currentState_ = newState;
     std::cout << "[AgentEngine] Agente " << name_ << " mudou de estado para: " << getStateAsString() << std::endl;
+    
+    // Record to Timeline
+    AgentThought thought;
+    thought.agentId = name_;
+    thought.modelName = "UnknownModel"; // To be fetched from capability engine later
+    thought.role = role_;
+    thought.action = "State Change";
+    thought.summary = "Agent transitioned to " + getStateAsString() + " state.";
+    ReasoningTimelineEngine::getInstance().recordThought(thought);
 }
 
 AgentState Agent::getState() const {
@@ -73,8 +83,16 @@ std::string Agent::getOrganization() const {
     return organization_;
 }
 
+std::string Agent::getTeam() const {
+    return team_;
+}
+
 void Agent::setOrganization(const std::string& org) {
     organization_ = org;
+}
+
+void Agent::setTeam(const std::string& team) {
+    team_ = team;
 }
 
 void Agent::update() {

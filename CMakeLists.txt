@@ -52,6 +52,7 @@ add_subdirectory(src/VisionEngine)
 add_subdirectory(src/LocalRuntime)
 add_subdirectory(src/ProjectManager)
 add_subdirectory(src/OrganizationEngine)
+add_subdirectory(src/ReasoningTimelineEngine)
 
 # Executável Principal JUCE
 juce_add_gui_app(AgentOS
@@ -90,6 +91,7 @@ target_link_libraries(AgentOS PRIVATE
     LocalRuntime
     ProjectManager
     OrganizationEngine
+    ReasoningTimelineEngine
     ToolEngine
     sqlite
 )
@@ -106,6 +108,7 @@ if(BUILD_INTEGRATION_TESTS)
         src/AgentEngine/Agent.cpp
         src/EventBus/EventBus.cpp
         src/MemoryEngine/MemoryEngine.cpp
+        src/ReasoningTimelineEngine/ReasoningTimelineEngine.cpp
         src/ToolEngine/ToolEngine.cpp
         src/ChangeManagement/ChangeManagement.cpp
         src/GovernanceEngine/GovernanceEngine.cpp
@@ -136,6 +139,7 @@ if(BUILD_WORKFLOW_TESTS)
         src/AgentEngine/Agent.cpp
         src/EventBus/EventBus.cpp
         src/MemoryEngine/MemoryEngine.cpp
+        src/ReasoningTimelineEngine/ReasoningTimelineEngine.cpp
         src/ToolEngine/ToolEngine.cpp
         src/ChangeManagement/ChangeManagement.cpp
         src/GovernanceEngine/GovernanceEngine.cpp
@@ -164,6 +168,7 @@ if(BUILD_PHASE6_TESTS)
     add_executable(AgentOS_Phase6
         tests/test_phase6.cpp
         src/AgentEngine/Agent.cpp
+        src/ReasoningTimelineEngine/ReasoningTimelineEngine.cpp
         src/EventBus/EventBus.cpp
         src/MemoryEngine/MemoryEngine.cpp
         src/ToolEngine/ToolEngine.cpp
@@ -316,6 +321,7 @@ if(BUILD_HARDENING_TESTS)
         tests/test_hardening_validation.cpp
         src/MultiAgentCollaboration/MultiAgentCollaboration.cpp
         src/PluginManager/PluginManager.cpp
+        src/ReasoningTimelineEngine/ReasoningTimelineEngine.cpp
         src/MemoryEngine/MemoryEngine.cpp
         src/MemoryAPI/MemoryAPI.cpp
         src/KnowledgeGraphEngine/KnowledgeGraphEngine.cpp
@@ -335,6 +341,7 @@ if(BUILD_PERFORMANCE_TESTS)
         src/MonitoringEngine/MonitoringEngine.cpp
         src/PluginManager/PluginManager.cpp
         src/ToolEngine/Phase11Tools.cpp
+        src/ReasoningTimelineEngine/ReasoningTimelineEngine.cpp
         src/LocalRuntime/LocalRuntimeEngine.cpp
         src/MemoryAPI/MemoryAPI.cpp
         src/KnowledgeGraphEngine/KnowledgeGraphEngine.cpp
@@ -351,6 +358,7 @@ if(BUILD_TESTS)
     add_executable(AgentOS_Tests
         src/test_runner.cpp
         src/AgentEngine/Agent.cpp
+        src/ReasoningTimelineEngine/ReasoningTimelineEngine.cpp
         src/EventBus/EventBus.cpp
         src/MemoryEngine/MemoryEngine.cpp
         src/ToolEngine/ToolEngine.cpp
@@ -370,6 +378,7 @@ if(BUILD_ORG_WORKFLOW_TESTS)
         src/OrganizationEngine/OrganizationEngine.cpp
         src/ProjectManager/ProjectManager.cpp
         src/AgentEngine/Agent.cpp
+        src/ReasoningTimelineEngine/ReasoningTimelineEngine.cpp
         src/EventBus/EventBus.cpp
         src/MemoryEngine/MemoryEngine.cpp
     )

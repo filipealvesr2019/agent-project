@@ -21,7 +21,7 @@ enum class AgentState {
 
 class Agent {
 public:
-    Agent(std::string name, std::string role, std::string department, std::string organization = "AgentOS_Global");
+    Agent(std::string name, std::string role, std::string department, std::string organization = "AgentOS_Global", std::string team = "");
     ~Agent() = default;
 
     // Inicialização
@@ -40,7 +40,9 @@ public:
     std::string getRole() const;
     std::string getDepartment() const;
     std::string getOrganization() const;
+    std::string getTeam() const;
     void setOrganization(const std::string& org);
+    void setTeam(const std::string& team);
 
     // Lógica (será expandida)
     void update();
@@ -50,6 +52,7 @@ private:
     std::string role_;
     std::string department_;
     std::string organization_;
+    std::string team_;
     AgentState currentState_;
     int currentTaskId_{0};
 

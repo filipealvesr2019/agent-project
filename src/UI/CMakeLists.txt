@@ -8,6 +8,7 @@ add_library(UI STATIC
     CreateAgentDialog.cpp
     ModelManagerDialog.cpp
     ProjectPanelComponent.cpp
+    WorkflowEditor/WorkflowEditorComponent.cpp
 )
 target_include_directories(UI PUBLIC ${CMAKE_SOURCE_DIR}/include)
 target_link_libraries(UI PUBLIC
@@ -25,4 +26,5 @@ target_link_libraries(UI PUBLIC
     ModelManager
     ProjectManager
     OrganizationEngine
+    ReasoningTimelineEngine
 )

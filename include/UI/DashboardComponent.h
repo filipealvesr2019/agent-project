@@ -8,6 +8,7 @@ class SidebarComponent;
 class AgentListComponent;
 class LogViewerComponent;
 class ProjectPanelComponent;
+class WorkflowEditorComponent;
 
 class DashboardComponent : public juce::Component, public juce::Timer {
 public:
@@ -33,6 +34,7 @@ private:
     std::unique_ptr<AgentListComponent> agentList_;
     std::unique_ptr<ProjectPanelComponent> projectPanel_;
     std::unique_ptr<LogViewerComponent> logViewer_;
+    std::unique_ptr<WorkflowEditorComponent> workflowEditor_;
     juce::String statusText_;
 
     // Phase 17 Metrics

@@ -31,7 +31,8 @@ public:
     void shutdown();
     Agent* createAgent(const std::string& name, const std::string& role,
                        const std::string& department, const std::string& reportsTo,
-                       const std::string& organization = "AgentOS_Global");
+                       const std::string& organization = "AgentOS_Global",
+                       const std::string& team = "");
     void removeAgent(const std::string& name);
     void addAgent(AgentPtr agent, const std::string& reportsTo);
     const std::vector<AgentPtr>& getAgents() const { return agents_; }

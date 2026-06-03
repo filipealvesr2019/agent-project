@@ -1,0 +1,3 @@
+add_library(ReasoningTimelineEngine STATIC ReasoningTimelineEngine.cpp)
+target_include_directories(ReasoningTimelineEngine PUBLIC ${CMAKE_SOURCE_DIR}/include)
+target_link_libraries(ReasoningTimelineEngine PRIVATE MemoryEngine)
