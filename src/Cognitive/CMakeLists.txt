@@ -12,6 +12,7 @@ add_library(Cognitive STATIC
     VectorSearch.cpp
     Orchestrator.cpp
     AutonomousLoop.cpp
+    HardwareWatchdog.cpp
     ../LocalRuntime/LlamaRuntime.cpp
 )
 

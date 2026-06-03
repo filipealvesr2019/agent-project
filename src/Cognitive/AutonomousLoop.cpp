@@ -60,8 +60,6 @@ bool AutonomousLoop::hasPendingRequests() const
 
 void AutonomousLoop::processQueue()
 {
-    MetricsCollector collector; // Para métricas
-
     while (running_) {
         FrontendRequest req;
         
@@ -84,7 +82,7 @@ void AutonomousLoop::processQueue()
         auto end_time = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double, std::milli> elapsed = end_time - start_time;
         
-        SystemMetrics metrics = collector.collect();
+        SystemMetrics metrics = orchestrator_.getWatchdog().getCachedMetrics();
         
         std::string modelName = "Auto-Selected-Model"; 
         if (result.find("Qwen") != std::string::npos) modelName = "Qwen2.5-Coder-3B";

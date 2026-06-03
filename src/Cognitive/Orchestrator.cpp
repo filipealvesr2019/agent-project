@@ -100,7 +100,9 @@ Orchestrator::Orchestrator(ModelRegistry& registry,
                            VectorSearch& vs)
     : registry_(registry), memory_(mem), kb_(kb), vectorSearch_(vs),
       router_(registry_), recovery_(registry_)
-{}
+{
+    watchdog_.start();
+}
 
 void Orchestrator::registerAgent(TaskType type, std::shared_ptr<Agent> agent)
 {
@@ -137,7 +139,7 @@ std::string Orchestrator::processRequest(const std::string& prompt, PipelineMetr
     // 2. Bottleneck Detector & Router
     std::string idealModel;
     metrics.routingMs = measureTimeMs([&]() {
-        SystemMetrics sysMetrics = collector_.collect();
+        SystemMetrics sysMetrics = watchdog_.getCachedMetrics();
         BottleneckType bt = detector_.detect(sysMetrics);
         
         idealModel = router_.chooseModel(task, sysMetrics);

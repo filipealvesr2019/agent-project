@@ -3,6 +3,7 @@
 #include "Cognitive/TaskAnalyzer.h"
 #include "Cognitive/SurrogateRouter.h"
 #include "Cognitive/MetricsCollector.h"
+#include "Cognitive/HardwareWatchdog.h"
 #include "Cognitive/BottleneckDetector.h"
 #include "Cognitive/AutoRecovery.h"
 #include "LocalRuntime/LlamaRuntime.h"
@@ -25,6 +26,8 @@ public:
     // Fluxo principal: Planner -> Router -> Context -> SubAgent -> Resultado
     std::string processRequest(const std::string& prompt, PipelineMetrics* metrics = nullptr);
 
+    HardwareWatchdog& getWatchdog() { return watchdog_; }
+
 private:
     ModelRegistry& registry_;
     MemoryEngine& memory_;
@@ -33,7 +36,7 @@ private:
 
     TaskAnalyzer analyzer_;
     SurrogateRouter router_;
-    MetricsCollector collector_;
+    HardwareWatchdog watchdog_;
     BottleneckDetector detector_;
     AutoRecovery recovery_;
 
