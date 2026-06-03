@@ -8,6 +8,8 @@ add_library(Cognitive STATIC
     LearningEngine.cpp
     ContextManager.cpp
     MemoryEngine.cpp
+    KnowledgeBase.cpp
+    VectorSearch.cpp
 )
 
 target_include_directories(Cognitive PUBLIC ${CMAKE_SOURCE_DIR}/include)

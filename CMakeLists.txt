@@ -589,6 +589,22 @@ if(BUILD_COGNITIVE_TESTS)
     target_include_directories(AgentOS_MemoryEngineTest PRIVATE include)
     target_link_libraries(AgentOS_MemoryEngineTest PRIVATE Cognitive)
     target_compile_features(AgentOS_MemoryEngineTest PRIVATE cxx_std_20)
+
+    # Semana 7: Knowledge Base - Consolidacao de memorias em documentos Markdown/JSON
+    add_executable(AgentOS_KnowledgeBaseTest
+        tests/test_knowledge_base.cpp
+    )
+    target_include_directories(AgentOS_KnowledgeBaseTest PRIVATE include)
+    target_link_libraries(AgentOS_KnowledgeBaseTest PRIVATE Cognitive)
+    target_compile_features(AgentOS_KnowledgeBaseTest PRIVATE cxx_std_20)
+
+    # Semana 8: Vector Search - Similaridade de Cossenos e RAG em Memoria Episodica
+    add_executable(AgentOS_VectorSearchTest
+        tests/test_vector_search.cpp
+    )
+    target_include_directories(AgentOS_VectorSearchTest PRIVATE include)
+    target_link_libraries(AgentOS_VectorSearchTest PRIVATE Cognitive)
+    target_compile_features(AgentOS_VectorSearchTest PRIVATE cxx_std_20)
 endif()
 
 
