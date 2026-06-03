@@ -34,12 +34,13 @@ std::string WorkflowEngine::getTimestamp() const {
 }
 
 int WorkflowEngine::createObjective(const std::string& title,
-    const std::string& description, const std::string& createdBy) {
+    const std::string& description, const std::string& createdBy, const std::string& organization) {
     WorkflowObjective obj;
     obj.id = nextObjectiveId_++;
     obj.title = title;
     obj.description = description;
     obj.createdBy = createdBy;
+    obj.organization = organization;
     obj.createdAt = getTimestamp();
     obj.status = "Active";
     objectives_.push_back(obj);
@@ -55,13 +56,21 @@ WorkflowObjective WorkflowEngine::getObjective(int objectiveId) const {
     return {};
 }
 
+std::vector<WorkflowObjective> WorkflowEngine::getObjectivesForOrganization(const std::string& organization) const {
+    std::vector<WorkflowObjective> result;
+    for (const auto& o : objectives_)
+        if (o.organization == organization) result.push_back(o);
+    return result;
+}
+
 std::vector<WorkflowObjective> WorkflowEngine::getObjectives() const {
     return objectives_;
 }
 
 int WorkflowEngine::createTask(const std::string& name, const std::string& description,
     const std::string& assignedTo, const std::string& assignedBy,
-    int objectiveId, int parentId, WorkflowPriority priority) {
+    int objectiveId, int parentId, WorkflowPriority priority,
+    const std::string& organization, const std::string& department) {
     WorkflowTask task;
     task.id = nextTaskId_++;
     task.name = name;
@@ -70,6 +79,8 @@ int WorkflowEngine::createTask(const std::string& name, const std::string& descr
     task.priority = priority;
     task.assignedTo = assignedTo;
     task.assignedBy = assignedBy;
+    task.organization = organization;
+    task.department = department;
     task.createdAt = getTimestamp();
     task.parentId = parentId;
     task.objectiveId = objectiveId;
@@ -112,10 +123,11 @@ int WorkflowEngine::createTask(const std::string& name, const std::string& descr
     return task.id;
 }
 
-bool WorkflowEngine::assignTask(int taskId, const std::string& assignedTo) {
+bool WorkflowEngine::assignTask(int taskId, const std::string& assignedTo, const std::string& department) {
     for (auto& t : tasks_) {
         if (t.id == taskId) {
             t.assignedTo = assignedTo;
+            if (!department.empty()) t.department = department;
             EventBus::getInstance().publish(
                 {EventType::TaskAssigned, "WorkflowEngine", assignedTo, t.name});
             MemoryEngine::getInstance().updateTaskMemory(taskId, "Assigned");
@@ -232,6 +244,20 @@ std::vector<WorkflowTask> WorkflowEngine::getTasksForAgent(const std::string& ag
     std::vector<WorkflowTask> result;
     for (const auto& t : tasks_)
         if (t.assignedTo == agentName) result.push_back(t);
+    return result;
+}
+
+std::vector<WorkflowTask> WorkflowEngine::getTasksForDepartment(const std::string& organization, const std::string& department) const {
+    std::vector<WorkflowTask> result;
+    for (const auto& t : tasks_)
+        if (t.organization == organization && t.department == department) result.push_back(t);
+    return result;
+}
+
+std::vector<WorkflowTask> WorkflowEngine::getTasksForOrganization(const std::string& organization) const {
+    std::vector<WorkflowTask> result;
+    for (const auto& t : tasks_)
+        if (t.organization == organization) result.push_back(t);
     return result;
 }
 

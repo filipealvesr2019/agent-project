@@ -360,3 +360,20 @@ if(BUILD_TESTS)
     target_link_libraries(AgentOS_Tests PRIVATE sqlite)
     target_compile_features(AgentOS_Tests PRIVATE cxx_std_20)
 endif()
+
+# Organization Workflow Test Suite
+option(BUILD_ORG_WORKFLOW_TESTS "Build AgentOS Organization Workflow tests" ON)
+if(BUILD_ORG_WORKFLOW_TESTS)
+    add_executable(AgentOS_OrgWorkflowTest
+        tests/test_workflow_organization.cpp
+        src/WorkflowEngine/WorkflowEngine.cpp
+        src/OrganizationEngine/OrganizationEngine.cpp
+        src/ProjectManager/ProjectManager.cpp
+        src/AgentEngine/Agent.cpp
+        src/EventBus/EventBus.cpp
+        src/MemoryEngine/MemoryEngine.cpp
+    )
+    target_include_directories(AgentOS_OrgWorkflowTest PRIVATE include libs/sqlite)
+    target_link_libraries(AgentOS_OrgWorkflowTest PRIVATE sqlite)
+    target_compile_features(AgentOS_OrgWorkflowTest PRIVATE cxx_std_20)
+endif()

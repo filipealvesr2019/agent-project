@@ -112,8 +112,9 @@ void UI::shutdown() {
 }
 
 Agent* UI::createAgent(const std::string& name, const std::string& role,
-                       const std::string& department, const std::string& reportsTo) {
-    auto agent = std::make_unique<Agent>(name, role, department);
+                       const std::string& department, const std::string& reportsTo,
+                       const std::string& organization) {
+    auto agent = std::make_unique<Agent>(name, role, department, organization);
     agent->initialize();
     auto* ptr = agent.get();
     reportsTo_[name] = reportsTo;

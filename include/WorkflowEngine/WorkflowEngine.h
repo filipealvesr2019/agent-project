@@ -25,6 +25,8 @@ struct WorkflowTask {
     WorkflowPriority priority{ WorkflowPriority::Medium };
     std::string assignedTo;
     std::string assignedBy;
+    std::string organization;
+    std::string department;
     std::string createdAt;
     std::string completedAt;
     std::string result;
@@ -38,6 +40,7 @@ struct WorkflowObjective {
     std::string title;
     std::string description;
     std::string createdBy;
+    std::string organization;
     std::string createdAt;
     std::string status;
     std::vector<int> rootTaskIds;
@@ -52,16 +55,19 @@ public:
 
     // Objective lifecycle
     int createObjective(const std::string& title, const std::string& description,
-                        const std::string& createdBy);
+                        const std::string& createdBy, const std::string& organization = "AgentOS_Global");
     WorkflowObjective getObjective(int objectiveId) const;
+    std::vector<WorkflowObjective> getObjectivesForOrganization(const std::string& organization) const;
     std::vector<WorkflowObjective> getObjectives() const;
 
     // Task lifecycle
     int createTask(const std::string& name, const std::string& description,
                    const std::string& assignedTo, const std::string& assignedBy,
                    int objectiveId, int parentId = 0,
-                   WorkflowPriority priority = WorkflowPriority::Medium);
-    bool assignTask(int taskId, const std::string& assignedTo);
+                   WorkflowPriority priority = WorkflowPriority::Medium,
+                   const std::string& organization = "AgentOS_Global",
+                   const std::string& department = "");
+    bool assignTask(int taskId, const std::string& assignedTo, const std::string& department = "");
     bool startTask(int taskId);
     bool completeTask(int taskId, const std::string& result = "");
     bool failTask(int taskId, const std::string& error = "");
@@ -69,6 +75,8 @@ public:
     WorkflowTask getTask(int taskId) const;
     std::vector<WorkflowTask> getTasks() const;
     std::vector<WorkflowTask> getTasksForAgent(const std::string& agentName) const;
+    std::vector<WorkflowTask> getTasksForDepartment(const std::string& organization, const std::string& department) const;
+    std::vector<WorkflowTask> getTasksForOrganization(const std::string& organization) const;
     std::vector<WorkflowTask> getTasksForObjective(int objectiveId) const;
     std::vector<WorkflowTask> getSubtasks(int parentTaskId) const;
     int getPendingTaskCount() const;

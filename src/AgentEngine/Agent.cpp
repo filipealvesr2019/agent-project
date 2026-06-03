@@ -5,8 +5,9 @@
 
 namespace AgentOS {
 
-Agent::Agent(std::string name, std::string role, std::string department)
-    : name_(std::move(name)), role_(std::move(role)), department_(std::move(department)), currentState_(AgentState::Idle) {
+Agent::Agent(std::string name, std::string role, std::string department, std::string organization)
+    : name_(std::move(name)), role_(std::move(role)), department_(std::move(department)), organization_(std::move(organization)), currentState_(AgentState::Idle) {
+    // Evento de criação emitido se necessário
 }
 
 void Agent::initialize() {
@@ -64,7 +65,17 @@ std::string Agent::getStateAsString() const {
 
 std::string Agent::getName() const { return name_; }
 std::string Agent::getRole() const { return role_; }
-std::string Agent::getDepartment() const { return department_; }
+std::string Agent::getDepartment() const {
+    return department_;
+}
+
+std::string Agent::getOrganization() const {
+    return organization_;
+}
+
+void Agent::setOrganization(const std::string& org) {
+    organization_ = org;
+}
 
 void Agent::update() {
     // Loop principal de decisão do agente
