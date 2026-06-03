@@ -19,3 +19,4 @@ gemma-2-9b-it-Q6_K_L.gguf,Cenario C,Prompt 2,146221,256,1.75077,0,8192,OK
 gemma-2-9b-it-Q6_K_L.gguf,Cenario C,Prompt 3,146187,256,1.75118,0,8192,OK
 Meta-Llama-3.1-8B-Instruct-Q8_0.gguf,Cenario C,Prompt 1,126816,256,2.01867,0,7947,OK
 Meta-Llama-3.1-8B-Instruct-Q8_0.gguf,Cenario C,Prompt 2,157320,256,1.62726,0,7952,OK
+Meta-Llama-3.1-8B-Instruct-Q8_0.gguf,Cenario C,Prompt 3,139838,256,1.83069,0,7952,OK
