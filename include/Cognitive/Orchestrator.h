@@ -30,6 +30,7 @@ public:
     std::string processRequest(const std::string& prompt, PipelineMetrics* metrics = nullptr);
 
     HardwareWatchdog& getWatchdog() { return watchdog_; }
+    ContextManager& getSessionContext() { return sessionContext_; }
 
 private:
     ModelRegistry& registry_;

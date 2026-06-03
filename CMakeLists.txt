@@ -653,6 +653,14 @@ if(BUILD_COGNITIVE_TESTS)
     target_include_directories(AgentOS_UserProfileTest PRIVATE include)
     target_link_libraries(AgentOS_UserProfileTest PRIVATE Cognitive)
     target_compile_features(AgentOS_UserProfileTest PRIVATE cxx_std_20)
+
+    # Fase 16.6: Cognitive Audit Suite
+    add_executable(AgentOS_CognitiveAuditSuite
+        tests/test_cognitive_audit_suite.cpp
+    )
+    target_include_directories(AgentOS_CognitiveAuditSuite PRIVATE include)
+    target_link_libraries(AgentOS_CognitiveAuditSuite PRIVATE Cognitive)
+    target_compile_features(AgentOS_CognitiveAuditSuite PRIVATE cxx_std_20)
 endif()
 
 
