@@ -2,6 +2,7 @@
 #include <llama.h>
 #include <iostream>
 #include <vector>
+#include <chrono>
 
 namespace AgentOS {
 
@@ -52,11 +53,23 @@ bool LlamaRuntime::loadModel(const std::string& ggufPath) {
 }
 
 std::string LlamaRuntime::generate(const std::string& prompt) {
+    auto res = generateWithStats(prompt, 256);
+    return res.text;
+}
+
+GenerationResult LlamaRuntime::generateWithStats(const std::string& prompt, int32_t maxTokens) {
+    GenerationResult res;
+    res.tokens_out = 0;
+    res.duration_ms = 0;
+    res.ok = false;
+
     if (!ctx_ || !model_) {
-        return "Error: Model not loaded";
+        res.text = "Error: Model not loaded";
+        return res;
     }
 
-    std::cout << "[LlamaRuntime] Initializing generation..." << std::endl;
+    // Clear memory from previous generations
+    llama_memory_clear(llama_get_memory(ctx_), true);
 
     const llama_vocab* vocab = llama_model_get_vocab(model_);
     
@@ -68,8 +81,6 @@ std::string LlamaRuntime::generate(const std::string& prompt) {
     }
     tokens.resize(n_tokens);
 
-    std::cout << "[LlamaRuntime] Tokenized into " << n_tokens << " tokens." << std::endl;
-
     llama_batch batch = llama_batch_init(512, 0, 1);
     batch.n_tokens = n_tokens;
     for (int i = 0; i < n_tokens; i++) {
@@ -80,22 +91,21 @@ std::string LlamaRuntime::generate(const std::string& prompt) {
         batch.logits[i] = (i == n_tokens - 1 ? 1 : 0);
     }
 
-    std::cout << "[LlamaRuntime] Decoding prompt..." << std::endl;
     if (llama_decode(ctx_, batch) != 0) {
         llama_batch_free(batch);
-        return "Error: llama_decode failed";
+        res.text = "Error: llama_decode failed on prompt";
+        return res;
     }
 
-    int32_t max_gen = 256;
-    std::string output = "";
     int32_t n_past = n_tokens;
 
     auto sparams = llama_sampler_chain_default_params();
     llama_sampler * smpl = llama_sampler_chain_init(sparams);
     llama_sampler_chain_add(smpl, llama_sampler_init_greedy()); 
     
-    std::cout << "[LlamaRuntime] Generating tokens..." << std::endl;
-    for (int i = 0; i < max_gen; i++) {
+    auto start_time = std::chrono::high_resolution_clock::now();
+
+    for (int i = 0; i < maxTokens; i++) {
         llama_token id = llama_sampler_sample(smpl, ctx_, -1);
         llama_sampler_accept(smpl, id);
         
@@ -106,10 +116,11 @@ std::string LlamaRuntime::generate(const std::string& prompt) {
         char buf[128];
         int n = llama_token_to_piece(vocab, id, buf, sizeof(buf), 0, true);
         if (n >= 0) {
-            output += std::string(buf, n);
-            std::cout << std::string(buf, n); std::cout.flush();
+            res.text += std::string(buf, n);
         }
         
+        res.tokens_out++;
+
         batch.n_tokens = 1;
         batch.token[0] = id;
         batch.pos[0] = n_past;
@@ -119,15 +130,18 @@ std::string LlamaRuntime::generate(const std::string& prompt) {
         n_past++;
         
         if (llama_decode(ctx_, batch) != 0) {
-            output += "\n[Error during decode]";
+            res.text += "\n[Error during decode]";
             break;
         }
     }
-    std::cout << std::endl;
+
+    auto end_time = std::chrono::high_resolution_clock::now();
+    res.duration_ms = std::chrono::duration_cast<std::chrono::milliseconds>(end_time - start_time).count();
+    res.ok = true;
 
     llama_batch_free(batch);
     llama_sampler_free(smpl);
-    return output;
+    return res;
 }
 
 } // namespace AgentOS

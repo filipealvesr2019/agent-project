@@ -1,0 +1,3 @@
+Modelo,Cenario,Prompt,Latencia(ms),Tokens,TPS,VRAM_MB,RAM_MB,Status
+Phi-3-mini-4k-instruct-Q6_K.gguf,Cenario A,Prompt 1,48632,256,5.26402,0,3710,OK
+Phi-3-mini-4k-instruct-Q6_K.gguf,Cenario A,Prompt 2,57141,256,4.48015,0,3713,OK
