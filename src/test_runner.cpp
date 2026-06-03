@@ -11,6 +11,7 @@
 #include "EventBus/EventBus.h"
 #include "MemoryEngine/MemoryEngine.h"
 #include "ToolEngine/ToolEngine.h"
+#include "ChangeManagement/ChangeManagement.h"
 
 namespace fs = std::filesystem;
 
@@ -348,6 +349,276 @@ void test_T5_ExecuteBuild() {
 }
 
 // ============================================================
+// TESTES DO CHANGE MANAGEMENT
+// ============================================================
+
+void test_CM01_SnapshotCreateAndRetrieve() {
+    cleanupState();
+    AgentOS::ChangeManagementEngine::getInstance().init();
+    TEST("CM-01 - Snapshot Create & Retrieve")
+    {
+        auto& snapMgr = AgentOS::ChangeManagementEngine::getInstance().getSnapshotManager();
+        int snapCountBefore = snapMgr.getTotalSnapshots();
+
+        int id1 = snapMgr.createSnapshot("Dev1", "test_cm01.txt", "conteudo original", "teste inicial");
+        CHECK(id1 > 0, "Snapshot ID deve ser positivo, obtido " + std::to_string(id1));
+        CHECK(snapMgr.getTotalSnapshots() == snapCountBefore + 1,
+              "Total de snapshots deve aumentar em 1");
+
+        int id2 = snapMgr.createSnapshot("Dev1", "test_cm01.txt", "conteudo alterado", "segundo snapshot");
+        CHECK(id2 > id1, "Segundo ID deve ser maior que o primeiro");
+
+        auto snap = snapMgr.getSnapshot(id1);
+        CHECK(snap.id == id1, "Snapshot recuperado deve ter ID " + std::to_string(id1));
+        CHECK(snap.agentName == "Dev1", "AgentName deve ser 'Dev1', obtido '" + snap.agentName + "'");
+        CHECK(snap.filePath == "test_cm01.txt", "FilePath deve ser 'test_cm01.txt'");
+        CHECK(!snap.timestamp.empty(), "Timestamp não deve estar vazio");
+
+        auto allSnaps = snapMgr.getSnapshots();
+        CHECK((int)allSnaps.size() >= 2, "Deve haver pelo menos 2 snapshots");
+
+        auto agentSnaps = snapMgr.getSnapshots("Dev1");
+        CHECK((int)agentSnaps.size() >= 2, "Deve haver pelo menos 2 snapshots para Dev1");
+    }
+    AgentOS::ChangeManagementEngine::getInstance().shutdown();
+    END_TEST("CM-01 - Snapshot Create & Retrieve")
+}
+
+void test_CM02_DiffEngine() {
+    cleanupState();
+    AgentOS::ChangeManagementEngine::getInstance().init();
+    TEST("CM-02 - Diff Engine")
+    {
+        AgentOS::DiffEngine de;
+        std::string before = "linha1\nlinha2\nlinha3\n";
+        std::string after  = "linha1\nlinha2_mod\nlinha3\nlinha4\n";
+
+        auto diff = de.compare(before, after);
+        CHECK(diff.addedCount >= 1, "Deve haver pelo menos 1 linha adicionada, obtido " + std::to_string(diff.addedCount));
+        CHECK(diff.removedCount >= 1, "Deve haver pelo menos 1 linha removida, obtido " + std::to_string(diff.removedCount));
+
+        std::string unified = de.createUnifiedDiff("test.txt", before, after);
+        CHECK(unified.find("+++") != std::string::npos, "Unified diff deve conter '+++'");
+        CHECK(unified.find("---") != std::string::npos, "Unified diff deve conter '---'");
+        CHECK(unified.find("linha2_mod") != std::string::npos, "Diff deve conter 'linha2_mod'");
+
+        auto emptyDiff = de.compare("", "");
+        CHECK(emptyDiff.addedCount == 0, "Diff vazio deve ter 0 adições");
+        CHECK(emptyDiff.removedCount == 0, "Diff vazio deve ter 0 remoções");
+    }
+    AgentOS::ChangeManagementEngine::getInstance().shutdown();
+    END_TEST("CM-02 - Diff Engine")
+}
+
+void test_CM03_ChangeProposalApprove() {
+    cleanupState();
+    AgentOS::ChangeManagementEngine::getInstance().init();
+    TEST("CM-03 - Change Proposal & Approve")
+    {
+        auto& cm = AgentOS::ChangeManagementEngine::getInstance();
+        auto& changeMgr = cm.getChangeManager();
+
+        // Cria arquivo "original" no disco
+        std::string testPath = "test_cm03.txt";
+        std::remove(testPath.c_str());
+        {
+            std::ofstream f(testPath);
+            f << "conteudo original";
+            f.close();
+        }
+
+        int propId = cm.proposeAndSnapshot("Dev1", testPath, "conteudo original", "conteudo NOVO");
+        CHECK(propId > 0, "Proposal ID deve ser positivo, obtido " + std::to_string(propId));
+
+        auto prop = changeMgr.getChange(propId);
+        CHECK(prop.id == propId, "Proposal recuperada deve ter ID " + std::to_string(propId));
+        CHECK(prop.state == AgentOS::ChangeState::Pending, "State deve ser Pending inicialmente");
+        CHECK(prop.agentName == "Dev1", "AgentName deve ser 'Dev1'");
+
+        int pendingCount = changeMgr.getPendingCount();
+        CHECK(pendingCount >= 1, "Deve haver pelo menos 1 pendente, obtido " + std::to_string(pendingCount));
+
+        // Aprova
+        bool approved = changeMgr.approveChange(propId, "User");
+        CHECK(approved, "approveChange deve retornar true");
+
+        auto propAfter = changeMgr.getChange(propId);
+        CHECK(propAfter.state == AgentOS::ChangeState::Approved, "State deve ser Approved após aprovação");
+        CHECK(propAfter.approvedBy == "User", "approvedBy deve ser 'User'");
+
+        // Verifica que o arquivo foi realmente escrito
+        {
+            std::ifstream f(testPath);
+            std::stringstream buf;
+            buf << f.rdbuf();
+            CHECK(buf.str() == "conteudo NOVO",
+                  "Arquivo deve conter novo conteúdo. Obtido: '" + buf.str() + "'");
+        }
+
+        std::remove(testPath.c_str());
+    }
+    AgentOS::ChangeManagementEngine::getInstance().shutdown();
+    END_TEST("CM-03 - Change Proposal & Approve")
+}
+
+void test_CM04_ChangeProposalReject() {
+    cleanupState();
+    AgentOS::ChangeManagementEngine::getInstance().init();
+    TEST("CM-04 - Change Proposal Reject")
+    {
+        auto& changeMgr = AgentOS::ChangeManagementEngine::getInstance().getChangeManager();
+        std::string testPath = "test_cm04.txt";
+        std::remove(testPath.c_str());
+        {
+            std::ofstream f(testPath);
+            f << "conteudo original";
+            f.close();
+        }
+
+        int propId = changeMgr.proposeChange("Dev1", testPath, "conteudo original", "conteudo REJEITADO");
+        CHECK(propId > 0, "Proposal ID deve ser positivo");
+
+        bool rejected = changeMgr.rejectChange(propId);
+        CHECK(rejected, "rejectChange deve retornar true");
+
+        auto prop = changeMgr.getChange(propId);
+        CHECK(prop.state == AgentOS::ChangeState::Rejected, "State deve ser Rejected");
+
+        // Conteúdo do arquivo não deve ter mudado
+        {
+            std::ifstream f(testPath);
+            std::stringstream buf;
+            buf << f.rdbuf();
+            CHECK(buf.str() == "conteudo original",
+                  "Arquivo não deve ser alterado após rejeição. Obtido: '" + buf.str() + "'");
+        }
+
+        int pendingCount = changeMgr.getPendingCount();
+        CHECK(pendingCount == 0, "Após rejeitar todas, pendingCount deve ser 0, obtido " + std::to_string(pendingCount));
+
+        std::remove(testPath.c_str());
+    }
+    AgentOS::ChangeManagementEngine::getInstance().shutdown();
+    END_TEST("CM-04 - Change Proposal Reject")
+}
+
+void test_CM05_RollbackFromSnapshot() {
+    cleanupState();
+    AgentOS::ChangeManagementEngine::getInstance().init();
+    TEST("CM-05 - Rollback from Snapshot")
+    {
+        auto& cm = AgentOS::ChangeManagementEngine::getInstance();
+        auto& snapMgr = cm.getSnapshotManager();
+        auto& rollbackMgr = cm.getRollbackManager();
+
+        std::string testPath = "test_cm05.txt";
+        std::remove(testPath.c_str());
+
+        // Snapshot do conteúdo original
+        int snapId = snapMgr.createSnapshot("Dev1", testPath, "conteudo original", "antes da alteracao");
+        CHECK(snapId > 0, "Snapshot ID deve ser positivo");
+
+        // Escreve conteúdo novo no arquivo
+        {
+            std::ofstream f(testPath);
+            f << "conteudo ALTERADO";
+            f.close();
+        }
+
+        // Rollback pelo snapshot
+        bool restored = rollbackMgr.rollbackFile(snapId, testPath);
+        CHECK(restored, "rollbackFile deve retornar true");
+        CHECK(rollbackMgr.getRollbackCount() >= 1, "RollbackCount deve ser >= 1");
+
+        // Verifica conteúdo restaurado
+        {
+            std::ifstream f(testPath);
+            std::stringstream buf;
+            buf << f.rdbuf();
+            CHECK(buf.str() == "conteudo original",
+                  "Após rollback, arquivo deve conter 'conteudo original'. Obtido: '" + buf.str() + "'");
+        }
+
+        std::remove(testPath.c_str());
+    }
+    AgentOS::ChangeManagementEngine::getInstance().shutdown();
+    END_TEST("CM-05 - Rollback from Snapshot")
+}
+
+void test_CM06_EmergencyStop() {
+    cleanupState();
+    AgentOS::ChangeManagementEngine::getInstance().init();
+    TEST("CM-06 - Emergency Stop")
+    {
+        auto& cm = AgentOS::ChangeManagementEngine::getInstance();
+        auto& recovery = cm.getRecoveryEngine();
+
+        CHECK(!recovery.isEmergencyActive(), "Emergency não deve estar ativa inicialmente");
+
+        recovery.triggerEmergencyStop("Falha crítica na execução");
+        CHECK(recovery.isEmergencyActive(), "Emergency deve estar ativa após trigger");
+        CHECK(recovery.getLastEmergencyReason().find("Falha crítica") != std::string::npos,
+              "Motivo deve conter 'Falha crítica'. Obtido: '" + recovery.getLastEmergencyReason() + "'");
+
+        recovery.recover();
+        CHECK(!recovery.isEmergencyActive(), "Emergency deve estar desativada após recover");
+    }
+    AgentOS::ChangeManagementEngine::getInstance().shutdown();
+    END_TEST("CM-06 - Emergency Stop")
+}
+
+void test_CM07_GlobalRollback() {
+    cleanupState();
+    AgentOS::ChangeManagementEngine::getInstance().init();
+    TEST("CM-07 - Global Rollback")
+    {
+        auto& cm = AgentOS::ChangeManagementEngine::getInstance();
+        auto& snapMgr = cm.getSnapshotManager();
+
+        std::string pathA = "test_cm07a.txt";
+        std::string pathB = "test_cm07b.txt";
+        std::remove(pathA.c_str());
+        std::remove(pathB.c_str());
+
+        // Snapshot de ambos arquivos
+        int snap1 = snapMgr.createSnapshot("Dev1", pathA, "A original", "snap A");
+        int snap2 = snapMgr.createSnapshot("Dev1", pathB, "B original", "snap B");
+
+        // Escreve novos conteúdos
+        {
+            std::ofstream f(pathA); f << "A MODIFICADO"; f.close();
+            std::ofstream f2(pathB); f2 << "B MODIFICADO"; f2.close();
+        }
+
+        // Global rollback para snap2 (mais recente que cobre ambos)
+        auto& rollbackMgr = cm.getRollbackManager();
+        bool ok = rollbackMgr.rollbackGlobal(snap2);
+        CHECK(ok, "rollbackGlobal deve retornar true");
+
+        // Verifica restauração
+        {
+            std::ifstream f(pathA);
+            std::stringstream buf;
+            buf << f.rdbuf();
+            CHECK(buf.str() == "A original",
+                  "Arquivo A deve conter 'A original' após rollback global. Obtido: '" + buf.str() + "'");
+        }
+        {
+            std::ifstream f(pathB);
+            std::stringstream buf;
+            buf << f.rdbuf();
+            CHECK(buf.str() == "B original",
+                  "Arquivo B deve conter 'B original' após rollback global. Obtido: '" + buf.str() + "'");
+        }
+
+        std::remove(pathA.c_str());
+        std::remove(pathB.c_str());
+    }
+    AgentOS::ChangeManagementEngine::getInstance().shutdown();
+    END_TEST("CM-07 - Global Rollback")
+}
+
+// ============================================================
 // MAIN
 // ============================================================
 
@@ -370,6 +641,15 @@ int main() {
     test_T3_EditFile();
     test_T4_ExecutePython();
     test_T5_ExecuteBuild();
+
+    std::cout << "\n=== TESTES DO CHANGE MANAGEMENT ===\n";
+    test_CM01_SnapshotCreateAndRetrieve();
+    test_CM02_DiffEngine();
+    test_CM03_ChangeProposalApprove();
+    test_CM04_ChangeProposalReject();
+    test_CM05_RollbackFromSnapshot();
+    test_CM06_EmergencyStop();
+    test_CM07_GlobalRollback();
 
     std::cout << "\n========================================\n";
     std::cout << "  Resultado: " << (totalPassed + totalFailed) << " testes\n";

@@ -15,6 +15,32 @@ void UI::init(DashboardComponent* dashboard) {
 
     Sandbox::getInstance().init("workspace");
 
+    auto& cm = ChangeManagementEngine::getInstance();
+    cm.init();
+    cm.onStatusUpdate = [this](const std::string& msg) {
+        logMessage("[CM] " + msg);
+    };
+    cm.getChangeManager().onChangeCreated = [this](const ChangeProposal& prop) {
+        logMessage("[CM] Mudança proposta por " + prop.agentName + ": " + prop.filePath);
+        if (onPendingChangesChanged) onPendingChangesChanged();
+    };
+    cm.getChangeManager().onChangeApproved = [this](const ChangeProposal& prop) {
+        logMessage("[CM] Mudança #" + std::to_string(prop.id) + " APROVADA por " + prop.approvedBy);
+        if (onPendingChangesChanged) onPendingChangesChanged();
+    };
+    cm.getChangeManager().onChangeRejected = [this](const ChangeProposal& prop) {
+        logMessage("[CM] Mudança #" + std::to_string(prop.id) + " REJEITADA");
+        if (onPendingChangesChanged) onPendingChangesChanged();
+    };
+    cm.getRecoveryEngine().onEmergencyStop = [this](const std::string& reason) {
+        logMessage("[CM] EMERGENCY STOP: " + reason);
+        if (onEmergencyStatusChanged) onEmergencyStatusChanged();
+    };
+    cm.getRecoveryEngine().onRecoveryComplete = [this]() {
+        logMessage("[CM] Recuperação concluída");
+        if (onEmergencyStatusChanged) onEmergencyStatusChanged();
+    };
+
     auto getReportsToFn = [this](const std::string& name) -> std::string {
         return getReportsTo(name);
     };
@@ -41,6 +67,7 @@ void UI::init(DashboardComponent* dashboard) {
     logMessage("AgentOS UI inicializado");
     logMessage("MemoryEngine: SQLite pronto");
     logMessage("Sandbox: workspace/ pronto");
+    logMessage("ChangeManagement: snapshots prontos");
     logMessage("GovernanceEngine: monitorando agentes");
     logMessage("EventBus: ouvindo eventos");
 
@@ -64,6 +91,7 @@ void UI::init(DashboardComponent* dashboard) {
 }
 
 void UI::shutdown() {
+    ChangeManagementEngine::getInstance().shutdown();
     GovernanceEngine::getInstance().shutdown();
     Sandbox::getInstance().shutdown();
     dashboard_ = nullptr;
@@ -122,6 +150,27 @@ void UI::logMessage(const juce::String& message) {
 
 void UI::refreshDashboard() {
     if (dashboard_) dashboard_->refreshAgentList();
+}
+
+int UI::getPendingChangesCount() const {
+    return ChangeManagementEngine::getInstance().getChangeManager().getPendingCount();
+}
+
+void UI::triggerEmergencyStop() {
+    ChangeManagementEngine::getInstance().getRecoveryEngine().triggerEmergencyStop(
+        "Emergency Stop acionado pelo usuário");
+}
+
+void UI::recoverFromEmergency() {
+    ChangeManagementEngine::getInstance().getRecoveryEngine().recover();
+}
+
+bool UI::isEmergencyActive() const {
+    return ChangeManagementEngine::getInstance().getRecoveryEngine().isEmergencyActive();
+}
+
+std::vector<Snapshot> UI::getSnapshots() const {
+    return ChangeManagementEngine::getInstance().getSnapshotManager().getSnapshots();
 }
 
 void UI::onEvent(const Event& e) {

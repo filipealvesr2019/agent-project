@@ -18,13 +18,16 @@ public:
     void refreshAgentList();
     void addLogMessage(const juce::String& message);
     void showCreateAgentDialog();
+    void refreshStatusBar();
 
 private:
     void handleMenuClick(int itemId);
-    juce::Rectangle<int> menuFile_, menuTools_, menuHelp_;
+    void showSnapshotTimeline();
+    juce::Rectangle<int> menuFile_, menuTools_, menuSecurity_, menuHelp_;
     std::unique_ptr<SidebarComponent> sidebar_;
     std::unique_ptr<AgentListComponent> agentList_;
     std::unique_ptr<LogViewerComponent> logViewer_;
+    juce::String statusText_;
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(DashboardComponent)
 };
 

@@ -5,6 +5,7 @@
 #include "MemoryEngine/MemoryEngine.h"
 #include "GovernanceEngine/GovernanceEngine.h"
 #include "Sandbox/Sandbox.h"
+#include "ChangeManagement/ChangeManagement.h"
 #include <vector>
 #include <map>
 #include <memory>
@@ -31,8 +32,16 @@ public:
     void refreshDashboard();
     DashboardComponent* getDashboard() const { return dashboard_; }
 
+    int getPendingChangesCount() const;
+    void triggerEmergencyStop();
+    void recoverFromEmergency();
+    bool isEmergencyActive() const;
+    std::vector<Snapshot> getSnapshots() const;
+
     std::function<void()> onAgentsChanged;
     std::function<void(const juce::String&)> onLogMessage;
+    std::function<void()> onPendingChangesChanged;
+    std::function<void()> onEmergencyStatusChanged;
 
 private:
     UI() = default;

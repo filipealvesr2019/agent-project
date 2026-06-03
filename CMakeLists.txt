@@ -35,6 +35,7 @@ add_subdirectory(src/MonitoringEngine)
 add_subdirectory(src/PersistenceEngine)
 add_subdirectory(src/GovernanceEngine)
 add_subdirectory(src/Sandbox)
+add_subdirectory(src/ChangeManagement)
 
 # Executável Principal JUCE
 juce_add_gui_app(AgentOS
@@ -42,7 +43,7 @@ juce_add_gui_app(AgentOS
     VERSION 1.0.0
 )
 
-target_sources(AgentOS PRIVATE src/main.cpp)
+    target_sources(AgentOS PRIVATE src/main.cpp src/ChangeManagement/ChangeManagement.cpp)
 
 target_link_libraries(AgentOS PRIVATE 
     UI
@@ -51,6 +52,7 @@ target_link_libraries(AgentOS PRIVATE
     MemoryEngine 
     GovernanceEngine
     Sandbox
+    ChangeManagement
     sqlite
 )
 
@@ -67,6 +69,7 @@ if(BUILD_TESTS)
         src/EventBus/EventBus.cpp
         src/MemoryEngine/MemoryEngine.cpp
         src/ToolEngine/ToolEngine.cpp
+        src/ChangeManagement/ChangeManagement.cpp
     )
     target_include_directories(AgentOS_Tests PRIVATE include libs/sqlite)
     target_link_libraries(AgentOS_Tests PRIVATE sqlite)
