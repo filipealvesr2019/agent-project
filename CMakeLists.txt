@@ -465,3 +465,15 @@ if(BUILD_SURROGATE_TEST)
     target_include_directories(AgentOS_SurrogateTest PRIVATE include)
     target_compile_features(AgentOS_SurrogateTest PRIVATE cxx_std_20)
 endif()
+
+# Phase 16.13 Experience Replay Engine
+option(BUILD_EXPERIENCE_REPLAY_TEST "Build AgentOS Experience Replay Test" ON)
+if(BUILD_EXPERIENCE_REPLAY_TEST)
+    add_executable(AgentOS_ExperienceReplayTest
+        tests/test_experience_replay.cpp
+        src/SurrogateDecisionLayer/SurrogateRouter.cpp
+        src/ExperienceReplayEngine/ExperienceReplayEngine.cpp
+    )
+    target_include_directories(AgentOS_ExperienceReplayTest PRIVATE include)
+    target_compile_features(AgentOS_ExperienceReplayTest PRIVATE cxx_std_20)
+endif()
