@@ -5,6 +5,9 @@
 #include "Cognitive/MetricsCollector.h"
 #include "Cognitive/BottleneckDetector.h"
 #include "Cognitive/AutoRecovery.h"
+#include "LocalRuntime/LlamaRuntime.h"
+#include <unordered_map>
+#include <memory>
 
 namespace AgentOS {
 
@@ -34,9 +37,12 @@ private:
     BottleneckDetector detector_;
     AutoRecovery recovery_;
 
+    LlamaRuntime runtime_;
+    std::string activeModelId_;
+
     std::unordered_map<TaskType, std::shared_ptr<Agent>> agents_;
 
-    // Simula a inferência do LLM (mock) já que o llama.cpp é assíncrono/demorado para test unitário
+    // Simula a inferência do LLM (mock) quando o runtime real falha ou em testes curtos
     std::string mockLLMResponse(const std::string& finalPrompt, const std::string& modelId);
 };
 

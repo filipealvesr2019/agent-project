@@ -12,8 +12,9 @@ add_library(Cognitive STATIC
     VectorSearch.cpp
     Orchestrator.cpp
     AutonomousLoop.cpp
+    ../LocalRuntime/LlamaRuntime.cpp
 )
 
 target_include_directories(Cognitive PUBLIC ${CMAKE_SOURCE_DIR}/include)
 target_compile_features(Cognitive PUBLIC cxx_std_20)
-target_link_libraries(Cognitive PUBLIC psapi)
+target_link_libraries(Cognitive PUBLIC psapi llama)

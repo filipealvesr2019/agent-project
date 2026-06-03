@@ -130,11 +130,37 @@ std::string Orchestrator::processRequest(const std::string& prompt)
         // Agent calls RAG -> ContextManager -> Builds final prompt
         std::string finalPrompt = it->second->execute(prompt, idealModel);
         
-        // Simulates the actual LLM run
-        response = mockLLMResponse(finalPrompt, idealModel);
+        // Phase 11: Real Runtime Execution
+        std::cout << "[Orchestrator] Preparando inferencia com " << idealModel << "...\n";
         
-        std::cout << "[Orchestrator] LLM executou a tarefa com sucesso.\n";
+        bool runtimeReady = false;
+        if (activeModelId_ != idealModel) {
+            std::cout << "[Orchestrator] Carregando modelo real: " << idealModel << "\n";
+            // Check if model file exists locally
+            std::string modelPath = "models/" + idealModel; // Basic assumption
+            if (runtime_.loadModel(modelPath)) {
+                activeModelId_ = idealModel;
+                runtimeReady = true;
+            } else {
+                std::cout << "[Orchestrator] AVISO: Falha ao carregar " << modelPath << ". Usando simulador.\n";
+            }
+        } else {
+            runtimeReady = true;
+        }
 
+        if (runtimeReady) {
+            auto stats = runtime_.generateWithStats(finalPrompt, 128); // limiting output tokens for testing
+            if (stats.ok) {
+                response = stats.text;
+                std::cout << "[Orchestrator] LLM real executou a tarefa com sucesso (" << stats.duration_ms << "ms).\n";
+            } else {
+                std::cout << "[Orchestrator] ERRO na geracao real. Fazendo fallback para simulador.\n";
+                response = mockLLMResponse(finalPrompt, idealModel);
+            }
+        } else {
+            response = mockLLMResponse(finalPrompt, idealModel);
+        }
+        
         // 4. Memory Persistence
         memory_.addMemory(taskName, prompt, response, idealModel);
         std::cout << "[Orchestrator] Interacao salva na Memoria Episodica.\n";
