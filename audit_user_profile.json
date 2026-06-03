@@ -1,7 +1,8 @@
 {
     "learnedFacts": {
         "framework": "JUCE",
-        "interest": "Modelagem de amplificadores valvulados",
-        "language": "C++ puro"
+        "interest": "Modelagem de amplificadores",
+        "language": "C++ puro",
+        "preferred_language": "C++"
     }
 }

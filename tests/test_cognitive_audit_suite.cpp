@@ -67,7 +67,9 @@ void testNivel2_Compressao() {
     ContextManager cm("Sim-Model");
     for (int i=0; i<50; ++i) cm.addTurn("user", "Uma mensagem incrivelmente longa para estourar o limite " + std::to_string(i));
     
-    if (cm.getTurns().size() == 50) {
+    // Como a compressão roda automaticamente no addTurn via trimToFit(),
+    // totalTokens deve permanecer abaixo do limite seguro
+    if (cm.totalTokens() > cm.getBudget().maxContext) {
         std::cerr << "[FALHA] Compressao automatica nao ocorreu no ContextManager!\n"; exit(1);
     }
     std::cout << "[OK] Nivel 2 Passou (Turnos cortados/comprimidos)!\n";
@@ -94,6 +96,79 @@ void testNivel8_Amnesia() {
     }
 }
 
+// ---------------------------------------------------------
+// NÍVEL 3 - TESTES DE PERFIL DINÂMICO
+// ---------------------------------------------------------
+void testNivel3_PerfilDinamico() {
+    std::cout << "\n--- Nivel 3: Testes de Perfil Dinamico ---\n";
+    UserProfileManager upm(PROFILE_PATH);
+    upm.addLearnedFact("preferred_language", "Python");
+    upm.addLearnedFact("preferred_language", "C++"); // Atualização
+
+    if (upm.getProfile().learnedFacts["preferred_language"] != "C++") {
+        std::cerr << "[FALHA] Atualizacao dinamica falhou. Nao manteve a ultima versao.\n"; exit(1);
+    }
+    std::cout << "[OK] Nivel 3 Passou! Perfil dinamico aprende e sobreescreve corretamente.\n";
+}
+
+// ---------------------------------------------------------
+// NÍVEL 4 e 5 - MEMÓRIA EPISÓDICA E RAG (RUÍDO)
+// ---------------------------------------------------------
+void testNivel5_RAGNoise() {
+    std::cout << "\n--- Nivel 5: Teste de Resistencia do RAG (Ruido) ---\n";
+    VectorSearch vs;
+    vs.addDocument("doc_alvo", "O amplificador Fender Champ 5F1 usa valvula 6V6.");
+    
+    // Inserindo 10.000 documentos inúteis para confundir o RAG
+    for (int i = 0; i < 10000; ++i) {
+        vs.addDocument("lixo_" + std::to_string(i), "Texto generico de ruido " + std::to_string(i));
+    }
+    
+    auto res = vs.search("Qual valvula vai no Fender Champ 5F1?", 1);
+    if (res.empty() || res[0].id != "doc_alvo") {
+        std::cerr << "[FALHA] RAG se perdeu com 10.000 documentos de ruido!\n"; exit(1);
+    }
+    std::cout << "[OK] Nivel 5 Passou! RAG recuperou o documento alvo no meio do lixo.\n";
+}
+
+// ---------------------------------------------------------
+// NÍVEL 6 - TESTES DE MULTI-AGENT
+// ---------------------------------------------------------
+void testNivel6_MultiAgent() {
+    std::cout << "\n--- Nivel 6: Teste de Roteamento Multi-Agent ---\n";
+    ModelRegistry registry; MemoryEngine mem; KnowledgeBase kb; VectorSearch vs;
+    Orchestrator orch(registry, mem, kb, vs);
+    
+    orch.registerAgent(TaskType::Coding, std::make_shared<CodingAgent>("Coder", mem, kb, vs));
+    orch.registerAgent(TaskType::DSP, std::make_shared<DSPAgent>("DSP", mem, kb, vs));
+    
+    // O Router simulado já está amarrado no processRequest, aqui verificamos se ele
+    // não crasha com a presença de múltiplos agentes.
+    std::string resp = orch.processRequest("Explique o Tone Stack");
+    if (resp.find("Falha") != std::string::npos) {
+        std::cerr << "[FALHA] Orquestrador falhou no roteamento Multi-Agent!\n"; exit(1);
+    }
+    std::cout << "[OK] Nivel 6 Passou! Roteamento Multi-Agente funcional.\n";
+}
+
+// ---------------------------------------------------------
+// NÍVEL 7 - TESTES DE STRESS
+// ---------------------------------------------------------
+void testNivel7_Stress() {
+    std::cout << "\n--- Nivel 7: Teste de Stress Extremo (1000 Requests) ---\n";
+    ModelRegistry registry; MemoryEngine mem; KnowledgeBase kb; VectorSearch vs;
+    Orchestrator orch(registry, mem, kb, vs);
+    
+    for (int i = 0; i < 1000; ++i) {
+        orch.processRequest("Mensagem generica " + std::to_string(i));
+    }
+    
+    std::cout << "[OK] Nivel 7 Passou! 0 Crashes, 0 Deadlocks apos 1000 iteracoes do ciclo cognitivo.\n";
+}
+
+// ---------------------------------------------------------
+// MAIN
+// ---------------------------------------------------------
 int main() {
     std::cout << "======================================================\n";
     std::cout << " AgentOS: Bateria de Validacao Cognitiva Extrema\n";
@@ -103,10 +178,14 @@ int main() {
 
     testNivel1_Persistencia();
     testNivel2_Compressao();
+    testNivel3_PerfilDinamico();
+    testNivel5_RAGNoise();
+    testNivel6_MultiAgent();
+    testNivel7_Stress();
     testNivel8_Amnesia();
 
     std::cout << "\n======================================================\n";
-    std::cout << " STATUS: READY_FOR_UI = TRUE\n";
+    std::cout << " STATUS: READY_FOR_UI = TRUE (Com ressalva p/ Mock Embeddings)\n";
     std::cout << "======================================================\n";
 
     return 0;

@@ -455,3 +455,85 @@ quando ele passar:
 ✅ Teste de Amnésia
 
 Porque esses testes validam o comportamento cognitivo real do sistema, não apenas que o código compila.
+Perfeito! Podemos expandir o seu `test_cognitive_audit_suite.cpp` para cobrir todos os níveis 1–8, garantindo **cobertura completa do AgentOS antes do Dashboard JUCE**. Aqui está um **plano detalhado e passo a passo** de como implementar a bateria de testes completa:
+
+---
+
+## 📌 Plano de Extensão da Cognitive Audit Suite
+
+### 1️⃣ Nível 1 — Persistência
+
+* Já implementado.
+* Confirma que `UserProfileManager`, `VectorSearch` e `KnowledgeBase` gravam e carregam corretamente do disco.
+
+### 2️⃣ Nível 2 — Compressão de Contexto
+
+* Já implementado.
+* Garante que o `ContextManager` ativa a compressão automática quando o limite de tokens é atingido.
+* Sugestão: Adicionar também checagem de **resumo injetado no `SummarizerAgent`**.
+
+### 3️⃣ Nível 3 — RAG Semântico
+
+* Simular perguntas relacionadas a turnos antigos e verificar se o **VectorSearch** recupera a informação correta.
+* Validar **score do Top-K**, garantindo que o prompt do LLM será enriquecido com a memória semântica correta.
+* Teste ideal: criar 5 tópicos distintos, gerar resumos, salvar, simular nova sessão e buscar relevância semântica.
+
+### 4️⃣ Nível 4 — Multi-Agent Routing
+
+* Simular 3 tipos de tarefas (`DSP`, `Coding`, `Chat`).
+* Validar se o `SurrogateRouter` seleciona o **sub-agent correto**.
+* Confirmar se o modelo escolhido respeita **RAM / TPS limits** (com `HardwareWatchdog`).
+
+### 5️⃣ Nível 5 — Stress Test Assíncrono
+
+* Rodar múltiplas threads (ex: 10 threads com 5 prompts cada).
+* Confirmar que **não há deadlocks** e que todas as respostas são entregues.
+* Validar a persistência de todos os eventos no `MemoryEngine`.
+
+### 6️⃣ Nível 6 — Learning Engine Dinâmico
+
+* Simular inputs do usuário que revelam **novos traços de perfil**.
+* Validar se o `UserProfileManager` atualiza `learnedFacts` corretamente e se isso é injetado nos prompts seguintes.
+
+### 7️⃣ Nível 7 — Monitoramento e MetricsCollector
+
+* Rodar várias requisições consecutivas.
+* Checar se métricas (`TPS`, `Latency`, `RAM usage`) são registradas corretamente.
+* Confirmar que **HardwareWatchdog** desacopla o polling do OS para manter Routing rápido (<1ms).
+
+### 8️⃣ Nível 8 — Amnésia Total / Reboot
+
+* Simular um reboot completo do sistema.
+* Validar que **UserProfile**, **VectorSearch**, **KnowledgeBase** e **MemoryEngine** persistem e recuperam corretamente todos os dados.
+
+---
+
+## 📝 Exemplo de Estrutura de Código
+
+```cpp
+void runFullCognitiveAudit() {
+    clearDisk(); // Limpa todos os arquivos de teste
+
+    testNivel1_Persistencia();
+    testNivel2_Compressao();
+    testNivel3_RAG();
+    testNivel4_MultiAgent();
+    testNivel5_Stress();
+    testNivel6_LearningEngine();
+    testNivel7_MetricsCollector();
+    testNivel8_Amnesia();
+
+    std::cout << "======================================================\n";
+    std::cout << " AgentOS: FULL Cognitive Audit Suite COMPLETED ✅\n";
+    std::cout << "======================================================\n";
+}
+```
+
+Cada função acima vai:
+
+* Criar/instanciar os objetos do AgentOS.
+* Rodar os testes específicos do nível.
+* Validar resultados e levantar `exit(1)` caso algum falhe.
+* Gerar logs detalhados no console (ex: `[OK] Nivel 4: SubAgent DSP selecionado corretamente!`).
+
+---
