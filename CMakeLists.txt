@@ -613,6 +613,14 @@ if(BUILD_COGNITIVE_TESTS)
     target_include_directories(AgentOS_MultiAgentTest PRIVATE include)
     target_link_libraries(AgentOS_MultiAgentTest PRIVATE Cognitive)
     target_compile_features(AgentOS_MultiAgentTest PRIVATE cxx_std_20)
+
+    # Semana 10: Autonomous Loop - Threading asincrono e comunicacao com Frontend (JUCE/CLI)
+    add_executable(AgentOS_AutonomousLoopTest
+        tests/test_autonomous_loop.cpp
+    )
+    target_include_directories(AgentOS_AutonomousLoopTest PRIVATE include)
+    target_link_libraries(AgentOS_AutonomousLoopTest PRIVATE Cognitive)
+    target_compile_features(AgentOS_AutonomousLoopTest PRIVATE cxx_std_20)
 endif()
 
 
