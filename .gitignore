@@ -69,7 +69,6 @@ build/
 index.dat
 
 # Submodules (evita incluir diretórios de libs)
-libs/llama.cpp/
 
 # VSCode / IDE
 .vscode/

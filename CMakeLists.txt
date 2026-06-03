@@ -4,6 +4,9 @@ project(AgentOS VERSION 1.0.0 LANGUAGES CXX C)
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
+if(MSVC)
+    add_compile_options(/Zc:char8_t-)
+endif()
 # Includes
 include_directories(include)
 
@@ -16,7 +19,7 @@ include_directories(include)
 # FetchContent_MakeAvailable(juce)
 
 # Define as subpastas (módulos)
-add_subdirectory(src/UI)
+# add_subdirectory(src/UI)
 add_subdirectory(src/AgentEngine)
 add_subdirectory(src/WorkflowEngine)
 add_subdirectory(src/MemoryEngine)
