@@ -6,6 +6,7 @@
 #include "UI/ModelManagerDialog.h"
 #include "UI/ProjectPanelComponent.h"
 #include "UI/WorkflowEditor/WorkflowEditorComponent.h"
+#include "UI/MemoryVisualization/MemoryVisualizationComponent.h"
 #include "UI/UI.h"
 #include "VisionEngine/VisionEngine.h"
 #include "ChangeManagement/ChangeManagement.h"
@@ -32,12 +33,14 @@ DashboardComponent::DashboardComponent() {
     agentList_ = std::make_unique<AgentListComponent>();
     projectPanel_ = std::make_unique<ProjectPanelComponent>();
     workflowEditor_ = std::make_unique<WorkflowEditorComponent>();
+    memoryVisualization_ = std::make_unique<MemoryVisualizationComponent>();
 
     mainTabs_->addTab("Dashboard", juce::Colour(0xFF161b22), new juce::Component(), false); // Mock for now
     mainTabs_->addTab("Agents", juce::Colour(0xFF161b22), agentList_.get(), false);
     mainTabs_->addTab("Projects", juce::Colour(0xFF161b22), projectPanel_.get(), false);
     mainTabs_->addTab("Workflow Editor", juce::Colour(0xFF161b22), workflowEditor_.get(), false);
-    mainTabs_->setCurrentTabIndex(3); // Go to workflow editor initially to test
+    mainTabs_->addTab("Memory Viz", juce::Colour(0xFF161b22), memoryVisualization_.get(), false);
+    mainTabs_->setCurrentTabIndex(4); // Go to memory viz initially to test
 
     logViewer_ = std::make_unique<LogViewerComponent>();
     addAndMakeVisible(logViewer_.get());

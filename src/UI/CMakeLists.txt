@@ -9,6 +9,7 @@ add_library(UI STATIC
     ModelManagerDialog.cpp
     ProjectPanelComponent.cpp
     WorkflowEditor/WorkflowEditorComponent.cpp
+    MemoryVisualization/MemoryVisualizationComponent.cpp
 )
 target_include_directories(UI PUBLIC ${CMAKE_SOURCE_DIR}/include)
 target_link_libraries(UI PUBLIC
