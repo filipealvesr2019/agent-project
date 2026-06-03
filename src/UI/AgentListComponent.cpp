@@ -11,6 +11,7 @@ AgentListComponent::AgentListComponent() {
     table_.getHeader().addColumn("Trust", ColTrust, 70);
     table_.getHeader().addColumn("Compliance", ColCompliance, 90);
     table_.getHeader().addColumn("Reporta a", ColReportsTo, 110);
+    table_.getHeader().addColumn("Ações", ColActions, 180);
     table_.setModel(this);
     table_.setColour(juce::ListBox::backgroundColourId, juce::Colour(0xFF16213e));
     addAndMakeVisible(table_);
@@ -85,9 +86,66 @@ void AgentListComponent::paintCell(juce::Graphics& g, int rowNumber, int columnI
             break;
         }
     }
+    
+    if (columnId == ColActions) {
+        // Renderizado via refreshComponentForCell
+        return;
+    }
 
     g.setColour(textColour);
     g.drawText(text, columnId == ColStatus ? 18 : 6, 0, width - 10, height, juce::Justification::centredLeft, true);
+}
+
+class AgentActionButtons : public juce::Component {
+public:
+    AgentActionButtons(int rowNum, const juce::String& name) : row_(rowNum), agentName_(name) {
+        addAndMakeVisible(startBtn_);
+        addAndMakeVisible(stopBtn_);
+        addAndMakeVisible(restartBtn_);
+
+        startBtn_.setColour(juce::TextButton::buttonColourId, juce::Colour(0xFF238636));
+        stopBtn_.setColour(juce::TextButton::buttonColourId, juce::Colour(0xFFda3633));
+        restartBtn_.setColour(juce::TextButton::buttonColourId, juce::Colour(0xFF1f6feb));
+
+        startBtn_.onClick = [this] { UI::getInstance().logMessage("Starting agent: " + agentName_); };
+        stopBtn_.onClick = [this] { UI::getInstance().logMessage("Stopping agent: " + agentName_); };
+        restartBtn_.onClick = [this] { UI::getInstance().logMessage("Restarting agent: " + agentName_); };
+    }
+
+    void resized() override {
+        auto area = getLocalBounds().reduced(2, 4);
+        int btnW = area.getWidth() / 3 - 4;
+        startBtn_.setBounds(area.removeFromLeft(btnW));
+        area.removeFromLeft(4);
+        stopBtn_.setBounds(area.removeFromLeft(btnW));
+        area.removeFromLeft(4);
+        restartBtn_.setBounds(area.removeFromLeft(btnW));
+    }
+
+private:
+    int row_;
+    juce::String agentName_;
+    juce::TextButton startBtn_{"Start"};
+    juce::TextButton stopBtn_{"Stop"};
+    juce::TextButton restartBtn_{"Restart"};
+};
+
+juce::Component* AgentListComponent::refreshComponentForCell(int rowNumber, int columnId, bool isRowSelected, juce::Component* existingComponentToUpdate) {
+    if (columnId == ColActions) {
+        auto& agents = UI::getInstance().getAgents();
+        if (rowNumber < 0 || rowNumber >= (int)agents.size()) return nullptr;
+        
+        auto* actionBtns = static_cast<AgentActionButtons*>(existingComponentToUpdate);
+        if (actionBtns == nullptr)
+            actionBtns = new AgentActionButtons(rowNumber, agents[rowNumber]->getName());
+        return actionBtns;
+    }
+    
+    // For other columns, delete any component that might have been created
+    if (existingComponentToUpdate != nullptr) {
+        delete existingComponentToUpdate;
+    }
+    return nullptr;
 }
 
 void AgentListComponent::cellClicked(int rowNumber, int, const juce::MouseEvent&) {
