@@ -454,3 +454,14 @@ if(BUILD_MEMORY_LEAK_APOCALYPSE)
     target_link_libraries(AgentOS_MemoryLeakApocalypse PRIVATE sqlite)
     target_compile_features(AgentOS_MemoryLeakApocalypse PRIVATE cxx_std_20)
 endif()
+
+# Phase 16.12 Surrogate Decision Layer
+option(BUILD_SURROGATE_TEST "Build AgentOS Surrogate Router Test" ON)
+if(BUILD_SURROGATE_TEST)
+    add_executable(AgentOS_SurrogateTest
+        tests/test_surrogate.cpp
+        src/SurrogateDecisionLayer/SurrogateRouter.cpp
+    )
+    target_include_directories(AgentOS_SurrogateTest PRIVATE include)
+    target_compile_features(AgentOS_SurrogateTest PRIVATE cxx_std_20)
+endif()
