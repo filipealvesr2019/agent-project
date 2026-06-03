@@ -83,7 +83,7 @@ private:
     PluginManager& operator=(const PluginManager&) = delete;
 
     std::map<std::string, std::shared_ptr<PluginInstance>> plugins_;
-    std::mutex managerMutex_;
+    mutable std::mutex managerMutex_;
 };
 
 } // namespace AgentOS

@@ -1,6 +1,7 @@
 #include "MultiAgentCollaboration/MultiAgentCollaboration.h"
 #include <iostream>
 #include <stack>
+#include <queue>
 
 namespace AgentOS {
 
