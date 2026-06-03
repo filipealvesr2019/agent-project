@@ -114,7 +114,13 @@ GraphCanvasComponent::GraphCanvasComponent() {
 void GraphCanvasComponent::paint(juce::Graphics& g) {
     g.fillAll(juce::Colour(0xff0d0d0d)); // Fundo super dark blueprint
     
-    // Grid sutil
+    // Aplicar transformações de câmera (Zoom + Pan)
+    juce::AffineTransform transform = juce::AffineTransform::translation(panOffset_.x, panOffset_.y)
+                                      .scaled(zoomFactor_, zoomFactor_, getWidth() / 2.0f, getHeight() / 2.0f);
+    
+    g.addTransform(transform);
+    
+    // Grid sutil que se move com o canvas
     g.setColour(juce::Colour(0xff1a1a1a));
     for (int i = 0; i < getWidth(); i += 40) g.drawVerticalLine(i, 0.0f, (float)getHeight());
     for (int i = 0; i < getHeight(); i += 40) g.drawHorizontalLine(i, 0.0f, (float)getWidth());
@@ -154,6 +160,23 @@ void GraphCanvasComponent::paint(juce::Graphics& g) {
 }
 
 void GraphCanvasComponent::resized() {
+}
+
+void GraphCanvasComponent::mouseDown(const juce::MouseEvent& event) {
+    lastMousePos_ = event.position;
+}
+
+void GraphCanvasComponent::mouseDrag(const juce::MouseEvent& event) {
+    juce::Point<float> delta = event.position - lastMousePos_;
+    panOffset_ += delta / zoomFactor_;
+    lastMousePos_ = event.position;
+    repaint();
+}
+
+void GraphCanvasComponent::mouseWheelMove(const juce::MouseEvent& event, const juce::MouseWheelDetails& wheel) {
+    zoomFactor_ += wheel.deltaY * 0.1f;
+    zoomFactor_ = juce::jlimit(0.2f, 3.0f, zoomFactor_);
+    repaint();
 }
 
 void GraphCanvasComponent::drawConnection(juce::Graphics& g, juce::Point<float> start, juce::Point<float> end, juce::Colour colour) {
