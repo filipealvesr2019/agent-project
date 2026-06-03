@@ -9,12 +9,15 @@ struct TaskMemory {
     std::string description;
     std::string status;
     std::string agentName;
+    std::string topic; // added for v2
+    std::string tags;  // added for v2
 };
 
 struct FileMemory {
     std::string path;
     std::string lastContent;
     std::string lastModified;
+    int version = 1; // added for v2
 };
 
 struct ConversationMemory {
@@ -22,6 +25,21 @@ struct ConversationMemory {
     std::string prompt;
     std::string response;
     std::string timestamp;
+    std::string topic; // added for v2
+};
+
+struct AgentStateMemory {
+    std::string agentName;
+    std::string state; // Idle, Working, Busy, Reviewing
+    std::string lastUpdate;
+};
+
+struct PerformanceMetrics {
+    std::string agentName;
+    int totalTasks = 0;
+    int successfulTasks = 0;
+    float avgExecutionTimeMs = 0.0f;
+    float trustScore = 100.0f;
 };
 
 class MemoryEngine {
@@ -43,10 +61,18 @@ public:
     void addFileMemory(const FileMemory& file);
     void updateFileMemory(const FileMemory& file);
     FileMemory getFileMemory(const std::string& path);
+    void rollbackFileMemory(const std::string& path, int version); // added for v2
 
     // Conversas
     void addConversation(const ConversationMemory& conv);
     std::vector<ConversationMemory> getAgentConversations(const std::string& agentName);
+
+    // V2: Estados e Métricas
+    void updateAgentState(const AgentStateMemory& state);
+    AgentStateMemory getAgentState(const std::string& agentName);
+    
+    void updatePerformance(const PerformanceMetrics& metrics);
+    PerformanceMetrics getPerformance(const std::string& agentName);
 
 private:
     MemoryEngine(const std::string& dbPath);

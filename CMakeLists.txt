@@ -40,6 +40,7 @@ add_subdirectory(src/AgentProfiles)
 add_subdirectory(src/ReasoningEngine)
 add_subdirectory(src/ContextEngine)
 add_subdirectory(src/CapabilityEngine)
+add_subdirectory(src/MemoryAPI)
 add_subdirectory(src/PromptEngine)
 add_subdirectory(src/ObjectiveEngine)
 add_subdirectory(src/CostMonitor)
@@ -71,6 +72,8 @@ target_link_libraries(AgentOS PRIVATE
     ReasoningEngine
     ContextEngine
     CapabilityEngine
+    MemoryAPI
+    KnowledgeGraphEngine
     PromptEngine
     ObjectiveEngine
     CostMonitor
@@ -257,6 +260,20 @@ if(BUILD_PHASE11_TESTS)
     )
     target_include_directories(AgentOS_Phase11Test PRIVATE include)
     target_compile_features(AgentOS_Phase11Test PRIVATE cxx_std_20)
+endif()
+
+# Phase 12 Memory & Knowledge test suite
+option(BUILD_PHASE12_TESTS "Build AgentOS Phase 12 tests" OFF)
+if(BUILD_PHASE12_TESTS)
+    add_executable(AgentOS_MemoryV2Test
+        tests/test_memoryengine_v2.cpp
+        src/MemoryEngine/MemoryEngine.cpp
+        src/MemoryAPI/MemoryAPI.cpp
+        src/KnowledgeGraphEngine/KnowledgeGraphEngine.cpp
+    )
+    target_include_directories(AgentOS_MemoryV2Test PRIVATE include libs/sqlite)
+    target_link_libraries(AgentOS_MemoryV2Test PRIVATE sqlite)
+    target_compile_features(AgentOS_MemoryV2Test PRIVATE cxx_std_20)
 endif()
 
 # Test runner (opcional, compilar com -DBUILD_TESTS=ON)

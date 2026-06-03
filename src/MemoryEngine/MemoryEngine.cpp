@@ -154,4 +154,31 @@ std::vector<ConversationMemory> MemoryEngine::getAgentConversations(const std::s
     return convs;
 }
 
+void MemoryEngine::rollbackFileMemory(const std::string& path, int version) {
+    // Mock rollback
+    std::cout << "[MemoryEngine] Rolled back file " << path << " to version " << version << "\n";
+}
+
+void MemoryEngine::updateAgentState(const AgentStateMemory& state) {
+    std::cout << "[MemoryEngine] Updated state of agent " << state.agentName << " to " << state.state << "\n";
+}
+
+AgentStateMemory MemoryEngine::getAgentState(const std::string& agentName) {
+    AgentStateMemory state;
+    state.agentName = agentName;
+    state.state = "Idle";
+    state.lastUpdate = "now";
+    return state;
+}
+
+void MemoryEngine::updatePerformance(const PerformanceMetrics& metrics) {
+    std::cout << "[MemoryEngine] Updated performance for " << metrics.agentName << "\n";
+}
+
+PerformanceMetrics MemoryEngine::getPerformance(const std::string& agentName) {
+    PerformanceMetrics pm;
+    pm.agentName = agentName;
+    return pm;
+}
+
 } // namespace AgentOS
