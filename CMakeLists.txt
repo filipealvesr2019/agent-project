@@ -39,6 +39,7 @@ add_subdirectory(src/ChangeManagement)
 add_subdirectory(src/AgentProfiles)
 add_subdirectory(src/ReasoningEngine)
 add_subdirectory(src/ContextEngine)
+add_subdirectory(src/CapabilityEngine)
 add_subdirectory(src/PromptEngine)
 add_subdirectory(src/ObjectiveEngine)
 add_subdirectory(src/CostMonitor)
@@ -52,7 +53,7 @@ juce_add_gui_app(AgentOS
     VERSION 1.0.0
 )
 
-    target_sources(AgentOS PRIVATE src/main.cpp src/ChangeManagement/ChangeManagement.cpp)
+target_sources(AgentOS PRIVATE src/main.cpp src/ChangeManagement/ChangeManagement.cpp)
 
 target_link_libraries(AgentOS PRIVATE 
     UI
@@ -68,6 +69,7 @@ target_link_libraries(AgentOS PRIVATE
     ModelRouter
     ReasoningEngine
     ContextEngine
+    CapabilityEngine
     PromptEngine
     ObjectiveEngine
     CostMonitor
@@ -99,6 +101,7 @@ if(BUILD_INTEGRATION_TESTS)
         src/AgentProfiles/AgentProfiles.cpp
         src/ReasoningEngine/ReasoningEngine.cpp
         src/ContextEngine/ContextEngine.cpp
+        src/CapabilityEngine/CapabilityEngine.cpp
         src/PromptEngine/PromptEngine.cpp
         src/ObjectiveEngine/ObjectiveEngine.cpp
         src/CostMonitor/CostMonitor.cpp
@@ -128,6 +131,7 @@ if(BUILD_WORKFLOW_TESTS)
         src/AgentProfiles/AgentProfiles.cpp
         src/ReasoningEngine/ReasoningEngine.cpp
         src/ContextEngine/ContextEngine.cpp
+        src/CapabilityEngine/CapabilityEngine.cpp
         src/PromptEngine/PromptEngine.cpp
         src/ObjectiveEngine/ObjectiveEngine.cpp
         src/CostMonitor/CostMonitor.cpp
@@ -157,102 +161,7 @@ if(BUILD_PHASE6_TESTS)
         src/AgentProfiles/AgentProfiles.cpp
         src/ReasoningEngine/ReasoningEngine.cpp
         src/ContextEngine/ContextEngine.cpp
-        src/PromptEngine/PromptEngine.cpp
-        src/ObjectiveEngine/ObjectiveEngine.cpp
-        src/CostMonitor/CostMonitor.cpp
-        src/ModelManager/ModelManager.cpp
-        src/WindowsBuildManager/WindowsBuildManager.cpp
-    )
-    target_include_directories(AgentOS_Phase6 PRIVATE include libs/sqlite)
-    target_link_libraries(AgentOS_Phase6 PRIVATE sqlite)
-    target_compile_features(AgentOS_Phase6 PRIVATE cxx_std_20)
-endif()
-
-# ModelManager test suite
-option(BUILD_MODELMANAGER_TESTS "Build AgentOS ModelManager tests" OFF)
-if(BUILD_MODELMANAGER_TESTS)
-    add_executable(AgentOS_ModelManagerTest
-        tests/test_modelmanager.cpp
-        src/ModelManager/ModelManager.cpp
-        src/WindowsBuildManager/WindowsBuildManager.cpp
-target_link_libraries(AgentOS PRIVATE MemoryEngine sqlite)
-
-# Integration test suite
-option(BUILD_INTEGRATION_TESTS "Build AgentOS integration test suite" OFF)
-if(BUILD_INTEGRATION_TESTS)
-    add_executable(AgentOS_Integration
-        tests/run_agentos_tests.cpp
-        src/AgentEngine/Agent.cpp
-        src/EventBus/EventBus.cpp
-        src/MemoryEngine/MemoryEngine.cpp
-        src/ToolEngine/ToolEngine.cpp
-        src/ChangeManagement/ChangeManagement.cpp
-        src/GovernanceEngine/GovernanceEngine.cpp
-        src/Sandbox/Sandbox.cpp
-        src/WorkflowEngine/WorkflowEngine.cpp
-        src/PlannerEngine/PlannerEngine.cpp
-        src/ModelRouter/ModelRouter.cpp
-        src/AgentProfiles/AgentProfiles.cpp
-        src/ReasoningEngine/ReasoningEngine.cpp
-        src/ContextEngine/ContextEngine.cpp
-        src/PromptEngine/PromptEngine.cpp
-        src/ObjectiveEngine/ObjectiveEngine.cpp
-        src/CostMonitor/CostMonitor.cpp
-        src/ModelManager/ModelManager.cpp
-        src/WindowsBuildManager/WindowsBuildManager.cpp
-    )
-    target_include_directories(AgentOS_Integration PRIVATE include libs/sqlite)
-    target_link_libraries(AgentOS_Integration PRIVATE sqlite)
-    target_compile_features(AgentOS_Integration PRIVATE cxx_std_20)
-endif()
-
-# Workflow test suite
-option(BUILD_WORKFLOW_TESTS "Build AgentOS workflow test" OFF)
-if(BUILD_WORKFLOW_TESTS)
-    add_executable(AgentOS_WorkflowTest
-        tests/test_workflow_full.cpp
-        src/AgentEngine/Agent.cpp
-        src/EventBus/EventBus.cpp
-        src/MemoryEngine/MemoryEngine.cpp
-        src/ToolEngine/ToolEngine.cpp
-        src/ChangeManagement/ChangeManagement.cpp
-        src/GovernanceEngine/GovernanceEngine.cpp
-        src/Sandbox/Sandbox.cpp
-        src/WorkflowEngine/WorkflowEngine.cpp
-        src/PlannerEngine/PlannerEngine.cpp
-        src/ModelRouter/ModelRouter.cpp
-        src/AgentProfiles/AgentProfiles.cpp
-        src/ReasoningEngine/ReasoningEngine.cpp
-        src/ContextEngine/ContextEngine.cpp
-        src/PromptEngine/PromptEngine.cpp
-        src/ObjectiveEngine/ObjectiveEngine.cpp
-        src/CostMonitor/CostMonitor.cpp
-        src/ModelManager/ModelManager.cpp
-        src/WindowsBuildManager/WindowsBuildManager.cpp
-    )
-    target_include_directories(AgentOS_WorkflowTest PRIVATE include libs/sqlite)
-    target_link_libraries(AgentOS_WorkflowTest PRIVATE sqlite)
-    target_compile_features(AgentOS_WorkflowTest PRIVATE cxx_std_20)
-endif()
-
-# Phase 6 test suite
-option(BUILD_PHASE6_TESTS "Build AgentOS Phase 6 tests" OFF)
-if(BUILD_PHASE6_TESTS)
-    add_executable(AgentOS_Phase6
-        tests/test_phase6.cpp
-        src/AgentEngine/Agent.cpp
-        src/EventBus/EventBus.cpp
-        src/MemoryEngine/MemoryEngine.cpp
-        src/ToolEngine/ToolEngine.cpp
-        src/ChangeManagement/ChangeManagement.cpp
-        src/GovernanceEngine/GovernanceEngine.cpp
-        src/Sandbox/Sandbox.cpp
-        src/WorkflowEngine/WorkflowEngine.cpp
-        src/PlannerEngine/PlannerEngine.cpp
-        src/ModelRouter/ModelRouter.cpp
-        src/AgentProfiles/AgentProfiles.cpp
-        src/ReasoningEngine/ReasoningEngine.cpp
-        src/ContextEngine/ContextEngine.cpp
+        src/CapabilityEngine/CapabilityEngine.cpp
         src/PromptEngine/PromptEngine.cpp
         src/ObjectiveEngine/ObjectiveEngine.cpp
         src/CostMonitor/CostMonitor.cpp
@@ -311,6 +220,17 @@ if(BUILD_CONTEXT_TESTS)
     target_include_directories(AgentOS_ContextTest PRIVATE include libs/sqlite)
     target_link_libraries(AgentOS_ContextTest PRIVATE sqlite)
     target_compile_features(AgentOS_ContextTest PRIVATE cxx_std_20)
+endif()
+
+# CapabilityEngine test suite
+option(BUILD_CAPABILITY_TESTS "Build AgentOS CapabilityEngine tests" OFF)
+if(BUILD_CAPABILITY_TESTS)
+    add_executable(AgentOS_CapabilityTest
+        tests/test_capabilityengine.cpp
+        src/CapabilityEngine/CapabilityEngine.cpp
+    )
+    target_include_directories(AgentOS_CapabilityTest PRIVATE include)
+    target_compile_features(AgentOS_CapabilityTest PRIVATE cxx_std_20)
 endif()
 
 # Test runner (opcional, compilar com -DBUILD_TESTS=ON)
