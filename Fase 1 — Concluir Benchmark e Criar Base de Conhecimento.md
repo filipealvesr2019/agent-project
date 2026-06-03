@@ -495,3 +495,47 @@ Semana 6
 ```
 
 Essa sequência transforma o AgentOS de um simples executor de LLMs em um sistema que mede desempenho, detecta gargalos, troca modelos automaticamente e aprende qual modelo usar para cada tipo de tarefa.
+
+
+Sim, dá para exibir uma recomendação mesmo que o usuário baixe o modelo de fora, desde que o **AgentOS consiga ler o GGUF local** antes de instalar. Aqui está como fazer:
+
+---
+
+### **1. Quando o usuário adiciona manualmente**
+
+* Detecte sempre que um novo arquivo `.gguf` aparece na pasta `models/`.
+* Ao detectar, chame a função `checkCompatibility(modelPath)` que criamos antes.
+* A função **não precisa do Hugging Face** nem de download, apenas analisa:
+
+  * Tamanho do arquivo
+  * Nome do modelo
+  * Quantização (se estiver no nome)
+  * Comparação com RAM livre do `HardwareWatchdog`.
+
+---
+
+### **2. Fluxo sugerido**
+
+1. Usuário copia/arrasta o GGUF para `models/`.
+2. AgentOS monitora a pasta (`FileSystemWatcher` ou loop periódico).
+3. Ao encontrar o novo arquivo:
+
+   * Executa `checkCompatibility`.
+   * Mostra mensagem no CLI ou no Frontend:
+
+     ```text
+     Novo modelo detectado: Qwen2.5-0.5B-Instruct-Q4_K_M.gguf
+     RAM estimada: 390 MB
+     TPS esperado: 5 tok/s
+     Recomendação: ✅ Compatível com esta máquina.
+     ```
+4. Usuário pode **instalar mesmo assim**, sem restrições.
+
+---
+
+### **3. Extra: Sugestão de alerta**
+
+* Se RAM estimada > 80% da RAM livre → `⚠️ Possível sobrecarga`.
+* Se muito pequena → `✅ Ótimo para testes rápidos`.
+
+---

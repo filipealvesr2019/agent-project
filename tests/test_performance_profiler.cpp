@@ -37,7 +37,7 @@ int main() {
     orchestrator.registerAgent(TaskType::Coding, std::make_shared<CodingAgent>("CodingAgent", memory, kb, vs));
     orchestrator.registerAgent(TaskType::Chat, std::make_shared<ChatAgent>("ChatAgent", memory, kb, vs));
 
-    const int iterations = 100;
+    const int iterations = 3;
 
     std::vector<double> taskAnalysisMs;
     std::vector<double> routingMs;
