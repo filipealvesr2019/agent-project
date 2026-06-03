@@ -621,6 +621,14 @@ if(BUILD_COGNITIVE_TESTS)
     target_include_directories(AgentOS_AutonomousLoopTest PRIVATE include)
     target_link_libraries(AgentOS_AutonomousLoopTest PRIVATE Cognitive)
     target_compile_features(AgentOS_AutonomousLoopTest PRIVATE cxx_std_20)
+
+    # Fase 12: Stress Test
+    add_executable(AgentOS_StressTest
+        tests/test_stress_multiagent.cpp
+    )
+    target_include_directories(AgentOS_StressTest PRIVATE include)
+    target_link_libraries(AgentOS_StressTest PRIVATE Cognitive)
+    target_compile_features(AgentOS_StressTest PRIVATE cxx_std_20)
 endif()
 
 

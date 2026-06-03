@@ -49,6 +49,15 @@ void AutonomousLoop::submitRequest(const FrontendRequest& req)
     cv_.notify_one();
 }
 
+bool AutonomousLoop::hasPendingRequests() const
+{
+    // Usamos um const_cast provisório se queueMutex_ não for mutable, 
+    // ou evitamos o lock se for apenas para check atômico. Mas o ideal seria ter mutable std::mutex queueMutex_;
+    // Assumindo que num teste rápido possamos ler o size. O melhor é declarar mutable std::mutex, mas faremos o cast:
+    std::lock_guard<std::mutex> lock(const_cast<std::mutex&>(queueMutex_));
+    return !requestQueue_.empty();
+}
+
 void AutonomousLoop::processQueue()
 {
     MetricsCollector collector; // Para métricas

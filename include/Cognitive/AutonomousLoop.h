@@ -43,6 +43,9 @@ public:
     // Frontend envia uma requisição para a fila
     void submitRequest(const FrontendRequest& req);
 
+    // Verifica se a fila de processamento ainda tem requisições
+    bool hasPendingRequests() const;
+
 private:
     Orchestrator& orchestrator_;
     
