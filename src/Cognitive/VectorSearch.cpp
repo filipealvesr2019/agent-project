@@ -95,4 +95,93 @@ void VectorSearch::clear()
     embeddings_.clear();
 }
 
+bool VectorSearch::save(const std::string& path) const
+{
+    std::ofstream f(path);
+    if (!f.is_open()) return false;
+
+    for (const auto& emb : embeddings_) {
+        // Formato simples JSONL para vetores
+        f << "{\"id\":\"" << emb.id << "\",\"text\":\"";
+        
+        // Escape simples
+        for(char c : emb.text) {
+            if (c == '"') f << "\\\"";
+            else if (c == '\\') f << "\\\\";
+            else if (c == '\n') f << "\\n";
+            else f << c;
+        }
+        
+        f << "\",\"vector\":[";
+        for (size_t i = 0; i < emb.vector.size(); ++i) {
+            f << emb.vector[i] << (i + 1 == emb.vector.size() ? "" : ",");
+        }
+        f << "]}\n";
+    }
+    return true;
+}
+
+bool VectorSearch::load(const std::string& path)
+{
+    std::ifstream f(path);
+    if (!f.is_open()) return false;
+
+    embeddings_.clear();
+    std::string line;
+    while (std::getline(f, line)) {
+        if (line.empty()) continue;
+
+        Embedding emb;
+        
+        // Parsing simples de ID
+        size_t idPos = line.find("\"id\":\"");
+        if (idPos != std::string::npos) {
+            idPos += 6;
+            size_t idEnd = line.find("\"", idPos);
+            emb.id = line.substr(idPos, idEnd - idPos);
+        }
+
+        // Parsing simples de Text
+        size_t textPos = line.find("\"text\":\"");
+        if (textPos != std::string::npos) {
+            textPos += 8;
+            size_t textEnd = line.find("\",\"vector\":[", textPos);
+            if (textEnd != std::string::npos) {
+                std::string rawText = line.substr(textPos, textEnd - textPos);
+                // Unescape
+                for(size_t i=0; i<rawText.size(); ++i) {
+                    if (rawText[i] == '\\' && i+1 < rawText.size()) {
+                        char n = rawText[++i];
+                        if (n == 'n') emb.text += '\n';
+                        else if (n == '"') emb.text += '"';
+                        else if (n == '\\') emb.text += '\\';
+                    } else {
+                        emb.text += rawText[i];
+                    }
+                }
+            }
+        }
+
+        // Parsing simples de Vector
+        size_t vecPos = line.find("\"vector\":[");
+        if (vecPos != std::string::npos) {
+            vecPos += 10;
+            size_t vecEnd = line.find("]}", vecPos);
+            if (vecEnd != std::string::npos) {
+                std::string vecStr = line.substr(vecPos, vecEnd - vecPos);
+                std::stringstream ss(vecStr);
+                std::string val;
+                while (std::getline(ss, val, ',')) {
+                    emb.vector.push_back(std::stof(val));
+                }
+            }
+        }
+
+        if (!emb.id.empty() && !emb.vector.empty()) {
+            embeddings_.push_back(emb);
+        }
+    }
+    return true;
+}
+
 } // namespace AgentOS

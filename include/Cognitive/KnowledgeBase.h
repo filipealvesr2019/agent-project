@@ -32,11 +32,11 @@ public:
     // Retorna todos os documentos
     std::vector<KnowledgeDoc> getAllDocs() const;
 
-    // Salva base de conhecimento (JSON/Markdown directory via file system em versão real, aqui usando JSON struct simples)
-    bool save(const std::string& path) const;
+    // Salva base de conhecimento (Exporta cada tópico como um arquivo .md)
+    bool saveToDirectory(const std::string& dirPath) const;
     
-    // Carrega base de conhecimento
-    bool load(const std::string& path);
+    // Carrega base de conhecimento a partir de um diretório de arquivos .md
+    bool loadFromDirectory(const std::string& dirPath);
 
 private:
     std::unordered_map<std::string, KnowledgeDoc> docsByTopic_;

@@ -37,6 +37,10 @@ public:
     // Limpa a base vetorial
     void clear();
 
+    // Persistência em disco (Fase 16)
+    bool save(const std::string& path) const;
+    bool load(const std::string& path);
+
 private:
     std::vector<Embedding> embeddings_;
 
