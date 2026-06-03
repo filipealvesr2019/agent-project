@@ -60,6 +60,24 @@ add_library(sqlite STATIC libs/sqlite/sqlite3.c)
 target_include_directories(sqlite PUBLIC libs/sqlite)
 target_link_libraries(AgentOS PRIVATE MemoryEngine sqlite)
 
+# Integration test suite
+option(BUILD_INTEGRATION_TESTS "Build AgentOS integration test suite" OFF)
+if(BUILD_INTEGRATION_TESTS)
+    add_executable(AgentOS_Integration
+        tests/run_agentos_tests.cpp
+        src/AgentEngine/Agent.cpp
+        src/EventBus/EventBus.cpp
+        src/MemoryEngine/MemoryEngine.cpp
+        src/ToolEngine/ToolEngine.cpp
+        src/ChangeManagement/ChangeManagement.cpp
+        src/GovernanceEngine/GovernanceEngine.cpp
+        src/Sandbox/Sandbox.cpp
+    )
+    target_include_directories(AgentOS_Integration PRIVATE include libs/sqlite)
+    target_link_libraries(AgentOS_Integration PRIVATE sqlite)
+    target_compile_features(AgentOS_Integration PRIVATE cxx_std_20)
+endif()
+
 # Test runner (opcional, compilar com -DBUILD_TESTS=ON)
 option(BUILD_TESTS "Build AgentOS test runner" OFF)
 if(BUILD_TESTS)

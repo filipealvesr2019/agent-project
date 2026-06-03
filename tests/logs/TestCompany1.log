@@ -1,0 +1,46 @@
+=== AgentOS Test Log ===
+Company: TestCompany1
+Started: Tue Jun  2 21:59:00 2026
+========================
+
+[Tue Jun  2 21:59:00 2026] [SUMMARY] Inicializando engines...
+[Tue Jun  2 21:59:00 2026] [SUMMARY] Executando casos de teste...
+[Tue Jun  2 21:59:00 2026] [AGENT] Criando agentes da TestCompany1
+[Tue Jun  2 21:59:01 2026] [AGENT] Atlas (CEO) estado=Idle
+[Tue Jun  2 21:59:01 2026] [AGENT] Alan (Engineering Manager) estado=Idle
+[Tue Jun  2 21:59:01 2026] [AGENT] Eve (QA Manager) estado=Idle
+[Tue Jun  2 21:59:01 2026] [AGENT] Clara (Design Manager) estado=Idle
+[Tue Jun  2 21:59:01 2026] [AGENT] Becca (Backend Dev) estado=Idle
+[Tue Jun  2 21:59:01 2026] [AGENT] Carl (Backend Dev) estado=Idle
+[Tue Jun  2 21:59:01 2026] [AGENT] Dave (QA Tester) estado=Idle
+[Tue Jun  2 21:59:01 2026] [TASK] Iniciando simulacao de workflow
+[Tue Jun  2 21:59:01 2026] [TASK] Atlas delegou tarefa para Alan
+[Tue Jun  2 21:59:02 2026] [TASK] Alan delegou implementacao para Becca
+[Tue Jun  2 21:59:07 2026] [TASK] Workflow concluido
+[Tue Jun  2 21:59:07 2026] [SANDBOX] Testando Sandbox Virtual
+[Tue Jun  2 21:59:07 2026] [SANDBOX] read_file: // Compressor de audio
+float process(float input) {
+    retu
+[Tue Jun  2 21:59:07 2026] [SANDBOX] Tentativa de acesso bloqueado: Erro: Arquivo não encontrado ou sem permissão de leitura.
+[Tue Jun  2 21:59:07 2026] [SANDBOX] Sandbox validado
+[Tue Jun  2 21:59:07 2026] [TOOL] Testando ToolEngine
+[Tue Jun  2 21:59:07 2026] [TOOL] ToolEngine validado
+[Tue Jun  2 21:59:07 2026] [GOV] Testando GovernanceEngine
+[Tue Jun  2 21:59:07 2026] [GOV] Eventos de governanca processados
+[Tue Jun  2 21:59:07 2026] [SNAPSHOT] Testando ChangeManagement
+[Tue Jun  2 21:59:07 2026] [SNAPSHOT] Arquivo criado: tests/test_snapshot.txt
+[Tue Jun  2 21:59:07 2026] [SNAPSHOT] Snapshot #36 criado
+[Tue Jun  2 21:59:07 2026] [SNAPSHOT] Arquivo modificado
+[Tue Jun  2 21:59:07 2026] [SNAPSHOT] Change proposal #1 (Pendente)
+[Tue Jun  2 21:59:07 2026] [SNAPSHOT] Proposal #1 aprovada por Atlas
+[Tue Jun  2 21:59:07 2026] [SNAPSHOT] Rollback #36: OK
+[Tue Jun  2 21:59:07 2026] [SNAPSHOT] Snapshots e rollback validados
+[Tue Jun  2 21:59:07 2026] [EMERGENCY] Testando Emergency Stop
+[Tue Jun  2 21:59:07 2026] [CM] EMERGENCY STOP: EMERGENCY STOP acionado: Falha critica simulada - agente Becca em loop
+[Tue Jun  2 21:59:07 2026] [EMERGENCY] Motivo: Falha critica simulada - agente Becca em loop
+[Tue Jun  2 21:59:07 2026] [EMERGENCY] Recuperacao concluida
+[Tue Jun  2 21:59:07 2026] [MEMORY] Testando MemoryEngine
+[Tue Jun  2 21:59:07 2026] [MEMORY] MemoryEngine validado
+[Tue Jun  2 21:59:07 2026] [SANDBOX] PERMITIDO | SYSTEM -> Sandbox finalizado
+[Tue Jun  2 21:59:07 2026] [CM] ChangeManagement finalizado
+[Tue Jun  2 21:59:07 2026] [SUMMARY] Testes concluidos: 23/23 passaram
