@@ -407,3 +407,24 @@ if(BUILD_HELL_TESTS)
     target_link_libraries(AgentOS_HellTest PRIVATE sqlite)
     target_compile_features(AgentOS_HellTest PRIVATE cxx_std_20)
 endif()
+
+# Phase 16.8 Scalability & Benchmark Framework
+option(BUILD_BENCHMARK_RUNNER "Build AgentOS Benchmark Runner" ON)
+if(BUILD_BENCHMARK_RUNNER)
+    add_executable(AgentOS_BenchmarkRunner
+        tests/benchmark_runner.cpp
+        src/OrganizationEngine/OrganizationEngine.cpp
+        src/ProjectManager/ProjectManager.cpp
+        src/AgentEngine/Agent.cpp
+        src/ReasoningTimelineEngine/ReasoningTimelineEngine.cpp
+        src/EventBus/EventBus.cpp
+        src/MemoryEngine/MemoryEngine.cpp
+        src/KnowledgeGraphEngine/KnowledgeGraphEngine.cpp
+        src/ContextEngine/ContextEngine.cpp
+        src/ModelRouter/ModelRouter.cpp
+        src/LocalRuntime/LocalRuntimeEngine.cpp
+    )
+    target_include_directories(AgentOS_BenchmarkRunner PRIVATE include libs/sqlite)
+    target_link_libraries(AgentOS_BenchmarkRunner PRIVATE sqlite)
+    target_compile_features(AgentOS_BenchmarkRunner PRIVATE cxx_std_20)
+endif()
