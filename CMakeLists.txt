@@ -75,6 +75,7 @@ target_link_libraries(AgentOS PRIVATE
     ContextEngine
     CapabilityEngine
     MemoryAPI
+    MonitoringEngine
     KnowledgeGraphEngine
     MultiAgentCollaboration
     PluginManager
@@ -319,6 +320,24 @@ if(BUILD_HARDENING_TESTS)
     target_include_directories(AgentOS_HardeningTest PRIVATE include libs/sqlite)
     target_link_libraries(AgentOS_HardeningTest PRIVATE sqlite)
     target_compile_features(AgentOS_HardeningTest PRIVATE cxx_std_20)
+endif()
+
+# Performance & Stress test suite
+option(BUILD_PERFORMANCE_TESTS "Build AgentOS Performance tests" OFF)
+if(BUILD_PERFORMANCE_TESTS)
+    add_executable(AgentOS_PerformanceTest
+        tests/test_performance_stress.cpp
+        src/MonitoringEngine/MonitoringEngine.cpp
+        src/PluginManager/PluginManager.cpp
+        src/ToolEngine/Phase11Tools.cpp
+        src/LocalRuntime/LocalRuntimeEngine.cpp
+        src/MemoryAPI/MemoryAPI.cpp
+        src/KnowledgeGraphEngine/KnowledgeGraphEngine.cpp
+        src/MemoryEngine/MemoryEngine.cpp
+    )
+    target_include_directories(AgentOS_PerformanceTest PRIVATE include libs/sqlite)
+    target_link_libraries(AgentOS_PerformanceTest PRIVATE sqlite)
+    target_compile_features(AgentOS_PerformanceTest PRIVATE cxx_std_20)
 endif()
 
 # Test runner (opcional, compilar com -DBUILD_TESTS=ON)

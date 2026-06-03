@@ -1,0 +1,303 @@
+=== AgentOS Performance & Stress Test Report ===
+
+Agent Stats:
+Agent: WorkerAgent_0
+  Tasks Completed: 10
+  Avg Latency: 19.0975 ms
+  Token Exceeds: 10
+  Plugin Failures: 10
+
+Agent: WorkerAgent_1
+  Tasks Completed: 10
+  Avg Latency: 25.3604 ms
+  Token Exceeds: 0
+  Plugin Failures: 10
+
+Agent: WorkerAgent_10
+  Tasks Completed: 10
+  Avg Latency: 31.6479 ms
+  Token Exceeds: 0
+  Plugin Failures: 10
+
+Agent: WorkerAgent_11
+  Tasks Completed: 10
+  Avg Latency: 18.9364 ms
+  Token Exceeds: 0
+  Plugin Failures: 10
+
+Agent: WorkerAgent_12
+  Tasks Completed: 10
+  Avg Latency: 31.585 ms
+  Token Exceeds: 10
+  Plugin Failures: 10
+
+Agent: WorkerAgent_13
+  Tasks Completed: 10
+  Avg Latency: 31.5959 ms
+  Token Exceeds: 0
+  Plugin Failures: 10
+
+Agent: WorkerAgent_14
+  Tasks Completed: 10
+  Avg Latency: 31.4976 ms
+  Token Exceeds: 0
+  Plugin Failures: 10
+
+Agent: WorkerAgent_15
+  Tasks Completed: 10
+  Avg Latency: 36.9179 ms
+  Token Exceeds: 10
+  Plugin Failures: 10
+
+Agent: WorkerAgent_16
+  Tasks Completed: 10
+  Avg Latency: 31.6304 ms
+  Token Exceeds: 0
+  Plugin Failures: 10
+
+Agent: WorkerAgent_17
+  Tasks Completed: 10
+  Avg Latency: 31.4915 ms
+  Token Exceeds: 0
+  Plugin Failures: 10
+
+Agent: WorkerAgent_18
+  Tasks Completed: 10
+  Avg Latency: 18.8369 ms
+  Token Exceeds: 10
+  Plugin Failures: 10
+
+Agent: WorkerAgent_19
+  Tasks Completed: 10
+  Avg Latency: 18.8687 ms
+  Token Exceeds: 0
+  Plugin Failures: 10
+
+Agent: WorkerAgent_2
+  Tasks Completed: 10
+  Avg Latency: 31.692 ms
+  Token Exceeds: 0
+  Plugin Failures: 10
+
+Agent: WorkerAgent_20
+  Tasks Completed: 10
+  Avg Latency: 48.9418 ms
+  Token Exceeds: 0
+  Plugin Failures: 10
+
+Agent: WorkerAgent_21
+  Tasks Completed: 10
+  Avg Latency: 31.461 ms
+  Token Exceeds: 10
+  Plugin Failures: 10
+
+Agent: WorkerAgent_22
+  Tasks Completed: 10
+  Avg Latency: 31.544 ms
+  Token Exceeds: 0
+  Plugin Failures: 10
+
+Agent: WorkerAgent_23
+  Tasks Completed: 10
+  Avg Latency: 42.5022 ms
+  Token Exceeds: 0
+  Plugin Failures: 10
+
+Agent: WorkerAgent_24
+  Tasks Completed: 10
+  Avg Latency: 25.1561 ms
+  Token Exceeds: 10
+  Plugin Failures: 10
+
+Agent: WorkerAgent_25
+  Tasks Completed: 10
+  Avg Latency: 31.4794 ms
+  Token Exceeds: 0
+  Plugin Failures: 10
+
+Agent: WorkerAgent_26
+  Tasks Completed: 10
+  Avg Latency: 25.0579 ms
+  Token Exceeds: 0
+  Plugin Failures: 10
+
+Agent: WorkerAgent_27
+  Tasks Completed: 10
+  Avg Latency: 31.4988 ms
+  Token Exceeds: 10
+  Plugin Failures: 10
+
+Agent: WorkerAgent_28
+  Tasks Completed: 10
+  Avg Latency: 31.4359 ms
+  Token Exceeds: 0
+  Plugin Failures: 10
+
+Agent: WorkerAgent_29
+  Tasks Completed: 10
+  Avg Latency: 18.6557 ms
+  Token Exceeds: 0
+  Plugin Failures: 10
+
+Agent: WorkerAgent_3
+  Tasks Completed: 10
+  Avg Latency: 31.5531 ms
+  Token Exceeds: 10
+  Plugin Failures: 10
+
+Agent: WorkerAgent_30
+  Tasks Completed: 10
+  Avg Latency: 31.361 ms
+  Token Exceeds: 10
+  Plugin Failures: 10
+
+Agent: WorkerAgent_31
+  Tasks Completed: 10
+  Avg Latency: 18.6664 ms
+  Token Exceeds: 0
+  Plugin Failures: 10
+
+Agent: WorkerAgent_32
+  Tasks Completed: 10
+  Avg Latency: 0.55854 ms
+  Token Exceeds: 0
+  Plugin Failures: 10
+
+Agent: WorkerAgent_33
+  Tasks Completed: 10
+  Avg Latency: 25.0208 ms
+  Token Exceeds: 10
+  Plugin Failures: 10
+
+Agent: WorkerAgent_34
+  Tasks Completed: 10
+  Avg Latency: 31.3206 ms
+  Token Exceeds: 0
+  Plugin Failures: 10
+
+Agent: WorkerAgent_35
+  Tasks Completed: 10
+  Avg Latency: 18.6947 ms
+  Token Exceeds: 0
+  Plugin Failures: 10
+
+Agent: WorkerAgent_36
+  Tasks Completed: 10
+  Avg Latency: 18.6107 ms
+  Token Exceeds: 10
+  Plugin Failures: 10
+
+Agent: WorkerAgent_37
+  Tasks Completed: 10
+  Avg Latency: 31.2703 ms
+  Token Exceeds: 0
+  Plugin Failures: 10
+
+Agent: WorkerAgent_38
+  Tasks Completed: 10
+  Avg Latency: 31.3394 ms
+  Token Exceeds: 0
+  Plugin Failures: 10
+
+Agent: WorkerAgent_39
+  Tasks Completed: 10
+  Avg Latency: 31.2526 ms
+  Token Exceeds: 10
+  Plugin Failures: 10
+
+Agent: WorkerAgent_4
+  Tasks Completed: 10
+  Avg Latency: 31.6616 ms
+  Token Exceeds: 0
+  Plugin Failures: 10
+
+Agent: WorkerAgent_40
+  Tasks Completed: 10
+  Avg Latency: 42.3866 ms
+  Token Exceeds: 0
+  Plugin Failures: 10
+
+Agent: WorkerAgent_41
+  Tasks Completed: 10
+  Avg Latency: 31.223 ms
+  Token Exceeds: 0
+  Plugin Failures: 10
+
+Agent: WorkerAgent_42
+  Tasks Completed: 10
+  Avg Latency: 12.3853 ms
+  Token Exceeds: 10
+  Plugin Failures: 10
+
+Agent: WorkerAgent_43
+  Tasks Completed: 10
+  Avg Latency: 31.2337 ms
+  Token Exceeds: 0
+  Plugin Failures: 10
+
+Agent: WorkerAgent_44
+  Tasks Completed: 10
+  Avg Latency: 31.2544 ms
+  Token Exceeds: 0
+  Plugin Failures: 10
+
+Agent: WorkerAgent_45
+  Tasks Completed: 10
+  Avg Latency: 18.5956 ms
+  Token Exceeds: 10
+  Plugin Failures: 10
+
+Agent: WorkerAgent_46
+  Tasks Completed: 10
+  Avg Latency: 24.8898 ms
+  Token Exceeds: 0
+  Plugin Failures: 10
+
+Agent: WorkerAgent_47
+  Tasks Completed: 10
+  Avg Latency: 24.9707 ms
+  Token Exceeds: 0
+  Plugin Failures: 10
+
+Agent: WorkerAgent_48
+  Tasks Completed: 10
+  Avg Latency: 42.2897 ms
+  Token Exceeds: 10
+  Plugin Failures: 10
+
+Agent: WorkerAgent_49
+  Tasks Completed: 10
+  Avg Latency: 18.5542 ms
+  Token Exceeds: 0
+  Plugin Failures: 10
+
+Agent: WorkerAgent_5
+  Tasks Completed: 10
+  Avg Latency: 31.4839 ms
+  Token Exceeds: 0
+  Plugin Failures: 10
+
+Agent: WorkerAgent_6
+  Tasks Completed: 10
+  Avg Latency: 25.4398 ms
+  Token Exceeds: 10
+  Plugin Failures: 10
+
+Agent: WorkerAgent_7
+  Tasks Completed: 10
+  Avg Latency: 25.319 ms
+  Token Exceeds: 0
+  Plugin Failures: 10
+
+Agent: WorkerAgent_8
+  Tasks Completed: 10
+  Avg Latency: 25.3162 ms
+  Token Exceeds: 0
+  Plugin Failures: 10
+
+Agent: WorkerAgent_9
+  Tasks Completed: 10
+  Avg Latency: 18.9454 ms
+  Token Exceeds: 10
+  Plugin Failures: 10
+
