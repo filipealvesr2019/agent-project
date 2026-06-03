@@ -24,7 +24,7 @@ public:
 private:
     void handleMenuClick(int itemId);
     void showSnapshotTimeline();
-    void paintPhase6Panels(juce::Graphics& g, juce::Rectangle<int> area);
+    void paintMetricsPanel(juce::Graphics& g, juce::Rectangle<int> area);
 
     juce::Rectangle<int> menuFile_, menuTools_, menuSecurity_, menuPhase6_, menuHelp_;
     std::unique_ptr<SidebarComponent> sidebar_;
@@ -32,18 +32,11 @@ private:
     std::unique_ptr<LogViewerComponent> logViewer_;
     juce::String statusText_;
 
-    // Phase 6 cached strings
-    juce::String plannerText_;
-    juce::String objectiveText_;
-    juce::String modelRouterText_;
-    juce::String reasoningText_;
-    juce::String costText_;
-
-    // Phase 7 Vision
-    juce::Rectangle<int> menuFase7_;
-    juce::String visionText_;
-
-    void paintVisionPanel(juce::Graphics& g, juce::Rectangle<int> area);
+    // Phase 17 Metrics
+    juce::String cpuText_;
+    juce::String ramText_;
+    juce::String vramText_;
+    juce::String systemStatsText_;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(DashboardComponent)
 };

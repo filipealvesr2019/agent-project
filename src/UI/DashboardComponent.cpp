@@ -13,6 +13,9 @@
 #include "ReasoningEngine/ReasoningEngine.h"
 #include "ObjectiveEngine/ObjectiveEngine.h"
 #include "CostMonitor/CostMonitor.h"
+#include "MonitoringEngine/MonitoringEngine.h"
+#include "PluginManager/PluginManager.h"
+#include "LocalRuntime/LocalRuntimeEngine.h"
 #include <juce_gui_extra/juce_gui_extra.h>
 
 namespace AgentOS {
@@ -51,17 +54,14 @@ DashboardComponent::DashboardComponent() {
     ProfileRegistry::getInstance().loadDefaults();
     ModelRouter::getInstance().loadDefaults();
 
-    plannerText_ = "Planos: 0";
-    objectiveText_ = "Objetivos: 0";
-    modelRouterText_ = "Router: ativo";
-    reasoningText_ = "Raciocinio: 0";
-    costText_ = "Recursos: aguardando...";
+    cpuText_ = "CPU: 0%";
+    ramText_ = "RAM: 0%";
+    vramText_ = "VRAM: 0%";
+    systemStatsText_ = "Carregando métricas...";
 
-    visionText_ = "Vision: pronto\nPipeline: 0";
-
-    startTimerHz(2);
+    startTimerHz(1); // Refresh every 1 second
     setSize(1200, 800);
-    statusText_ = "Fase 6: Planner + Model Router ativos";
+    statusText_ = "AgentOS Phase 17: Studio UI Ativo";
 }
 
 DashboardComponent::~DashboardComponent() {
@@ -78,17 +78,13 @@ void DashboardComponent::resized() {
     menuTools_ = {menuFile_.getRight(), menuFile_.getY(), 120, menuH};
     menuSecurity_ = {menuTools_.getRight(), menuTools_.getY(), 100, menuH};
     menuPhase6_ = {menuSecurity_.getRight(), menuSecurity_.getY(), 80, menuH};
-    menuFase7_ = {menuPhase6_.getRight(), menuPhase6_.getY(), 60, menuH};
-    menuHelp_ = {menuFase7_.getRight(), menuFase7_.getY(), 60, menuH};
+    menuHelp_ = {menuPhase6_.getRight(), menuPhase6_.getY(), 60, menuH};
 
     auto statusArea = area.removeFromBottom(statusH);
-    logViewer_->setBounds(area.removeFromBottom(130));
+    logViewer_->setBounds(area.removeFromBottom(200)); // Mais espaco pros logs
 
-    // Phase 6 panels row
-    auto phase6Area = area.removeFromBottom(phase6PanelH);
-
-    // Phase 7 vision panel below Phase 6
-    auto visionArea = area.removeFromBottom(50);
+    // Phase 17 metrics row
+    auto metricsArea = area.removeFromBottom(phase6PanelH);
 
     int sidebarW = 220;
     auto sidebarArea = area.removeFromLeft(sidebarW);
@@ -121,18 +117,16 @@ void DashboardComponent::paint(juce::Graphics& g) {
     drawMenuItem(menuFile_, "Arquivo");
     drawMenuItem(menuTools_, "Ferramentas");
     drawMenuItem(menuSecurity_, "Seguranca");
-    drawMenuItem(menuPhase6_, "Fase 6");
-    drawMenuItem(menuFase7_, "Fase 7");
+    drawMenuItem(menuPhase6_, "Config");
     drawMenuItem(menuHelp_, "Ajuda");
 
     g.setColour(juce::Colour(0xFF30363d));
     g.drawLine(0, menuH, getWidth(), menuH, 1);
 
-    // Phase 6 panels + Phase 7 panel
-    auto phase6Area = area.removeFromBottom(phase6PanelH + 130 + statusH);
-    paintPhase6Panels(g, phase6Area);
-    auto visionArea = area.removeFromBottom(50);
-    paintVisionPanel(g, visionArea);
+    // Phase 17 Metrics Panel
+    auto metricsArea = area.removeFromBottom(phase6PanelH + 200 + statusH);
+    metricsArea = metricsArea.withHeight(phase6PanelH);
+    paintMetricsPanel(g, metricsArea);
 
     auto statusArea = area.removeFromBottom(statusH);
     g.setColour(juce::Colour(0xFF161b22));
@@ -144,45 +138,38 @@ void DashboardComponent::paint(juce::Graphics& g) {
     g.drawLine(0, statusArea.getY(), getWidth(), statusArea.getY(), 1);
 }
 
-void DashboardComponent::paintPhase6Panels(juce::Graphics& g, juce::Rectangle<int> area) {
+void DashboardComponent::paintMetricsPanel(juce::Graphics& g, juce::Rectangle<int> area) {
     g.setColour(juce::Colour(0xFF0d1117));
     g.fillRect(area);
 
-    int panelW = area.getWidth() / 5;
-    int panelH = area.getHeight();
-    auto panels = area.removeFromLeft(panelW * 5);
+    int panelW = area.getWidth() / 4;
+    auto panels = area.removeFromLeft(panelW * 4);
 
     auto drawPanel = [&](juce::Rectangle<int> bounds, const juce::String& title,
                           const juce::String& content, juce::Colour accent) {
         g.setColour(juce::Colour(0xFF161b22));
-        g.fillRect(bounds);
+        g.fillRect(bounds.reduced(2));
         g.setColour(juce::Colour(0xFF30363d));
-        g.drawRect(bounds, 1);
+        g.drawRect(bounds.reduced(2), 1);
 
         // Title bar
-        auto header = bounds.removeFromTop(20);
+        auto header = bounds.reduced(2).removeFromTop(24);
         g.setColour(accent);
         g.fillRect(header);
         g.setColour(juce::Colour(0xFFffffff));
-        g.setFont(juce::Font(11.0f, juce::Font::bold));
+        g.setFont(juce::Font(12.0f, juce::Font::bold));
         g.drawText(title, header, juce::Justification::centred);
 
         // Content
         g.setColour(juce::Colour(0xFFc9d1d9));
-        g.setFont(juce::Font(10.0f));
-        g.drawText(content, bounds.reduced(4, 2), juce::Justification::topLeft);
+        g.setFont(juce::Font(14.0f));
+        g.drawText(content, bounds.reduced(10, 30), juce::Justification::topLeft);
     };
 
-    drawPanel(panels.removeFromLeft(panelW), "Planner",
-              plannerText_, juce::Colour(0xFF238636));
-    drawPanel(panels.removeFromLeft(panelW), "Objetivos",
-              objectiveText_, juce::Colour(0xFF1f6feb));
-    drawPanel(panels.removeFromLeft(panelW), "Model Router",
-              modelRouterText_, juce::Colour(0xFF9e6a03));
-    drawPanel(panels.removeFromLeft(panelW), "Raciocinio",
-              reasoningText_, juce::Colour(0xFFda3633));
-    drawPanel(panels.removeFromLeft(panelW), "Recursos",
-              costText_, juce::Colour(0xFF8957e5));
+    drawPanel(panels.removeFromLeft(panelW), "CPU Load", cpuText_, juce::Colour(0xFFda3633));
+    drawPanel(panels.removeFromLeft(panelW), "RAM Usage", ramText_, juce::Colour(0xFF238636));
+    drawPanel(panels.removeFromLeft(panelW), "VRAM Usage", vramText_, juce::Colour(0xFF1f6feb));
+    drawPanel(panels.removeFromLeft(panelW), "System Status", systemStatsText_, juce::Colour(0xFF8957e5));
 }
 
 void DashboardComponent::mouseDown(const juce::MouseEvent& event) {
@@ -256,7 +243,7 @@ void DashboardComponent::handleMenuClick(int itemId) {
         case 40: {
             auto& planner = PlannerEngine::getInstance();
             PlannerObjective obj;
-            obj.id = (int)plannerText_.length() + 1;
+            obj.id = 1;
             obj.title = "Plugin Audio";
             obj.description = "Criar plugin de audio";
             obj.owner = "Atlas";
@@ -266,7 +253,7 @@ void DashboardComponent::handleMenuClick(int itemId) {
             break;
         }
         case 41:
-            addLogMessage(plannerText_);
+            addLogMessage("Listagem de planos temporariamente desativada na Fase 17.");
             break;
         case 42: {
             auto objs = ObjectiveEngine::getInstance().getAllObjectives();
@@ -293,52 +280,19 @@ void DashboardComponent::timerCallback() {
     sidebar_->refreshTree();
     agentList_->refresh();
 
-    // Refresh Phase 6 panel data
-    auto& planner = PlannerEngine::getInstance();
-    auto& objectives = ObjectiveEngine::getInstance();
-    auto& router = ModelRouter::getInstance();
-    auto& reasoning = ReasoningEngine::getInstance();
-    auto& costs = CostMonitor::getInstance();
+    // Pull from MonitoringEngine
+    auto metrics = MonitoringEngine::getInstance().getCurrentSystemMetrics();
+    
+    cpuText_ = juce::String(metrics.cpuUsagePercent, 1) + "%";
+    ramText_ = juce::String(metrics.ramUsagePercent, 1) + "%";
+    vramText_ = juce::String(metrics.vramUsagePercent, 1) + "%";
 
-    // Planner
-    auto allPlans = planner.validatePlan(Plan()); // Just count - simplified
-    plannerText_ = "Planejamento ativo";
-
-    // Objectives
-    {
-        auto allObjs = objectives.getAllObjectives();
-        objectiveText_ = juce::String("Total: ") + juce::String((int)allObjs.size()) + "\n";
-        for (const auto& o : allObjs) {
-            juce::String line = juce::String("#") + juce::String(o.id) + " " + juce::String(o.title) + "\n";
-            objectiveText_ += line;
-            if (objectiveText_.length() > 120) {
-                objectiveText_ += "...";
-                break;
-            }
-        }
-        if (allObjs.empty()) objectiveText_ += "Nenhum objetivo criado";
-    }
-
-    // Model Router
-    {
-        auto routes = router.getAllRoutes();
-        modelRouterText_ = juce::String("Rotas: ") + juce::String((int)routes.size()) + "\n";
-        int count = 0;
-        for (const auto& r : routes) {
-            if (++count > 4) { modelRouterText_ += "..."; break; }
-            modelRouterText_ += juce::String(r.first) + " -> " + juce::String(r.second.name) + "\n";
-        }
-    }
-
-    // Reasoning
-    reasoningText_ = "Traces ativos\nMonitorando tarefas";
-
-    // Cost Monitor
-    auto usage = costs.getUsage();
-    costText_ = "RAM: " + juce::String(usage.ramGB, 1) + " GB\n";
-    costText_ += "CPU: " + juce::String(usage.cpuPercent, 0) + "%\n";
-    costText_ += "Tokens: " + juce::String((int)usage.totalTokens) + "\n";
-    costText_ += "Custo: $" + juce::String(usage.estimatedCost, 4);
+    int numPlugins = PluginManager::getInstance().getInstalledPlugins().size();
+    systemStatsText_ = "Threads: " + juce::String(metrics.activeThreads) + "\n"
+                     + "Plugins: " + juce::String(numPlugins) + "\n"
+                     + "Models: 1";
+    
+    repaint();
 }
 
 void DashboardComponent::refreshAgentList() {

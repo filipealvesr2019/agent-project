@@ -626,8 +626,8 @@ GeneratedCode VisionEngine::generateCode(const UINode& tree, OutputFramework fra
     }
 }
 
-BuildResult VisionEngine::buildCode(const GeneratedCode& code, const std::string& workspace) {
-    BuildResult result;
+VisionBuildResult VisionEngine::buildCode(const GeneratedCode& code, const std::string& workspace) {
+    VisionBuildResult result;
     result.outputPath = workspace + "/build";
 
     try {

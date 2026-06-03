@@ -171,12 +171,12 @@ AgentStateMemory MemoryEngine::getAgentState(const std::string& agentName) {
     return state;
 }
 
-void MemoryEngine::updatePerformance(const PerformanceMetrics& metrics) {
+void MemoryEngine::updatePerformance(const AgentMetrics& metrics) {
     std::cout << "[MemoryEngine] Updated performance for " << metrics.agentName << "\n";
 }
 
-PerformanceMetrics MemoryEngine::getPerformance(const std::string& agentName) {
-    PerformanceMetrics pm;
+AgentMetrics MemoryEngine::getPerformance(const std::string& agentName) {
+    AgentMetrics pm;
     pm.agentName = agentName;
     return pm;
 }

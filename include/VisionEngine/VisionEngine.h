@@ -84,7 +84,7 @@ struct GeneratedCode {
     std::vector<GeneratedFile> files;
 };
 
-struct BuildResult {
+struct VisionBuildResult {
     bool success = false;
     std::string outputPath;
     std::string errorMessage;
@@ -104,7 +104,7 @@ struct VisionJobResult {
     VisionAnalysis analysis;
     UINode uiTree;
     GeneratedCode code;
-    BuildResult build;
+    VisionBuildResult build;
     ValidationResult validation;
     std::vector<std::string> fixLog;
     int fixIterations = 0;
@@ -122,7 +122,7 @@ public:
     VisionAnalysis analyzeImage(const std::string& imagePath);
     UINode reconstructUI(const VisionAnalysis& analysis);
     GeneratedCode generateCode(const UINode& tree, OutputFramework framework);
-    BuildResult buildCode(const GeneratedCode& code, const std::string& workspace);
+    VisionBuildResult buildCode(const GeneratedCode& code, const std::string& workspace);
     ValidationResult validateVisual(const std::string& original, const std::string& rendered);
     VisionAnalysis applyFix(const VisionAnalysis& analysis, const ValidationResult& validation);
 

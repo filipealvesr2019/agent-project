@@ -34,7 +34,9 @@ struct AgentStateMemory {
     std::string lastUpdate;
 };
 
-struct PerformanceMetrics {
+
+
+struct AgentMetrics {
     std::string agentName;
     int totalTasks = 0;
     int successfulTasks = 0;
@@ -71,8 +73,8 @@ public:
     void updateAgentState(const AgentStateMemory& state);
     AgentStateMemory getAgentState(const std::string& agentName);
     
-    void updatePerformance(const PerformanceMetrics& metrics);
-    PerformanceMetrics getPerformance(const std::string& agentName);
+    void updatePerformance(const AgentMetrics& metrics);
+    AgentMetrics getPerformance(const std::string& agentName);
 
 private:
     MemoryEngine(const std::string& dbPath);

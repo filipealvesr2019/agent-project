@@ -86,6 +86,7 @@ target_link_libraries(AgentOS PRIVATE
     WindowsBuildManager
     VisionEngine
     LocalRuntime
+    ToolEngine
     sqlite
 )
 

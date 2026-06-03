@@ -76,7 +76,7 @@ void MemoryAPI::onTaskCompleted(const TaskMemory& task, const std::string& sourc
     }
     
     // 4. Update Performance Metrics
-    PerformanceMetrics pm = MemoryEngine::getInstance().getPerformance(task.agentName);
+    AgentMetrics pm = MemoryEngine::getInstance().getPerformance(task.agentName);
     pm.totalTasks++;
     if (task.status == "Success") pm.successfulTasks++;
     MemoryEngine::getInstance().updatePerformance(pm);
