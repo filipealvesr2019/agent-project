@@ -2,8 +2,20 @@
 
 #include <juce_gui_basics/juce_gui_basics.h>
 #include <juce_gui_extra/juce_gui_extra.h>
+#include <vector>
+#include <string>
 
 namespace AgentOS {
+
+struct MemoryNode
+{
+    int id;
+    std::string label;
+    std::string type; // Task, Decision, Action, Result
+    float confidence; // 0.0 - 1.0
+    std::vector<int> children; // IDs de nós dependentes
+    juce::Point<float> position; // calculado pelo Auto-Layout
+};
 
 class GraphViewComponent : public juce::Component {
 public:
@@ -17,11 +29,20 @@ public:
     void mouseDrag(const juce::MouseEvent& event) override;
     void mouseWheelMove(const juce::MouseEvent& event, const juce::MouseWheelDetails& wheel) override;
 
+    std::function<void(int)> onNodeSelected;
+
 private:
     std::string currentAgent_;
     float zoomFactor_ = 1.0f;
     juce::Point<float> panOffset_{0.0f, 0.0f};
     juce::Point<float> lastMousePos_;
+    
+    std::vector<MemoryNode> nodes_;
+    
+    void loadMemoryForAgent(const std::string& agentId);
+    void calculateAutoLayout();
+    MemoryNode* findNodeAt(juce::Point<float> pos);
+    void drawConnection(juce::Graphics& g, juce::Point<float> start, juce::Point<float> end, juce::Colour colour);
 };
 
 class MemoryExplorerComponent : public juce::Component {
