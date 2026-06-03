@@ -8,12 +8,12 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 include_directories(include)
 
 # Configuração do JUCE
-include(FetchContent)
-FetchContent_Declare(
-    juce
-    URL "https://github.com/juce-framework/JUCE/archive/refs/tags/8.0.0.zip"
-)
-FetchContent_MakeAvailable(juce)
+# include(FetchContent)
+# FetchContent_Declare(
+#     juce
+#     URL "https://github.com/juce-framework/JUCE/archive/refs/tags/8.0.0.zip"
+# )
+# FetchContent_MakeAvailable(juce)
 
 # Define as subpastas (módulos)
 add_subdirectory(src/UI)
@@ -55,50 +55,50 @@ add_subdirectory(src/OrganizationEngine)
 add_subdirectory(src/ReasoningTimelineEngine)
 
 # Executável Principal JUCE
-juce_add_gui_app(AgentOS
-    PRODUCT_NAME "AgentOS"
-    VERSION 1.0.0
-)
+# juce_add_gui_app(AgentOS
+#     PRODUCT_NAME "AgentOS"
+#     VERSION 1.0.0
+# )
+# 
+# target_sources(AgentOS PRIVATE src/main.cpp src/ChangeManagement/ChangeManagement.cpp)
 
-target_sources(AgentOS PRIVATE src/main.cpp src/ChangeManagement/ChangeManagement.cpp)
-
-target_link_libraries(AgentOS PRIVATE 
-    UI
-    AgentEngine 
-    WorkflowEngine
-    EventBus 
-    MemoryEngine 
-    GovernanceEngine
-    Sandbox
-    ChangeManagement
-    AgentProfiles
-    PlannerEngine
-    ModelRouter
-    ReasoningEngine
-    ContextEngine
-    CapabilityEngine
-    MemoryAPI
-    MonitoringEngine
-    KnowledgeGraphEngine
-    MultiAgentCollaboration
-    PluginManager
-    PromptEngine
-    ObjectiveEngine
-    CostMonitor
-    ModelManager
-    WindowsBuildManager
-    VisionEngine
-    LocalRuntime
-    ProjectManager
-    OrganizationEngine
-    ReasoningTimelineEngine
-    ToolEngine
-    sqlite
-)
+# target_link_libraries(AgentOS PRIVATE 
+#     UI
+#     AgentEngine 
+#     WorkflowEngine
+#     EventBus 
+#     MemoryEngine 
+#     GovernanceEngine
+#     Sandbox
+#     ChangeManagement
+#     AgentProfiles
+#     PlannerEngine
+#     ModelRouter
+#     ReasoningEngine
+#     ContextEngine
+#     CapabilityEngine
+#     MemoryAPI
+#     MonitoringEngine
+#     KnowledgeGraphEngine
+#     MultiAgentCollaboration
+#     PluginManager
+#     PromptEngine
+#     ObjectiveEngine
+#     CostMonitor
+#     ModelManager
+#     WindowsBuildManager
+#     VisionEngine
+#     LocalRuntime
+#     ProjectManager
+#     OrganizationEngine
+#     ReasoningTimelineEngine
+#     ToolEngine
+#     sqlite
+# )
 
 add_library(sqlite STATIC libs/sqlite/sqlite3.c)
 target_include_directories(sqlite PUBLIC libs/sqlite)
-target_link_libraries(AgentOS PRIVATE MemoryEngine sqlite)
+# target_link_libraries(AgentOS PRIVATE MemoryEngine sqlite)
 
 # Integration test suite
 option(BUILD_INTEGRATION_TESTS "Build AgentOS integration test suite" OFF)
@@ -511,8 +511,27 @@ if(BUILD_HELL_BREAKER_3)
         src/ExperienceReplayEngine/ExperienceReplayEngine.cpp
         src/RuntimeLearningLayer/RuntimeLearningLayer.cpp
         src/HardwareAdaptiveRuntime/HardwareProfileManager.cpp
+        src/LocalRuntime/LlamaRuntime.cpp
     )
     target_include_directories(AgentOS_HellBreaker3 PRIVATE include libs/sqlite)
-    target_link_libraries(AgentOS_HellBreaker3 PRIVATE sqlite)
+    target_link_libraries(AgentOS_HellBreaker3 PRIVATE sqlite llama)
     target_compile_features(AgentOS_HellBreaker3 PRIVATE cxx_std_20)
 endif()
+
+# Phase 16.17 Real Inference Runtime
+option(BUILD_REAL_INFERENCE_TEST "Build AgentOS Real Inference Test" ON)
+if(BUILD_REAL_INFERENCE_TEST)
+    add_executable(AgentOS_RealInferenceTest
+        tests/test_real_inference.cpp
+        src/LocalRuntime/LlamaRuntime.cpp
+    )
+    target_include_directories(AgentOS_RealInferenceTest PRIVATE include)
+    target_link_libraries(AgentOS_RealInferenceTest PRIVATE llama)
+    target_compile_features(AgentOS_RealInferenceTest PRIVATE cxx_std_20)
+endif()
+
+# --- llama.cpp ---
+set(LLAMA_BUILD_TESTS OFF CACHE BOOL "Disable llama tests")
+set(LLAMA_BUILD_EXAMPLES OFF CACHE BOOL "Disable llama examples")
+set(LLAMA_BUILD_SERVER OFF CACHE BOOL "Disable llama server")
+add_subdirectory(libs/llama.cpp)

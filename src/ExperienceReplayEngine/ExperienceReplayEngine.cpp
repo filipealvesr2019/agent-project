@@ -55,7 +55,24 @@ void ExperienceReplayEngine::recordExperience(const std::string& taskText, const
         ).count();
         record.reuseCount = 0;
         
+        
         replayCache_[hash] = record;
+
+        // Eviction Policy (Max 5000 cached experiences)
+        if (replayCache_.size() > 5000) {
+            // Find the oldest record or one with 0 reuse count
+            std::string oldestHash = "";
+            uint64_t oldestTime = -1; // max uint64
+            for (const auto& [h, rec] : replayCache_) {
+                if (rec.timestamp < oldestTime) {
+                    oldestTime = rec.timestamp;
+                    oldestHash = h;
+                }
+            }
+            if (!oldestHash.empty()) {
+                replayCache_.erase(oldestHash);
+            }
+        }
     }
 }
 

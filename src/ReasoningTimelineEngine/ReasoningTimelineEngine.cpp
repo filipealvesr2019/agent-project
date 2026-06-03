@@ -39,6 +39,15 @@ void ReasoningTimelineEngine::recordThought(const AgentThought& thought) {
     timelineByAgent_[t.agentId].push_back(t);
     allThoughts_.push_back(t);
 
+    // Eviction Policy (Max 1000 per agent, Max 10000 globally) to plateau RAM
+    if (timelineByAgent_[t.agentId].size() > 1000) {
+        timelineByAgent_[t.agentId].erase(timelineByAgent_[t.agentId].begin(), timelineByAgent_[t.agentId].begin() + 100); // Remove oldest 100
+    }
+    
+    if (allThoughts_.size() > 10000) {
+        allThoughts_.erase(allThoughts_.begin(), allThoughts_.begin() + 1000); // Remove oldest 1000
+    }
+
     // Salvar em memória (MemoryEngine) para futura consulta
     ConversationMemory conv;
     conv.agentName = t.agentId;

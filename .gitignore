@@ -38,3 +38,39 @@ CMakeFiles/
 cmake_install.cmake
 Makefile
 *.cmake
+
+
+# SQLite DB
+agent_memory.db
+agent_memory.db-shm
+agent_memory.db-wal
+
+# Apocalypse Log
+apocalypse_log.csv
+
+# Compilados / Build
+build/
+*.exe
+*.obj
+*.pdb
+*.ilk
+*.idb
+*.lib
+
+# Modelos GGUF / grandes
+*.gguf
+*.fp16
+*.safetensors
+
+# Caches e logs
+*.log
+*.tmp
+*.cache
+index.dat
+
+# Submodules (evita incluir diretórios de libs)
+libs/llama.cpp/
+
+# VSCode / IDE
+.vscode/
+*.code-workspace
