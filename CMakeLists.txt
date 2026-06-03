@@ -247,6 +247,18 @@ if(BUILD_LOCALRUNTIME_TESTS)
     target_compile_features(AgentOS_LocalRuntimeTest PRIVATE cxx_std_20)
 endif()
 
+# Phase 11 TEE test suite
+option(BUILD_PHASE11_TESTS "Build AgentOS Phase 11 TEE tests" OFF)
+if(BUILD_PHASE11_TESTS)
+    add_executable(AgentOS_Phase11Test
+        tests/test_phase11_tee.cpp
+        src/ToolEngine/ToolEngine.cpp
+        src/ToolEngine/Phase11Tools.cpp
+    )
+    target_include_directories(AgentOS_Phase11Test PRIVATE include)
+    target_compile_features(AgentOS_Phase11Test PRIVATE cxx_std_20)
+endif()
+
 # Test runner (opcional, compilar com -DBUILD_TESTS=ON)
 option(BUILD_TESTS "Build AgentOS test runner" OFF)
 if(BUILD_TESTS)
