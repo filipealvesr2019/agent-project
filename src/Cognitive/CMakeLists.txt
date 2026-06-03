@@ -5,6 +5,8 @@ add_library(Cognitive STATIC
     MetricsCollector.cpp
     BottleneckDetector.cpp
     AutoRecovery.cpp
+    LearningEngine.cpp
+    ContextManager.cpp
 )
 
 target_include_directories(Cognitive PUBLIC ${CMAKE_SOURCE_DIR}/include)

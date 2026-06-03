@@ -1,0 +1,14 @@
+[
+  {"task":"DSP","model":"Phi-3-mini-4k-instruct-Q6_K.gguf","tps":4.8,"latency":52000,"rating":8,"ts":1780517222},
+  {"task":"DSP","model":"Phi-3-mini-4k-instruct-Q6_K.gguf","tps":4.7,"latency":54000,"rating":7,"ts":1780517222},
+  {"task":"Chat","model":"Phi-3-mini-4k-instruct-Q6_K.gguf","tps":4.6,"latency":58000,"rating":6,"ts":1780517222},
+  {"task":"DSP","model":"gemma-2-9b-it-IQ2_M.gguf","tps":1.8,"latency":140000,"rating":7,"ts":1780517222},
+  {"task":"Coding","model":"Qwen2.5-Coder-3B-Instruct-Q8_0.gguf","tps":4.5,"latency":57000,"rating":9,"ts":1780517222},
+  {"task":"Coding","model":"Qwen2.5-Coder-3B-Instruct-Q8_0.gguf","tps":4.4,"latency":59000,"rating":9,"ts":1780517222},
+  {"task":"Chat","model":"Qwen2.5-Coder-3B-Instruct-Q8_0.gguf","tps":4.3,"latency":61000,"rating":8,"ts":1780517222},
+  {"task":"Coding","model":"OLMo-2-1124-7B-Instruct-Q5_K_L.gguf","tps":2.9,"latency":88000,"rating":6,"ts":1780517222},
+  {"task":"Chat","model":"gemma-2-9b-it-IQ2_M.gguf","tps":1.9,"latency":133000,"rating":9,"ts":1780517222},
+  {"task":"Reasoning","model":"gemma-2-9b-it-IQ2_M.gguf","tps":1.8,"latency":137000,"rating":8,"ts":1780517222},
+  {"task":"Writing","model":"Phi-3-mini-4k-instruct-Q6_K.gguf","tps":4.7,"latency":53000,"rating":7,"ts":1780517222},
+  {"task":"Chat","model":"Phi-3-mini-4k-instruct-Q6_K.gguf","tps":4.8,"latency":51000,"rating":7,"ts":1780517222}
+]

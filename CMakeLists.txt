@@ -565,6 +565,22 @@ if(BUILD_COGNITIVE_TESTS)
     target_include_directories(AgentOS_ObservabilityTest PRIVATE include)
     target_link_libraries(AgentOS_ObservabilityTest PRIVATE Cognitive)
     target_compile_features(AgentOS_ObservabilityTest PRIVATE cxx_std_20)
+
+    # Semana 4: Learning Engine - Score adaptativo + historico de decisoes
+    add_executable(AgentOS_LearningEngineTest
+        tests/test_learning_engine.cpp
+    )
+    target_include_directories(AgentOS_LearningEngineTest PRIVATE include)
+    target_link_libraries(AgentOS_LearningEngineTest PRIVATE Cognitive)
+    target_compile_features(AgentOS_LearningEngineTest PRIVATE cxx_std_20)
+
+    # Semana 5: Context Management Engine - Token budget + trimming
+    add_executable(AgentOS_ContextManagerTest
+        tests/test_context_manager.cpp
+    )
+    target_include_directories(AgentOS_ContextManagerTest PRIVATE include)
+    target_link_libraries(AgentOS_ContextManagerTest PRIVATE Cognitive)
+    target_compile_features(AgentOS_ContextManagerTest PRIVATE cxx_std_20)
 endif()
 
 
