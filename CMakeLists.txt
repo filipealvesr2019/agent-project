@@ -44,6 +44,7 @@ add_subdirectory(src/ObjectiveEngine)
 add_subdirectory(src/CostMonitor)
 add_subdirectory(src/ModelManager)
 add_subdirectory(src/WindowsBuildManager)
+add_subdirectory(src/VisionEngine)
 
 # Executável Principal JUCE
 juce_add_gui_app(AgentOS
@@ -72,6 +73,7 @@ target_link_libraries(AgentOS PRIVATE
     CostMonitor
     ModelManager
     WindowsBuildManager
+    VisionEngine
     sqlite
 )
 
@@ -188,6 +190,17 @@ if(BUILD_WINDOWSBUILD_TESTS)
     )
     target_include_directories(AgentOS_WindowsBuildTest PRIVATE include)
     target_compile_features(AgentOS_WindowsBuildTest PRIVATE cxx_std_20)
+endif()
+
+# VisionEngine test suite
+option(BUILD_VISION_TESTS "Build AgentOS VisionEngine tests" OFF)
+if(BUILD_VISION_TESTS)
+    add_executable(AgentOS_VisionTest
+        tests/test_visionengine.cpp
+        src/VisionEngine/VisionEngine.cpp
+    )
+    target_include_directories(AgentOS_VisionTest PRIVATE include)
+    target_compile_features(AgentOS_VisionTest PRIVATE cxx_std_20)
 endif()
 
 # Test runner (opcional, compilar com -DBUILD_TESTS=ON)

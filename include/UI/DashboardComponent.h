@@ -39,6 +39,12 @@ private:
     juce::String reasoningText_;
     juce::String costText_;
 
+    // Phase 7 Vision
+    juce::Rectangle<int> menuFase7_;
+    juce::String visionText_;
+
+    void paintVisionPanel(juce::Graphics& g, juce::Rectangle<int> area);
+
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(DashboardComponent)
 };
 

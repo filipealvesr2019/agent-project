@@ -5,6 +5,7 @@
 #include "UI/CreateAgentDialog.h"
 #include "UI/ModelManagerDialog.h"
 #include "UI/UI.h"
+#include "VisionEngine/VisionEngine.h"
 #include "ChangeManagement/ChangeManagement.h"
 #include "AgentProfiles/AgentProfiles.h"
 #include "PlannerEngine/PlannerEngine.h"
@@ -56,6 +57,8 @@ DashboardComponent::DashboardComponent() {
     reasoningText_ = "Raciocinio: 0";
     costText_ = "Recursos: aguardando...";
 
+    visionText_ = "Vision: pronto\nPipeline: 0";
+
     startTimerHz(2);
     setSize(1200, 800);
     statusText_ = "Fase 6: Planner + Model Router ativos";
@@ -75,13 +78,17 @@ void DashboardComponent::resized() {
     menuTools_ = {menuFile_.getRight(), menuFile_.getY(), 120, menuH};
     menuSecurity_ = {menuTools_.getRight(), menuTools_.getY(), 100, menuH};
     menuPhase6_ = {menuSecurity_.getRight(), menuSecurity_.getY(), 80, menuH};
-    menuHelp_ = {menuPhase6_.getRight(), menuPhase6_.getY(), 60, menuH};
+    menuFase7_ = {menuPhase6_.getRight(), menuPhase6_.getY(), 60, menuH};
+    menuHelp_ = {menuFase7_.getRight(), menuFase7_.getY(), 60, menuH};
 
     auto statusArea = area.removeFromBottom(statusH);
     logViewer_->setBounds(area.removeFromBottom(130));
 
     // Phase 6 panels row
     auto phase6Area = area.removeFromBottom(phase6PanelH);
+
+    // Phase 7 vision panel below Phase 6
+    auto visionArea = area.removeFromBottom(50);
 
     int sidebarW = 220;
     auto sidebarArea = area.removeFromLeft(sidebarW);
@@ -115,14 +122,17 @@ void DashboardComponent::paint(juce::Graphics& g) {
     drawMenuItem(menuTools_, "Ferramentas");
     drawMenuItem(menuSecurity_, "Seguranca");
     drawMenuItem(menuPhase6_, "Fase 6");
+    drawMenuItem(menuFase7_, "Fase 7");
     drawMenuItem(menuHelp_, "Ajuda");
 
     g.setColour(juce::Colour(0xFF30363d));
     g.drawLine(0, menuH, getWidth(), menuH, 1);
 
-    // Phase 6 panels
+    // Phase 6 panels + Phase 7 panel
     auto phase6Area = area.removeFromBottom(phase6PanelH + 130 + statusH);
     paintPhase6Panels(g, phase6Area);
+    auto visionArea = area.removeFromBottom(50);
+    paintVisionPanel(g, visionArea);
 
     auto statusArea = area.removeFromBottom(statusH);
     g.setColour(juce::Colour(0xFF161b22));
