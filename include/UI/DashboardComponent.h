@@ -7,6 +7,7 @@ namespace AgentOS {
 class SidebarComponent;
 class AgentListComponent;
 class LogViewerComponent;
+class ProjectPanelComponent;
 
 class DashboardComponent : public juce::Component, public juce::Timer {
 public:
@@ -28,7 +29,9 @@ private:
 
     juce::Rectangle<int> menuFile_, menuTools_, menuSecurity_, menuPhase6_, menuHelp_;
     std::unique_ptr<SidebarComponent> sidebar_;
+    std::unique_ptr<juce::TabbedComponent> mainTabs_;
     std::unique_ptr<AgentListComponent> agentList_;
+    std::unique_ptr<ProjectPanelComponent> projectPanel_;
     std::unique_ptr<LogViewerComponent> logViewer_;
     juce::String statusText_;
 

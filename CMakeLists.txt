@@ -50,6 +50,7 @@ add_subdirectory(src/ModelManager)
 add_subdirectory(src/WindowsBuildManager)
 add_subdirectory(src/VisionEngine)
 add_subdirectory(src/LocalRuntime)
+add_subdirectory(src/ProjectManager)
 
 # Executável Principal JUCE
 juce_add_gui_app(AgentOS
@@ -86,6 +87,7 @@ target_link_libraries(AgentOS PRIVATE
     WindowsBuildManager
     VisionEngine
     LocalRuntime
+    ProjectManager
     ToolEngine
     sqlite
 )

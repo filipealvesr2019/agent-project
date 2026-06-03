@@ -4,6 +4,7 @@
 #include "UI/LogViewerComponent.h"
 #include "UI/CreateAgentDialog.h"
 #include "UI/ModelManagerDialog.h"
+#include "UI/ProjectPanelComponent.h"
 #include "UI/UI.h"
 #include "VisionEngine/VisionEngine.h"
 #include "ChangeManagement/ChangeManagement.h"
@@ -24,8 +25,16 @@ DashboardComponent::DashboardComponent() {
     sidebar_ = std::make_unique<SidebarComponent>();
     addAndMakeVisible(sidebar_.get());
 
+    mainTabs_ = std::make_unique<juce::TabbedComponent>(juce::TabbedButtonBar::TabsAtTop);
+    addAndMakeVisible(mainTabs_.get());
+
     agentList_ = std::make_unique<AgentListComponent>();
-    addAndMakeVisible(agentList_.get());
+    projectPanel_ = std::make_unique<ProjectPanelComponent>();
+
+    mainTabs_->addTab("Dashboard", juce::Colour(0xFF161b22), new juce::Component(), false); // Mock for now
+    mainTabs_->addTab("Agents", juce::Colour(0xFF161b22), agentList_.get(), false);
+    mainTabs_->addTab("Projects", juce::Colour(0xFF161b22), projectPanel_.get(), false);
+    mainTabs_->setCurrentTabIndex(1);
 
     logViewer_ = std::make_unique<LogViewerComponent>();
     addAndMakeVisible(logViewer_.get());
@@ -90,7 +99,7 @@ void DashboardComponent::resized() {
     auto sidebarArea = area.removeFromLeft(sidebarW);
     sidebar_->setBounds(sidebarArea);
 
-    agentList_->setBounds(area);
+    mainTabs_->setBounds(area);
 
     // Update status bar
     refreshStatusBar();
