@@ -11,7 +11,6 @@ int main()
     std::cout << " AgentOS: Semana 10 - Autonomous Loop (Frontend API)\n";
     std::cout << "======================================================\n\n";
 
-    // 1. Setup Core dependencies
     ModelRegistry registry;
     registry.loadFromCSV("benchmark_results.csv");
     MemoryEngine memory;
@@ -24,10 +23,8 @@ int main()
     orchestrator.registerAgent(TaskType::Coding, std::make_shared<CodingAgent>("CodingAgent", memory, kb, vs));
     orchestrator.registerAgent(TaskType::Chat, std::make_shared<ChatAgent>("ChatAgent", memory, kb, vs));
 
-    // 2. Setup Loop
     AutonomousLoop loop(orchestrator);
 
-    // Frontend Callback que escuta os eventos gerados assincronamente pelo Orchestrator
     auto frontendCallback = [](const FrontendResponse& res) {
         std::cout << "\n[FRONTEND] Recebeu Resposta (ID: " << res.requestId << "):\n";
         std::cout << "  Texto   : " << res.text << "\n";
@@ -39,13 +36,22 @@ int main()
     };
 
     std::cout << "[1] Iniciando o Autonomous Loop em Background...\n";
-    loop.start(frontendCallback);
+    loop.start();
 
     std::cout << "[2] Submetendo requests assincronos...\n";
-    loop.submitRequest("req-001", "Me fale sobre RAII em C++");
-    loop.submitRequest("req-002", "Como declaro uma variavel em C++?");
+    
+    FrontendRequest req1;
+    req1.id = "req-001";
+    req1.prompt = "Me fale sobre RAII em C++";
+    req1.callback = frontendCallback;
+    loop.submitRequest(req1);
 
-    // Aguarda o processamento
+    FrontendRequest req2;
+    req2.id = "req-002";
+    req2.prompt = "Como declaro uma variavel em C++?";
+    req2.callback = frontendCallback;
+    loop.submitRequest(req2);
+
     std::cout << "[3] Aguardando respostas...\n";
     std::this_thread::sleep_for(std::chrono::seconds(2));
 
@@ -58,3 +64,4 @@ int main()
 
     return 0;
 }
+

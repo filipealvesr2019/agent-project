@@ -14,11 +14,10 @@ AutonomousLoop::~AutonomousLoop()
     stop();
 }
 
-void AutonomousLoop::start(ResponseCallback callback)
+void AutonomousLoop::start()
 {
     if (running_) return;
 
-    onResponse_ = callback;
     running_ = true;
     
     workerThread_ = std::thread([this]() {
@@ -38,16 +37,14 @@ void AutonomousLoop::stop()
     }
 }
 
-void AutonomousLoop::submitRequest(const std::string& requestId, const std::string& prompt)
+void AutonomousLoop::submitRequest(const FrontendRequest& req)
 {
-    FrontendRequest req;
-    req.id = requestId;
-    req.prompt = prompt;
-    req.timestamp = static_cast<uint64_t>(std::time(nullptr));
+    FrontendRequest r = req;
+    r.timestamp = static_cast<uint64_t>(std::time(nullptr));
 
     {
         std::lock_guard<std::mutex> lock(queueMutex_);
-        requestQueue_.push(req);
+        requestQueue_.push(r);
     }
     cv_.notify_one();
 }
@@ -71,37 +68,31 @@ void AutonomousLoop::processQueue()
             requestQueue_.pop();
         }
 
-        // Medição de tempo real de execução (simulada)
         auto start_time = std::chrono::high_resolution_clock::now();
         
-        // --- 1. Orquestrador processa a requisição ---
         std::string result = orchestrator_.processRequest(req.prompt);
         
-        // --- 2. Coleta de métricas pós-inferência ---
         auto end_time = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double, std::milli> elapsed = end_time - start_time;
         
         SystemMetrics metrics = collector.collect();
         
-        // Simulando que o Orchestrator escolheu o "Phi-3" (em código real, isso poderia vir no retorno)
         std::string modelName = "Auto-Selected-Model"; 
         if (result.find("Qwen") != std::string::npos) modelName = "Qwen2.5-Coder-3B";
         else if (result.find("Phi-3") != std::string::npos) modelName = "Phi-3-mini";
 
-        // --- 3. Monta e envia resposta via callback para Frontend ---
-        if (onResponse_) {
+        if (req.callback) {
             FrontendResponse res;
             res.requestId = req.id;
             res.text = result;
             res.modelUsed = modelName;
             
-            // Simulamos TPS como len(result)/segundos
             double secs = elapsed.count() / 1000.0;
-            res.tps = secs > 0 ? (result.length() / 4.0) / secs : 0.0; // 1 token ~ 4 chars
+            res.tps = secs > 0 ? (result.length() / 4.0) / secs : 0.0;
             res.latencyMs = elapsed.count();
             res.ramMB = metrics.freeRamMB;
 
-            onResponse_(res);
+            req.callback(res);
         }
     }
 }

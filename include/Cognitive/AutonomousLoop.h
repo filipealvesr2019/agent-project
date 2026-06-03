@@ -10,13 +10,6 @@
 
 namespace AgentOS {
 
-// Representa um request vindo do frontend
-struct FrontendRequest {
-    std::string id;
-    std::string prompt;
-    uint64_t timestamp;
-};
-
 // Representa a resposta sendo enviada de volta ao frontend
 struct FrontendResponse {
     std::string requestId;
@@ -27,8 +20,13 @@ struct FrontendResponse {
     double ramMB;
 };
 
-// Interface callback para o Frontend (JUCE / CLI)
-using ResponseCallback = std::function<void(const FrontendResponse&)>;
+// Representa um request vindo do frontend com seu proprio callback
+struct FrontendRequest {
+    std::string id;
+    std::string prompt;
+    uint64_t timestamp;
+    std::function<void(const FrontendResponse&)> callback;
+};
 
 class AutonomousLoop
 {
@@ -37,13 +35,13 @@ public:
     ~AutonomousLoop();
 
     // Inicia o loop de processamento em background
-    void start(ResponseCallback callback);
+    void start();
 
     // Para o loop e encerra a thread
     void stop();
 
     // Frontend envia uma requisição para a fila
-    void submitRequest(const std::string& requestId, const std::string& prompt);
+    void submitRequest(const FrontendRequest& req);
 
 private:
     Orchestrator& orchestrator_;
@@ -54,9 +52,8 @@ private:
     std::atomic<bool> running_{false};
     std::thread workerThread_;
 
-    ResponseCallback onResponse_;
-
     void processQueue();
 };
 
 } // namespace AgentOS
+
