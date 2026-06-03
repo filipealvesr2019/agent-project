@@ -157,7 +157,7 @@ std::string Orchestrator::processRequest(const std::string& prompt, PipelineMetr
         it = agents_.find(TaskType::Chat);
     }
 
-    // 3. Context Compression Trigger (Fase 14)
+    // 3. Context Compression Trigger & Semantic Memory (Fase 14 & 15)
     if (sessionContext_.needsCompression()) {
         std::cout << "[Orchestrator] Alerta de contexto (" 
                   << sessionContext_.totalTokens() << "/" << sessionContext_.getBudget().safeContext 
@@ -167,6 +167,13 @@ std::string Orchestrator::processRequest(const std::string& prompt, PipelineMetr
         auto oldTurns = sessionContext_.getOldestTurns(n);
         std::string summary = summarizer_.summarize(oldTurns, idealModel, metrics);
         sessionContext_.replaceOldestWithSummary(n, summary);
+        
+        // Semantic Memory (Fase 15)
+        std::string memId = "semantic_mem_" + std::to_string(std::time(nullptr));
+        vectorSearch_.addDocument(memId, summary);
+        kb_.consolidateTopic("Contexto Longo Resumido", {summary}, {memId});
+        
+        std::cout << "[Semantic Memory] Novo vetor semântico armazenado permanentemente!\n";
     }
 
     // Adiciona o novo prompt ao sessionContext_
