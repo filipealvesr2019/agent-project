@@ -645,6 +645,14 @@ if(BUILD_COGNITIVE_TESTS)
     target_include_directories(AgentOS_ContextCompressionTest PRIVATE include)
     target_link_libraries(AgentOS_ContextCompressionTest PRIVATE Cognitive)
     target_compile_features(AgentOS_ContextCompressionTest PRIVATE cxx_std_20)
+
+    # Fase 16.5: User Profile Dynamic Test
+    add_executable(AgentOS_UserProfileTest
+        tests/test_user_profile_dynamic.cpp
+    )
+    target_include_directories(AgentOS_UserProfileTest PRIVATE include)
+    target_link_libraries(AgentOS_UserProfileTest PRIVATE Cognitive)
+    target_compile_features(AgentOS_UserProfileTest PRIVATE cxx_std_20)
 endif()
 
 

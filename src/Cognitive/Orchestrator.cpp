@@ -108,10 +108,15 @@ Orchestrator::Orchestrator(ModelRegistry& registry,
     
     // Injeta o User Profile logo no boot do Orchestrator
     auto profile = userProfile_.getProfile();
-    std::string sysPrompt = "Usuário: " + profile.name + " | Profissão: " + profile.profession + "\nPreferências: ";
-    for (const auto& p : profile.preferences) sysPrompt += p + "; ";
-    sysPrompt += "\nNotas: ";
-    for (const auto& n : profile.customNotes) sysPrompt += n + "; ";
+    std::string sysPrompt = "PERFIL E PREFERÊNCIAS DO USUÁRIO:\n";
+
+    if (profile.learnedFacts.empty()) {
+        sysPrompt += "Perfil vazio. Aprenda sobre o usuário ao longo da conversa.\n";
+    } else {
+        for (const auto& [category, fact] : profile.learnedFacts) {
+            sysPrompt += "- " + category + ": " + fact + "\n";
+        }
+    }
     
     sessionContext_.setSystemPrompt(sysPrompt);
 }
@@ -175,7 +180,7 @@ std::string Orchestrator::processRequest(const std::string& prompt, PipelineMetr
         
         int n = 4; // Resumir ultimos 4 turnos antigos
         auto oldTurns = sessionContext_.getOldestTurns(n);
-        std::string summary = summarizer_.summarize(oldTurns, idealModel, metrics);
+        std::string summary = summarizer_.summarize(oldTurns, idealModel, &metrics);
         sessionContext_.replaceOldestWithSummary(n, summary);
         
         // Semantic Memory (Fase 15)
@@ -194,7 +199,7 @@ std::string Orchestrator::processRequest(const std::string& prompt, PipelineMetr
     // Para simplificar, passaremos o prompt processado pelo agente.
     std::string finalPrompt;
     if (agents_.count(task)) {
-        finalPrompt = agents_[task]->execute(sessionContext_.buildPrompt(), idealModel, metrics);
+        finalPrompt = agents_[task]->execute(sessionContext_.buildPrompt(), idealModel, &metrics);
     } else {
         finalPrompt = prompt;
     }
