@@ -637,6 +637,14 @@ if(BUILD_COGNITIVE_TESTS)
     target_include_directories(AgentOS_ProfilerTest PRIVATE include)
     target_link_libraries(AgentOS_ProfilerTest PRIVATE Cognitive)
     target_compile_features(AgentOS_ProfilerTest PRIVATE cxx_std_20)
+
+    # Fase 14: Context Compression Test
+    add_executable(AgentOS_ContextCompressionTest
+        tests/test_context_compression.cpp
+    )
+    target_include_directories(AgentOS_ContextCompressionTest PRIVATE include)
+    target_link_libraries(AgentOS_ContextCompressionTest PRIVATE Cognitive)
+    target_compile_features(AgentOS_ContextCompressionTest PRIVATE cxx_std_20)
 endif()
 
 

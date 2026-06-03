@@ -53,6 +53,11 @@ public:
     // Clear all turns (keep system prompt)
     void reset();
 
+    // Compression Utilities (Phase 14)
+    bool needsCompression() const;
+    std::vector<ContextTurn> getOldestTurns(int n) const;
+    void replaceOldestWithSummary(int n, const std::string& summary);
+
     const ContextBudget& getBudget() const { return budget_; }
 
 private:

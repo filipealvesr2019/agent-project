@@ -13,6 +13,7 @@ add_library(Cognitive STATIC
     Orchestrator.cpp
     AutonomousLoop.cpp
     HardwareWatchdog.cpp
+    SummarizerAgent.cpp
     ../LocalRuntime/LlamaRuntime.cpp
 )
 

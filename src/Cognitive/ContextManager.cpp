@@ -66,7 +66,9 @@ void ContextManager::addTurn(const std::string& role, const std::string& content
 void ContextManager::trimToFit()
 {
     // Keep at least 1 turn always (the latest user message)
-    while (totalTokens() > budget_.safeContext && turns_.size() > 1) {
+    // O trim bruto só atua se passarmos do limite ABSOLUTO (maxContext), 
+    // dando espaço para o threshold de safeContext acionar a compressão inteligente.
+    while (totalTokens() > budget_.maxContext && turns_.size() > 1) {
         // Remove the oldest non-system turn
         auto it = turns_.begin();
         while (it != turns_.end() && it->role == "system") ++it;
@@ -97,6 +99,51 @@ void ContextManager::reset()
         std::remove_if(turns_.begin(), turns_.end(),
             [](const ContextTurn& t){ return t.role != "system"; }),
         turns_.end());
+}
+
+bool ContextManager::needsCompression() const
+{
+    return totalTokens() > budget_.safeContext;
+}
+
+std::vector<ContextTurn> ContextManager::getOldestTurns(int n) const
+{
+    std::vector<ContextTurn> result;
+    int count = 0;
+    for (const auto& t : turns_) {
+        if (t.role != "system") {
+            result.push_back(t);
+            count++;
+            if (count >= n) break;
+        }
+    }
+    return result;
+}
+
+void ContextManager::replaceOldestWithSummary(int n, const std::string& summary)
+{
+    int removed = 0;
+    auto it = turns_.begin();
+    while (it != turns_.end() && removed < n) {
+        if (it->role != "system") {
+            it = turns_.erase(it);
+            removed++;
+        } else {
+            ++it;
+        }
+    }
+
+    // Insere o resumo logo apos os prompts de sistema
+    ContextTurn summaryTurn;
+    summaryTurn.role = "system";
+    summaryTurn.content = summary;
+    summaryTurn.estimatedTokens = estimateTokens("system: " + summary);
+
+    auto insertIt = turns_.begin();
+    while (insertIt != turns_.end() && insertIt->role == "system") {
+        ++insertIt;
+    }
+    turns_.insert(insertIt, summaryTurn);
 }
 
 } // namespace AgentOS
