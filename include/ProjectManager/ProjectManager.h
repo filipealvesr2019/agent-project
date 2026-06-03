@@ -10,6 +10,7 @@ struct ProjectInfo {
     std::vector<std::string> agents;
     std::vector<std::string> models;
     std::string description;
+    std::string organizationName;
     bool isOpen = false;
 };
 

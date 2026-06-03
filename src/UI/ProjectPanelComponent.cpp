@@ -1,5 +1,6 @@
 #include "UI/ProjectPanelComponent.h"
 #include "ProjectManager/ProjectManager.h"
+#include "OrganizationEngine/OrganizationEngine.h"
 #include "UI/UI.h"
 
 namespace AgentOS {
@@ -56,10 +57,17 @@ void ProjectPanelComponent::paint(juce::Graphics& g) {
 
 void ProjectPanelComponent::refresh() {
     auto project = ProjectManager::getInstance().getCurrentProject();
+    auto org = OrganizationEngine::getInstance().getOrganization("AgentOS_Global");
+    if (org.name.empty()) {
+        OrganizationEngine::getInstance().createOrganization("AgentOS_Global", "Global virtual company");
+        org = OrganizationEngine::getInstance().getOrganization("AgentOS_Global");
+    }
+
     if (project.isOpen) {
-        statusLabel_.setText("Active Project: " + project.name, juce::dontSendNotification);
+        statusLabel_.setText("Organization: " + org.name + " | Active Project: " + project.name, juce::dontSendNotification);
         
-        juce::String details = "Path: " + juce::String(project.path) + "\n\n";
+        juce::String details = "Organization Desc: " + org.description + "\n";
+        details += "Path: " + juce::String(project.path) + "\n\n";
         details += "Agents Assigned:\n";
         for (const auto& a : project.agents) details += " - " + juce::String(a) + "\n";
         details += "\nModels Assigned:\n";

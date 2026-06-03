@@ -1,0 +1,3 @@
+add_library(OrganizationEngine STATIC OrganizationEngine.cpp)
+target_include_directories(OrganizationEngine PUBLIC ${CMAKE_SOURCE_DIR}/include)
+target_link_libraries(OrganizationEngine PRIVATE ProjectManager)

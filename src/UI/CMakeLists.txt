@@ -24,4 +24,5 @@ target_link_libraries(UI PUBLIC
     Sandbox
     ModelManager
     ProjectManager
+    OrganizationEngine
 )
