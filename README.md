@@ -1,80 +1,63 @@
-# AgentOS — Sistema Operacional de Agentes
+# AgentOS
 
-AgentOS é uma plataforma open-source para orquestração de agentes de IA com planejamento, workflow, governança e sandbox.
+🌎 **Languages**
+- [English](README.md) (Default)
+- [Português Brasileiro](README.pt-BR.md)
 
-## Filosofia
+---
 
-AgentOS foi projetado para ser:
-- **Livre** — MIT License, sem restrições de uso
-- **Modular** — cada engine é uma biblioteca independente
-- **Extensível** — plugins, novas ferramentas, novos modelos
-- **Seguro** — sandbox isola execução, governança monitora ações
-- **Rastreável** — snapshots, change management, auditoria completa
+**AgentOS** is an open-source, multi-agent operating system built in modern C++20. It transitions large language models (LLMs) from simple conversational tools into an autonomous, distributed, and sandboxed execution environment. AgentOS allows multiple specialized agents to collaborate, plan, build, test, and execute software projects dynamically.
 
-## Arquitetura
+## Features
 
-```
-AgentOS
-├── AgentEngine        — Ciclo de vida dos agentes
-├── PlannerEngine      — Decomposição de objetivos em planos
-├── WorkflowEngine     — Orquestração CEO→Managers→Teams
-├── ModelRouter        — Roteamento de modelos de IA por perfil
-├── PromptEngine       — Geração padronizada de prompts
-├── ContextEngine      — Contexto rico (memória + arquivos + histórico)
-├── ReasoningEngine    — Trilhas de raciocínio rastreáveis
-├── ObjectiveEngine    — Hierarquia Objetivo→Epic→Task→SubTask
-├── CostMonitor        — RAM, CPU, tokens, custo estimado
-├── MemoryEngine       — Persistência SQLite (tarefas, arquivos, conversas)
-├── EventBus           — Pub/sub para comunicação entre agentes
-├── ToolEngine         — Ferramentas (read, write, edit, delete, execute)
-├── Sandbox            — Isolamento de workspace por agente
-├── GovernanceEngine   — Compliance, hierarquia, drift, trust score
-├── ChangeManagement   — Snapshots, diff, rollback, emergency stop
-├── UI                 — Dashboard JUCE com painéis em tempo real
-└── ... (GitEngine, ResearchEngine, SemanticSearch, KnowledgeGraph, AST, Verification, Persistence, Monitoring, Workspace)
-```
+- **Multi-Agent Collaboration**: Concurrent agents (e.g., CEO, Developer, Code Architect) coordinating through Directed Acyclic Graphs (DAGs) and an internal communication hub to resolve complex projects.
+- **Plugin Marketplace**: A secure, sandboxed environment for third-party plugins. Installs require signature verification and cryptographic hashes, preventing arbitrary code execution.
+- **Memory & Knowledge Graph**: Agents retain memory through `TaskMemory` and `FileMemory`. Relationships between tasks, agents, and outputs are indexed semantically via embeddings.
+- **Capability Engine**: Automatically profiles tasks and routes them to the best-suited model (e.g., Vision, Audio, Coding, DSP) based on historical success rates.
+- **Tool Execution Engine**: Out-of-the-box support for Git, CMake/Build, testing frameworks, and process execution under a strict `ToolPermissionEngine`.
+- **Local Runtime**: Native integration designed for loading `.gguf` and `.safetensors` via local inference endpoints (like `llama.cpp`), executing in thread-safe contexts without blocking the UI.
 
-## Começando
+## Architecture & Roadmap
 
-### Pré-requisitos
+AgentOS is designed across 16 core architectural phases. We have fully implemented the backend up to Phase 15.
 
+- **Phase 1-4**: Core Engine, Memory, Trust & Governance.
+- **Phase 5-7**: Workflow, Teams, and Vision Engine.
+- **Phase 8-10**: Context Management, Capability Routing, and Local Runtime.
+- **Phase 11-13**: Tool Execution, Memory/Knowledge Graphs, and Multi-Agent Collaboration.
+- **Phase 14-16**: Secure Plugin Marketplace, Autonomous Projects, and UI Dashboards.
+
+## Quick Start
+
+### Dependencies
+- C++20 compatible compiler (MSVC, GCC, Clang)
 - CMake 3.20+
-- C++20
-- Windows (suporte a Linux/macOS em andamento)
+- SQLite (included)
+- JUCE Framework (required for the UI dashboard)
 
-### Compilar
+### Building the Project
 
-```powershell
-cmake -S . -B build
-cmake --build build --target AgentOS --config Debug
+```bash
+mkdir build
+cd build
+cmake ..
+cmake --build . --config Release
 ```
 
-### Testes
+### Running Tests
 
-```powershell
-cmake -S . -B build -DBUILD_TESTS=ON -DBUILD_INTEGRATION_TESTS=ON -DBUILD_WORKFLOW_TESTS=ON -DBUILD_PHASE6_TESTS=ON
-cmake --build build --target AgentOS_Tests --config Debug && .\build\Debug\AgentOS_Tests.exe
-cmake --build build --target AgentOS_Integration --config Debug && .\build\Debug\AgentOS_Integration.exe
-cmake --build build --target AgentOS_WorkflowTest --config Debug && .\build\Debug\AgentOS_WorkflowTest.exe
-cmake --build build --target AgentOS_Phase6 --config Debug && .\build\Debug\AgentOS_Phase6.exe
+We have created an extensive suite of unit and integration tests covering memory stability, multi-threading race conditions, and cryptography validation. 
+
+```bash
+# Example to run the Hardening & Validation Test
+./AgentOS_HardeningTest
 ```
 
-## Roadmap
+## Contributing
 
-| Fase | Descrição | Status |
-|------|-----------|--------|
-| 1 | Core Engine (AgentEngine, EventBus, MemoryEngine, ToolEngine) | ✅ |
-| 2 | UI Foundation (Dashboard, Sidebar, AgentList, LogViewer) | ✅ |
-| 3 | Governance + Sandbox (Compliance, Policy, Workspace) | ✅ |
-| 4 | Change Management & Recovery (Snapshots, Diff, Rollback) | ✅ |
-| 5 | Workflow Engine (CEO→Managers→Teams, decomposição) | ✅ |
-| 6 | AI Integration (Planner, ModelRouter, Prompt, Context, Reasoning, CostMonitor) | ✅ |
-| 7 | Multi-Agent Collaboration | 🔜 |
-| 8 | Plugin Ecosystem & SDK | 🔜 |
-| 9 | Distributed AgentOS | 🔜 |
+We welcome contributions! Please review our `CONTRIBUTING.md` and `CODE_OF_CONDUCT.md` guidelines before opening a pull request.
 
-## Licença
+## License
 
-MIT License — veja [LICENSE](LICENSE).
-
-AgentOS Contributors © 2026
+This project is licensed under the **Apache License 2.0**. See the [LICENSE](LICENSE) file for details.
+Please also review [THIRD_PARTY_LICENSES.md](THIRD_PARTY_LICENSES.md) for the legal details of the open-source libraries used within AgentOS.
