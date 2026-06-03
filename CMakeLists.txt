@@ -401,6 +401,7 @@ if(BUILD_HELL_TESTS)
         src/KnowledgeGraphEngine/KnowledgeGraphEngine.cpp
         src/ContextEngine/ContextEngine.cpp
         src/ModelRouter/ModelRouter.cpp
+        src/LocalRuntime/LocalRuntimeEngine.cpp
     )
     target_include_directories(AgentOS_HellTest PRIVATE include libs/sqlite)
     target_link_libraries(AgentOS_HellTest PRIVATE sqlite)

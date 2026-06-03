@@ -11,6 +11,7 @@
 #include "ReasoningTimelineEngine/ReasoningTimelineEngine.h"
 #include "ContextEngine/ContextEngine.h"
 #include "ModelRouter/ModelRouter.h"
+#include "LocalRuntime/LocalRuntimeEngine.h"
 
 using namespace AgentOS;
 using namespace std::chrono;
@@ -26,7 +27,12 @@ void runHellTest(const std::string& levelName, int numOrgs, int deptsPerOrg, int
     int totalAgents = numOrgs * deptsPerOrg * projectsPerDept * teamsPerProject * agentsPerTeam;
     std::cout << "Target Agents: " << totalAgents << "\n";
 
+    // Load mock models
+    int qwenModelId = LocalRuntimeEngine::getInstance().loadModel("/models/qwen2.5-7b-instruct.gguf", "GGUF");
+    int phiModelId = LocalRuntimeEngine::getInstance().loadModel("/models/phi-4-mini.gguf", "GGUF");
+
     auto start = high_resolution_clock::now();
+    std::vector<std::future<std::string>> pendingTasks;
 
     // 1. Create Organization Hierarchy
     for (int o = 0; o < numOrgs; ++o) {
@@ -53,10 +59,19 @@ void runHellTest(const std::string& levelName, int numOrgs, int deptsPerOrg, int
                         AgentStateMemory state{agentId, "Working", "now"};
                         MemoryEngine::getInstance().updateAgentState(state);
                         
-                        // Register 10 reasoning events
-                        for (int r = 0; r < 10; ++r) {
+                        // Register reasoning events and run models
+                        for (int r = 0; r < 2; ++r) {
                             AgentThought thought{agentId, "Qwen", "System", "Action", "HellTest Reasoning " + std::to_string(r), "now"};
                             ReasoningTimelineEngine::getInstance().recordThought(thought);
+                            
+                            // Emulate prompt execution with real Model Router / Local Runtime
+                            ContextPackage mockContext;
+                            mockContext.tokenCount = 500;
+                            pendingTasks.push_back(LocalRuntimeEngine::getInstance().executeAsync(
+                                (r % 2 == 0) ? qwenModelId : phiModelId,
+                                "Simulated task execution prompt",
+                                mockContext
+                            ));
                         }
                         
                         // Register 5 Knowledge Graph Nodes
@@ -77,7 +92,17 @@ void runHellTest(const std::string& levelName, int numOrgs, int deptsPerOrg, int
     }
 
     auto hierarchyEnd = high_resolution_clock::now();
-    printMetrics("Hierarchy Creation", duration_cast<milliseconds>(hierarchyEnd - start).count());
+    printMetrics("Hierarchy Creation & Dispatch", duration_cast<milliseconds>(hierarchyEnd - start).count());
+
+    // Wait for all LLM executions to finish (simulate actual processing latency)
+    auto llmStart = high_resolution_clock::now();
+    int completedTasks = 0;
+    for (auto& task : pendingTasks) {
+        task.wait(); // Only wait, we don't care about the result for metric purposes
+        completedTasks++;
+    }
+    auto llmEnd = high_resolution_clock::now();
+    printMetrics("LLM Inference (Total Wait Time for " + std::to_string(completedTasks) + " async tasks)", duration_cast<milliseconds>(llmEnd - llmStart).count());
 
     // 2. Query Stress
     auto qStart = high_resolution_clock::now();

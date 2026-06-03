@@ -7,8 +7,8 @@ std::string LocalModelInstance::runTask(const std::string& prompt) {
     busy = true;
     mockCpuUsage = 70.0f;
     
-    // Simulate some work taking time
-    std::this_thread::sleep_for(std::chrono::milliseconds(50));
+    // Simulate some work taking time (lower sleep to avoid out of memory from thread stacks)
+    std::this_thread::sleep_for(std::chrono::milliseconds(1));
     
     busy = false;
     mockCpuUsage = 5.0f;
