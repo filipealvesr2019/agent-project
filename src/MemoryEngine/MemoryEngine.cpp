@@ -13,6 +13,10 @@ bool MemoryEngine::initDatabase() {
         return false;
     }
 
+    // --- Persistence Hardening: Enable WAL Mode ---
+    sqlite3_exec(db, "PRAGMA journal_mode=WAL;", 0, 0, 0);
+    sqlite3_exec(db, "PRAGMA synchronous=NORMAL;", 0, 0, 0);
+
     const char* sqlTasks = R"(
         CREATE TABLE IF NOT EXISTS Tasks(
             taskId INTEGER PRIMARY KEY,
@@ -45,24 +49,74 @@ bool MemoryEngine::initDatabase() {
     sqlite3_exec(db, sqlConv, 0, 0, 0);
 
     sqlite3_close(db);
+    
+    startPersisterThread();
     return true;
 }
 
-void MemoryEngine::addTaskMemory(const TaskMemory& task) {
+MemoryEngine::~MemoryEngine() {
+    stopPersisterThread();
+}
+
+void MemoryEngine::queueSQL(const std::string& sql) {
+    std::lock_guard<std::mutex> lock(queueMutex_);
+    sqlQueue_.push(sql);
+    cv_.notify_one();
+}
+
+void MemoryEngine::startPersisterThread() {
+    if (running_) return;
+    running_ = true;
+    persisterThread_ = std::thread(&MemoryEngine::persisterLoop, this);
+}
+
+void MemoryEngine::stopPersisterThread() {
+    if (!running_) return;
+    running_ = false;
+    cv_.notify_all();
+    if (persisterThread_.joinable()) {
+        persisterThread_.join();
+    }
+}
+
+void MemoryEngine::persisterLoop() {
     sqlite3* db;
-    sqlite3_open(m_dbPath.c_str(), &db);
-    std::string sql = "INSERT OR REPLACE INTO Tasks(taskId, description, status, agentName) VALUES(" +
-                      std::to_string(task.taskId) + ", '" + task.description + "', '" + task.status + "', '" + task.agentName + "');";
-    sqlite3_exec(db, sql.c_str(), 0, 0, 0);
+    if (sqlite3_open(m_dbPath.c_str(), &db) != SQLITE_OK) return;
+    
+    while (running_) {
+        std::vector<std::string> batch;
+        {
+            std::unique_lock<std::mutex> lock(queueMutex_);
+            cv_.wait_for(lock, std::chrono::milliseconds(100), [this]() {
+                return !sqlQueue_.empty() || !running_;
+            });
+            
+            while (!sqlQueue_.empty()) {
+                batch.push_back(sqlQueue_.front());
+                sqlQueue_.pop();
+            }
+        }
+        
+        if (!batch.empty()) {
+            sqlite3_exec(db, "BEGIN TRANSACTION;", 0, 0, 0);
+            for (const auto& sql : batch) {
+                sqlite3_exec(db, sql.c_str(), 0, 0, 0);
+            }
+            sqlite3_exec(db, "COMMIT;", 0, 0, 0);
+        }
+    }
     sqlite3_close(db);
 }
 
+void MemoryEngine::addTaskMemory(const TaskMemory& task) {
+    std::string sql = "INSERT OR REPLACE INTO Tasks(taskId, description, status, agentName) VALUES(" +
+                      std::to_string(task.taskId) + ", '" + task.description + "', '" + task.status + "', '" + task.agentName + "');";
+    queueSQL(sql);
+}
+
 void MemoryEngine::updateTaskMemory(int taskId, const std::string& status) {
-    sqlite3* db;
-    sqlite3_open(m_dbPath.c_str(), &db);
     std::string sql = "UPDATE Tasks SET status='" + status + "' WHERE taskId=" + std::to_string(taskId) + ";";
-    sqlite3_exec(db, sql.c_str(), 0, 0, 0);
-    sqlite3_close(db);
+    queueSQL(sql);
 }
 
 std::vector<TaskMemory> MemoryEngine::getAgentTasks(const std::string& agentName) {
@@ -88,20 +142,14 @@ std::vector<TaskMemory> MemoryEngine::getAgentTasks(const std::string& agentName
 }
 
 void MemoryEngine::addFileMemory(const FileMemory& file) {
-    sqlite3* db;
-    sqlite3_open(m_dbPath.c_str(), &db);
     std::string sql = "INSERT INTO Files(path, lastContent, lastModified) VALUES('" +
                       file.path + "', '" + file.lastContent + "', '" + file.lastModified + "');";
-    sqlite3_exec(db, sql.c_str(), 0, 0, 0);
-    sqlite3_close(db);
+    queueSQL(sql);
 }
 
 void MemoryEngine::updateFileMemory(const FileMemory& file) {
-    sqlite3* db;
-    sqlite3_open(m_dbPath.c_str(), &db);
     std::string sql = "UPDATE Files SET lastContent='" + file.lastContent + "', lastModified='" + file.lastModified + "' WHERE path='" + file.path + "';";
-    sqlite3_exec(db, sql.c_str(), 0, 0, 0);
-    sqlite3_close(db);
+    queueSQL(sql);
 }
 
 FileMemory MemoryEngine::getFileMemory(const std::string& path) {
@@ -124,12 +172,9 @@ FileMemory MemoryEngine::getFileMemory(const std::string& path) {
 }
 
 void MemoryEngine::addConversation(const ConversationMemory& conv) {
-    sqlite3* db;
-    sqlite3_open(m_dbPath.c_str(), &db);
     std::string sql = "INSERT INTO Conversations(agentName, prompt, response, timestamp) VALUES('" +
                       conv.agentName + "', '" + conv.prompt + "', '" + conv.response + "', '" + conv.timestamp + "');";
-    sqlite3_exec(db, sql.c_str(), 0, 0, 0);
-    sqlite3_close(db);
+    queueSQL(sql);
 }
 
 std::vector<ConversationMemory> MemoryEngine::getAgentConversations(const std::string& agentName) {
@@ -160,10 +205,15 @@ void MemoryEngine::rollbackFileMemory(const std::string& path, int version) {
 }
 
 void MemoryEngine::updateAgentState(const AgentStateMemory& state) {
-    std::cout << "[MemoryEngine] Updated state of agent " << state.agentName << " to " << state.state << "\n";
+    std::lock_guard<std::mutex> lock(stateMutex_);
+    stateCache_[state.agentName] = state;
 }
 
 AgentStateMemory MemoryEngine::getAgentState(const std::string& agentName) {
+    std::lock_guard<std::mutex> lock(stateMutex_);
+    if (stateCache_.find(agentName) != stateCache_.end()) {
+        return stateCache_[agentName];
+    }
     AgentStateMemory state;
     state.agentName = agentName;
     state.state = "Idle";

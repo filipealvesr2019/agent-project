@@ -1,6 +1,12 @@
 #pragma once
 #include <string>
 #include <vector>
+#include <thread>
+#include <mutex>
+#include <condition_variable>
+#include <queue>
+#include <atomic>
+#include <map>
 
 namespace AgentOS {
 
@@ -78,13 +84,29 @@ public:
 
 private:
     MemoryEngine(const std::string& dbPath);
-    ~MemoryEngine() = default;
+    ~MemoryEngine();
 
     MemoryEngine(const MemoryEngine&) = delete;
     MemoryEngine& operator=(const MemoryEngine&) = delete;
 
     std::string m_dbPath;
     void executeSQL(const std::string& sql);
+    
+    // --- Persistence Hardening ---
+    void startPersisterThread();
+    void stopPersisterThread();
+    void persisterLoop();
+    void queueSQL(const std::string& sql);
+    
+    std::mutex queueMutex_;
+    std::condition_variable cv_;
+    std::queue<std::string> sqlQueue_;
+    std::atomic<bool> running_{false};
+    std::thread persisterThread_;
+    
+    // Agent State Cache
+    std::map<std::string, AgentStateMemory> stateCache_;
+    std::mutex stateMutex_;
 };
 
 } // namespace AgentOS
