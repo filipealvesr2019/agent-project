@@ -605,6 +605,14 @@ if(BUILD_COGNITIVE_TESTS)
     target_include_directories(AgentOS_VectorSearchTest PRIVATE include)
     target_link_libraries(AgentOS_VectorSearchTest PRIVATE Cognitive)
     target_compile_features(AgentOS_VectorSearchTest PRIVATE cxx_std_20)
+
+    # Semana 9: Multi-Agent Orchestrator - Agentes especializados
+    add_executable(AgentOS_MultiAgentTest
+        tests/test_multi_agent.cpp
+    )
+    target_include_directories(AgentOS_MultiAgentTest PRIVATE include)
+    target_link_libraries(AgentOS_MultiAgentTest PRIVATE Cognitive)
+    target_compile_features(AgentOS_MultiAgentTest PRIVATE cxx_std_20)
 endif()
 
 
