@@ -1,4 +1,5 @@
 #include "SurrogateDecisionLayer/SurrogateRouter.h"
+#include "RuntimeLearningLayer/RuntimeLearningLayer.h"
 #include <algorithm>
 #include <cctype>
 
@@ -24,6 +25,18 @@ RoutingDecision SurrogateRouter::classify(const std::string& taskText) {
     std::transform(lowerTask.begin(), lowerTask.end(), lowerTask.begin(), ::tolower);
 
     RoutingDecision decision;
+    
+    // 0. Check Runtime Learning Layer for Active Rules
+    auto activeRules = RuntimeLearningLayer::getInstance().getActiveRules();
+    for (const auto& rule : activeRules) {
+        if (lowerTask.find(rule.pattern) != std::string::npos) {
+            decision.level = rule.level;
+            decision.selectedModel = rule.targetModel;
+            decision.suggestedTool = rule.targetTool;
+            decision.confidence = rule.confidence;
+            return decision; // Fast path!
+        }
+    }
     
     // Simple heuristic-based surrogate rules for demonstration
 

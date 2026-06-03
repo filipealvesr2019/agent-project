@@ -477,3 +477,15 @@ if(BUILD_EXPERIENCE_REPLAY_TEST)
     target_include_directories(AgentOS_ExperienceReplayTest PRIVATE include)
     target_compile_features(AgentOS_ExperienceReplayTest PRIVATE cxx_std_20)
 endif()
+
+# Phase 16.14 Runtime Learning Layer
+option(BUILD_RUNTIME_LEARNING_TEST "Build AgentOS Runtime Learning Test" ON)
+if(BUILD_RUNTIME_LEARNING_TEST)
+    add_executable(AgentOS_RuntimeLearningTest
+        tests/test_runtime_learning.cpp
+        src/SurrogateDecisionLayer/SurrogateRouter.cpp
+        src/RuntimeLearningLayer/RuntimeLearningLayer.cpp
+    )
+    target_include_directories(AgentOS_RuntimeLearningTest PRIVATE include)
+    target_compile_features(AgentOS_RuntimeLearningTest PRIVATE cxx_std_20)
+endif()
