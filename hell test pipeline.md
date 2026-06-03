@@ -263,3 +263,387 @@ Flow Description:
 7. All components scale according to configured HellTest level (Bronze/Silver/Gold/Platinum).
 
 ```
+
+Exatamente. Antes de documentar qualquer número como "oficial", você precisa ter certeza do que foi medido.
+
+Hoje eu classificaria os resultados assim:
+
+```text
+Hell Test 1.0
+Status: Infraestrutura validada
+
+✓ Workflow
+✓ Organizations
+✓ Departments
+✓ Projects
+✓ Teams
+✓ Agents
+✓ Memory Engine
+✓ Timeline Engine
+✓ Knowledge Graph
+✓ SQLite WAL
+✓ Async Runtime
+
+✗ Inferência real de LLM
+✗ Consumo real de VRAM
+✗ Throughput real de tokens
+✗ Saturação de GPU
+✗ Saturação de CPU
+```
+
+Então eu não colocaria esses números no README principal ainda.
+
+---
+
+# Prompt para auditoria dos resultados
+
+Quando terminar um teste, use algo parecido com:
+
+# AgentOS Performance Audit
+
+Analyze the Hell Test results and determine whether the benchmark represents real-world production performance.
+
+Validate:
+
+1. Were real models loaded successfully?
+2. Were prompts actually executed?
+3. Were output tokens generated?
+4. Was GPU memory consumed?
+5. Was CPU utilization measured?
+6. Was VRAM utilization measured?
+7. Was MemoryEngine persistence active?
+8. Was TimelineEngine active?
+9. Was KnowledgeGraphEngine active?
+10. Were results affected by mocks?
+
+Classify benchmark confidence:
+
+* Level A: Pure Mock
+* Level B: Infrastructure Only
+* Level C: Hybrid Runtime
+* Level D: Real Inference
+* Level E: Production Grade
+
+Provide:
+
+* Bottlenecks
+* Invalid assumptions
+* Missing measurements
+* Scalability risks
+* Recommended next benchmark
+
+Never assume a benchmark is valid without proving model execution occurred.
+
+---
+
+# Hell Test 2.0 — Hell Breaker
+
+Agora estamos entrando no território realmente interessante.
+
+O problema do Hell Test atual é:
+
+```text
+5000 agentes
+↓
+2 modelos
+↓
+Qwen
+Phi
+```
+
+Isso não representa um sistema real.
+
+---
+
+# Hell Breaker
+
+Objetivo:
+
+```text
+Quebrar o AgentOS.
+```
+
+Não é brincadeira.
+
+O objetivo é descobrir:
+
+```text
+O que quebra primeiro?
+```
+
+* RAM?
+* VRAM?
+* SQLite?
+* Timeline?
+* GPU?
+* Context Engine?
+* Scheduler?
+* UI?
+
+---
+
+# Cenário
+
+```text
+50 modelos
+10 organizações
+
+100 departamentos
+
+1000 projetos
+
+5000 times
+
+50000 agentes
+```
+
+---
+
+# Pool de Modelos
+
+Exemplo:
+
+```text
+10x Phi-4 Mini
+10x Qwen 2.5 7B
+5x DeepSeek Coder
+5x Gemma
+5x Mistral
+5x Llama
+5x OCR Models
+5x Audio Models
+```
+
+Total:
+
+```text
+50 modelos
+```
+
+---
+
+# O problema
+
+Você não vai conseguir carregar:
+
+```text
+50 modelos 7B
+```
+
+na RAM de uma máquina comum.
+
+Então nasce uma fase nova.
+
+---
+
+# Model Pool Manager
+
+Em vez de:
+
+```text
+Agent
+ ↓
+Modelo
+```
+
+vira:
+
+```text
+Agent
+ ↓
+Capability Engine
+ ↓
+Model Pool Manager
+ ↓
+Modelo Disponível
+```
+
+---
+
+Exemplo:
+
+```text
+React Agent
+ ↓
+precisa código
+ ↓
+Pool
+ ↓
+Qwen Coder #3
+```
+
+---
+
+# O que medir
+
+## Model Load Time
+
+```text
+Carregar modelo
+
+2s
+5s
+20s
+```
+
+---
+
+## VRAM
+
+```text
+Modelo 1 = 4GB
+Modelo 2 = 6GB
+Modelo 3 = 8GB
+```
+
+---
+
+## Throughput
+
+```text
+Tokens/s
+```
+
+---
+
+## Context Pressure
+
+```text
+8k
+16k
+32k
+64k
+128k
+```
+
+---
+
+## Concurrent Requests
+
+```text
+1
+10
+100
+1000
+10000
+```
+
+---
+
+# Hell Breaker Levels
+
+## Bronze
+
+```text
+2 modelos
+100 agentes
+```
+
+---
+
+## Silver
+
+```text
+10 modelos
+1000 agentes
+```
+
+---
+
+## Gold
+
+```text
+25 modelos
+5000 agentes
+```
+
+---
+
+## Platinum
+
+```text
+50 modelos
+10000 agentes
+```
+
+---
+
+## Apocalypse
+
+```text
+50 modelos
+
+50000 agentes
+
+100000 projetos
+
+1000000 tasks
+
+24 horas contínuas
+```
+
+---
+
+# O teste mais importante
+
+Eu criaria um teste chamado:
+
+```text
+Memory Leak Apocalypse
+```
+
+Duração:
+
+```text
+24 horas
+```
+
+Objetivo:
+
+```text
+descobrir:
+
+- vazamento de RAM
+- vazamento de handles
+- vazamento de threads
+- crescimento infinito do timeline
+- crescimento infinito do knowledge graph
+```
+
+Porque muitos sistemas passam em:
+
+```text
+5 minutos
+```
+
+e quebram em:
+
+```text
+12 horas
+```
+
+---
+
+# Minha recomendação
+
+Antes do Monitoring Center, eu criaria uma fase intermediária:
+
+```text
+Fase 16.8
+Scalability & Benchmark Framework
+```
+
+com:
+
+```text
+Benchmark Runner
+Benchmark Reports
+Model Pool Manager
+Hell Breaker
+Memory Leak Apocalypse
+24h Stability Test
+VRAM Profiler
+Token Throughput Profiler
+```
+
+Porque quando esses testes passarem, aí sim você vai ter números que valem a pena colocar na documentação e no marketing do AgentOS. Nesse ponto você não estará mais supondo que ele escala — você terá evidência medida.
