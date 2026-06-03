@@ -1,0 +1,3 @@
+{"id":"mem-1780518068-1001","taskType":"DSP","prompt":"O que e um Fuzz Face?","response":"Um pedal de fuzz...","modelUsed":"Phi-3-mini-4k-instruct-Q6_K.gguf","timestamp":1780518068}
+{"id":"mem-1780518068-1002","taskType":"Coding","prompt":"Implemente thread pool.","response":"```cpp\nclass ThreadPool...\n```","modelUsed":"Qwen2.5-Coder-3B-Instruct-Q8_0.gguf","timestamp":1780518068}
+{"id":"mem-1780518068-1003","taskType":"DSP","prompt":"Como funciona um Tone Stack?","response":"Filtro passivo...","modelUsed":"Phi-3-mini-4k-instruct-Q6_K.gguf","timestamp":1780518068}

@@ -7,6 +7,7 @@ add_library(Cognitive STATIC
     AutoRecovery.cpp
     LearningEngine.cpp
     ContextManager.cpp
+    MemoryEngine.cpp
 )
 
 target_include_directories(Cognitive PUBLIC ${CMAKE_SOURCE_DIR}/include)

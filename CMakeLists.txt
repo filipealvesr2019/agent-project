@@ -581,6 +581,14 @@ if(BUILD_COGNITIVE_TESTS)
     target_include_directories(AgentOS_ContextManagerTest PRIVATE include)
     target_link_libraries(AgentOS_ContextManagerTest PRIVATE Cognitive)
     target_compile_features(AgentOS_ContextManagerTest PRIVATE cxx_std_20)
+
+    # Semana 6: Episodic Memory Engine - Persistencia jsonl
+    add_executable(AgentOS_MemoryEngineTest
+        tests/test_memory_engine.cpp
+    )
+    target_include_directories(AgentOS_MemoryEngineTest PRIVATE include)
+    target_link_libraries(AgentOS_MemoryEngineTest PRIVATE Cognitive)
+    target_compile_features(AgentOS_MemoryEngineTest PRIVATE cxx_std_20)
 endif()
 
 
