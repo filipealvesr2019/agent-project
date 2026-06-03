@@ -1,5 +1,7 @@
 add_library(Cognitive STATIC
     ModelRegistry.cpp
+    TaskAnalyzer.cpp
+    SurrogateRouter.cpp
 )
 
 target_include_directories(Cognitive PUBLIC ${CMAKE_SOURCE_DIR}/include)

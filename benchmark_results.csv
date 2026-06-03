@@ -13,3 +13,5 @@ OLMo-2-1124-7B-Instruct-Q5_K_L.gguf,Cenario B,Prompt 2,87412,256,2.92866,0,5879,
 OLMo-2-1124-7B-Instruct-Q5_K_L.gguf,Cenario B,Prompt 3,93487,256,2.73835,0,5880,OK
 Qwen2.5-7B-Instruct-Q8_0.gguf,Cenario B,Prompt 1,126485,256,2.02396,0,7361,OK
 Qwen2.5-7B-Instruct-Q8_0.gguf,Cenario B,Prompt 2,139803,256,1.83115,0,7367,OK
+Qwen2.5-7B-Instruct-Q8_0.gguf,Cenario B,Prompt 3,140295,256,1.82473,0,7367,OK
+gemma-2-9b-it-Q6_K_L.gguf,Cenario C,Prompt 1,119575,256,2.14092,0,8186,OK
