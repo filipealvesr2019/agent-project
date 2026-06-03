@@ -42,6 +42,7 @@ add_subdirectory(src/ContextEngine)
 add_subdirectory(src/CapabilityEngine)
 add_subdirectory(src/MemoryAPI)
 add_subdirectory(src/MultiAgentCollaboration)
+add_subdirectory(src/PluginManager)
 add_subdirectory(src/PromptEngine)
 add_subdirectory(src/ObjectiveEngine)
 add_subdirectory(src/CostMonitor)
@@ -76,6 +77,7 @@ target_link_libraries(AgentOS PRIVATE
     MemoryAPI
     KnowledgeGraphEngine
     MultiAgentCollaboration
+    PluginManager
     PromptEngine
     ObjectiveEngine
     CostMonitor
@@ -287,6 +289,18 @@ if(BUILD_PHASE13_TESTS)
     )
     target_include_directories(AgentOS_MultiAgentTest PRIVATE include)
     target_compile_features(AgentOS_MultiAgentTest PRIVATE cxx_std_20)
+endif()
+
+# Phase 15 Plugin Marketplace test suite
+option(BUILD_PHASE15_TESTS "Build AgentOS Phase 15 tests" OFF)
+if(BUILD_PHASE15_TESTS)
+    add_executable(AgentOS_PluginMarketplaceTest
+        tests/test_pluginmarketplace.cpp
+        src/PluginManager/PluginManager.cpp
+        src/ToolEngine/Phase11Tools.cpp
+    )
+    target_include_directories(AgentOS_PluginMarketplaceTest PRIVATE include)
+    target_compile_features(AgentOS_PluginMarketplaceTest PRIVATE cxx_std_20)
 endif()
 
 # Test runner (opcional, compilar com -DBUILD_TESTS=ON)
