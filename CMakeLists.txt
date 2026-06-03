@@ -46,6 +46,7 @@ add_subdirectory(src/CostMonitor)
 add_subdirectory(src/ModelManager)
 add_subdirectory(src/WindowsBuildManager)
 add_subdirectory(src/VisionEngine)
+add_subdirectory(src/LocalRuntime)
 
 # Executável Principal JUCE
 juce_add_gui_app(AgentOS
@@ -76,6 +77,7 @@ target_link_libraries(AgentOS PRIVATE
     ModelManager
     WindowsBuildManager
     VisionEngine
+    LocalRuntime
     sqlite
 )
 
@@ -231,6 +233,18 @@ if(BUILD_CAPABILITY_TESTS)
     )
     target_include_directories(AgentOS_CapabilityTest PRIVATE include)
     target_compile_features(AgentOS_CapabilityTest PRIVATE cxx_std_20)
+endif()
+
+# LocalRuntime test suite
+option(BUILD_LOCALRUNTIME_TESTS "Build AgentOS LocalRuntime tests" OFF)
+if(BUILD_LOCALRUNTIME_TESTS)
+    add_executable(AgentOS_LocalRuntimeTest
+        tests/test_localruntime.cpp
+        src/LocalRuntime/LocalRuntimeEngine.cpp
+    )
+    target_include_directories(AgentOS_LocalRuntimeTest PRIVATE include libs/sqlite)
+    target_link_libraries(AgentOS_LocalRuntimeTest PRIVATE sqlite)
+    target_compile_features(AgentOS_LocalRuntimeTest PRIVATE cxx_std_20)
 endif()
 
 # Test runner (opcional, compilar com -DBUILD_TESTS=ON)
