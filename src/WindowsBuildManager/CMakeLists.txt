@@ -1,0 +1,3 @@
+add_library(WindowsBuildManager STATIC WindowsBuildManager.cpp)
+target_include_directories(WindowsBuildManager PUBLIC ${CMAKE_SOURCE_DIR}/include)
+target_compile_features(WindowsBuildManager PRIVATE cxx_std_20)

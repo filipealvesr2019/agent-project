@@ -43,6 +43,7 @@ add_subdirectory(src/PromptEngine)
 add_subdirectory(src/ObjectiveEngine)
 add_subdirectory(src/CostMonitor)
 add_subdirectory(src/ModelManager)
+add_subdirectory(src/WindowsBuildManager)
 
 # Executável Principal JUCE
 juce_add_gui_app(AgentOS
@@ -70,6 +71,7 @@ target_link_libraries(AgentOS PRIVATE
     ObjectiveEngine
     CostMonitor
     ModelManager
+    WindowsBuildManager
     sqlite
 )
 
@@ -99,6 +101,7 @@ if(BUILD_INTEGRATION_TESTS)
         src/ObjectiveEngine/ObjectiveEngine.cpp
         src/CostMonitor/CostMonitor.cpp
         src/ModelManager/ModelManager.cpp
+        src/WindowsBuildManager/WindowsBuildManager.cpp
     )
     target_include_directories(AgentOS_Integration PRIVATE include libs/sqlite)
     target_link_libraries(AgentOS_Integration PRIVATE sqlite)
@@ -127,6 +130,7 @@ if(BUILD_WORKFLOW_TESTS)
         src/ObjectiveEngine/ObjectiveEngine.cpp
         src/CostMonitor/CostMonitor.cpp
         src/ModelManager/ModelManager.cpp
+        src/WindowsBuildManager/WindowsBuildManager.cpp
     )
     target_include_directories(AgentOS_WorkflowTest PRIVATE include libs/sqlite)
     target_link_libraries(AgentOS_WorkflowTest PRIVATE sqlite)
@@ -155,6 +159,7 @@ if(BUILD_PHASE6_TESTS)
         src/ObjectiveEngine/ObjectiveEngine.cpp
         src/CostMonitor/CostMonitor.cpp
         src/ModelManager/ModelManager.cpp
+        src/WindowsBuildManager/WindowsBuildManager.cpp
     )
     target_include_directories(AgentOS_Phase6 PRIVATE include libs/sqlite)
     target_link_libraries(AgentOS_Phase6 PRIVATE sqlite)
@@ -167,10 +172,22 @@ if(BUILD_MODELMANAGER_TESTS)
     add_executable(AgentOS_ModelManagerTest
         tests/test_modelmanager.cpp
         src/ModelManager/ModelManager.cpp
+        src/WindowsBuildManager/WindowsBuildManager.cpp
     )
     target_include_directories(AgentOS_ModelManagerTest PRIVATE include)
     target_compile_features(AgentOS_ModelManagerTest PRIVATE cxx_std_20)
     target_compile_options(AgentOS_ModelManagerTest PRIVATE /EHsc)
+endif()
+
+# WindowsBuildManager test suite
+option(BUILD_WINDOWSBUILD_TESTS "Build AgentOS WindowsBuildManager tests" OFF)
+if(BUILD_WINDOWSBUILD_TESTS)
+    add_executable(AgentOS_WindowsBuildTest
+        tests/test_windowsbuild.cpp
+        src/WindowsBuildManager/WindowsBuildManager.cpp
+    )
+    target_include_directories(AgentOS_WindowsBuildTest PRIVATE include)
+    target_compile_features(AgentOS_WindowsBuildTest PRIVATE cxx_std_20)
 endif()
 
 # Test runner (opcional, compilar com -DBUILD_TESTS=ON)

@@ -50,6 +50,7 @@ struct BuildAuditEntry {
     BuildBlockReason blockReason{ BuildBlockReason::None };
     std::string errorMessage;
     std::string timestamp;
+    std::string path;
     int exitCode{ -1 };
     bool dryRun{ false };
 };
@@ -61,12 +62,12 @@ public:
     void removeAuthorization(const std::string& hash);
     std::vector<BuildAuthorization> getAllAuthorizations() const;
     void clear();
+    void loadFromDisk();
+    std::string getStoreFilePath() const;
 
 private:
     std::unordered_map<std::string, BuildAuthorization> store_;
-    std::string getStoreFilePath() const;
     void persistToDisk() const;
-    void loadFromDisk();
 };
 
 class WindowsBuildManager {

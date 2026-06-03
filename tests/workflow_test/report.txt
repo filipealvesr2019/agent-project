@@ -1,4 +1,4 @@
 AgentOS Workflow Test Report
 ===========================
-Verificacoes: 17 | Passou: 17 | Falhou: 0
+Verificacoes: 17 | Passou: 16 | Falhou: 1
 Detalhes em: tests/workflow_test/workflow_test.log

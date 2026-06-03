@@ -1,0 +1,7 @@
+# AgentOS Build Authorizations
+# hash|agentName|workspace|command|path|compilerVersion|authorized|timestamp
+1fa411848c8ef6d9|Alice|C:\agentos\workspaces\alice|alice_build.exe|C:\agentos\workspaces\alice\src||1|
+d15d29a27fc95e78|StateAgent|C:\agentos\workspaces\state|state_test.exe|C:\agentos\workspaces\state\src||1|2026-01-01 00:00:00
+bfbe10f5a3d77cdc|MultiAgent|C:\agentos\workspaces\multi|build_a.exe|C:\agentos\workspaces\multi\src||1|2026-01-01 00:00:00
+e19bd571e051d153|MultiAgent|C:\agentos\workspaces\multi|build_b.exe|C:\agentos\workspaces\multi\src||1|2026-01-01 00:00:00
+1c4cab1dfc94315e|PreAgent|C:\agentos\workspaces\pre|pre_build.exe|C:\agentos\workspaces\pre\src||1|2026-01-01 00:00:00

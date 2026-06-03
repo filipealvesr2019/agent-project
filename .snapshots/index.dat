@@ -105,3 +105,28 @@
 105|TestAgent|Tue Jun  2 23:03:40 2026|tests/phase6_plan_rollback.txt|Plan rollback test|48f82f08|48
 106|Becca|Tue Jun  2 23:03:40 2026|tests/phase6_ceo_approval.txt|CEO approval test|ff95d67b|17
 107|Becca|Tue Jun  2 23:03:40 2026|tests/phase6_ceo_approval.txt|Change proposal #1|ff95d67b|17
+108|Dev1|Tue Jun  2 23:14:12 2026|test_cm01.txt|teste inicial|5ad2169b|17
+109|Dev1|Tue Jun  2 23:14:12 2026|test_cm01.txt|segundo snapshot|bae44c32|17
+110|Dev1|Tue Jun  2 23:14:12 2026|test_cm03.txt|Change proposal #1|5ad2169b|17
+111|Dev1|Tue Jun  2 23:14:12 2026|test_cm04.txt|Change proposal #2|5ad2169b|17
+112|Dev1|Tue Jun  2 23:14:12 2026|test_cm05.txt|antes da alteracao|5ad2169b|17
+113|SYSTEM|Tue Jun  2 23:14:12 2026|EMERGENCY|Falha crítica na execução|00001505|0
+114|Dev1|Tue Jun  2 23:14:12 2026|test_cm07a.txt|snap A|80562edb|10
+115|Dev1|Tue Jun  2 23:14:12 2026|test_cm07b.txt|snap B|8460bffc|10
+116|Becca|Tue Jun  2 23:14:20 2026|tests/test_snapshot.txt|Antes da alteracao|9a65520d|27
+117|Becca|Tue Jun  2 23:14:20 2026|tests/test_snapshot.txt|Change proposal #1|9a65520d|27
+118|SYSTEM|Tue Jun  2 23:14:20 2026|EMERGENCY|Falha critica simulada - agente Becca em loop|00001505|0
+119|Becca|Tue Jun  2 23:14:41 2026|tests/workflow_test/important.txt|Antes da alteracao critica|3bef2aa1|27
+120|Becca|Tue Jun  2 23:14:41 2026|tests/workflow_test/important.txt|Change proposal #1|3bef2aa1|27
+121|Becca|Tue Jun  2 23:16:25 2026|tests/workflow_test/important.txt|Antes da alteracao critica|3bef2aa1|27
+122|Becca|Tue Jun  2 23:16:25 2026|tests/workflow_test/important.txt|Change proposal #1|3bef2aa1|27
+123|Becca|Tue Jun  2 23:16:47 2026|tests/workflow_test/important.txt|Antes da alteracao critica|3bef2aa1|27
+124|Becca|Tue Jun  2 23:16:47 2026|tests/workflow_test/important.txt|Change proposal #1|3bef2aa1|27
+125|Dev1|Tue Jun  2 23:17:02 2026|test_cm01.txt|teste inicial|5ad2169b|17
+126|Dev1|Tue Jun  2 23:17:02 2026|test_cm01.txt|segundo snapshot|bae44c32|17
+127|Dev1|Tue Jun  2 23:17:02 2026|test_cm03.txt|Change proposal #1|5ad2169b|17
+128|Dev1|Tue Jun  2 23:17:02 2026|test_cm04.txt|Change proposal #2|5ad2169b|17
+129|Dev1|Tue Jun  2 23:17:02 2026|test_cm05.txt|antes da alteracao|5ad2169b|17
+130|SYSTEM|Tue Jun  2 23:17:02 2026|EMERGENCY|Falha crítica na execução|00001505|0
+131|Dev1|Tue Jun  2 23:17:02 2026|test_cm07a.txt|snap A|80562edb|10
+132|Dev1|Tue Jun  2 23:17:02 2026|test_cm07b.txt|snap B|8460bffc|10
