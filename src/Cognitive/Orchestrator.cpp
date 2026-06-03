@@ -197,9 +197,11 @@ std::string Orchestrator::processRequest(const std::string& prompt, PipelineMetr
     // RAG: Recupera contexto semântico relevante e injeta invisivelmente
     auto ragResults = vectorSearch_.search(prompt, 3); // Top-3
     std::string ragContext = "";
+    latestRagResults_.clear();
     for (const auto& res : ragResults) {
         if (res.score > 0.65f) { // Threshold de relevância
             ragContext += "- " + res.text + "\n";
+            latestRagResults_.push_back(res.text + " (Score: " + std::to_string(res.score) + ")");
         }
     }
     

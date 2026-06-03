@@ -177,8 +177,15 @@ void CognitiveDashboardComponent::timerCallback() {
     if (profileText.isEmpty()) profileText = "Aguardando interações para aprender...";
     userProfileBox_.setText(profileText);
     
-    // Update Semantic Memory (we can't query VectorSearch directly without an accessor, but we could mock or fetch)
-    // For now, let's just make sure UI paints
+    // Update Semantic Memory
+    auto ragDocs = orchestrator_->getLatestRAGResults();
+    semanticDocs_.clear();
+    for (const auto& doc : ragDocs) {
+        semanticDocs_.add(juce::String(doc));
+    }
+    if (semanticDocs_.isEmpty()) semanticDocs_.add("Nenhuma memória semântica recuperada recentemente.");
+    semanticListBox_.updateContent();
+
     repaint();
 }
 

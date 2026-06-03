@@ -31,6 +31,8 @@ public:
 
     HardwareWatchdog& getWatchdog() { return watchdog_; }
     ContextManager& getSessionContext() { return sessionContext_; }
+    UserProfileManager& getUserProfile() { return userProfile_; }
+    std::vector<std::string> getLatestRAGResults() const { return latestRagResults_; }
 
 private:
     ModelRegistry& registry_;
@@ -54,6 +56,8 @@ private:
 
     // Simula a inferência do LLM (mock) quando o runtime real falha ou em testes curtos
     std::string mockLLMResponse(const std::string& finalPrompt, const std::string& modelId);
+
+    std::vector<std::string> latestRagResults_;
 };
 
 // --- SubAgents concretos ---
