@@ -661,6 +661,14 @@ if(BUILD_COGNITIVE_TESTS)
     target_include_directories(AgentOS_CognitiveAuditSuite PRIVATE include)
     target_link_libraries(AgentOS_CognitiveAuditSuite PRIVATE Cognitive)
     target_compile_features(AgentOS_CognitiveAuditSuite PRIVATE cxx_std_20)
+
+    # AgentOS_FinalValidationSuite
+    add_executable(AgentOS_FinalValidationSuite
+        tests/test_final_validation_suite.cpp
+    )
+    target_include_directories(AgentOS_FinalValidationSuite PRIVATE include)
+    target_link_libraries(AgentOS_FinalValidationSuite PRIVATE Cognitive)
+    target_compile_features(AgentOS_FinalValidationSuite PRIVATE cxx_std_20)
 endif()
 
 

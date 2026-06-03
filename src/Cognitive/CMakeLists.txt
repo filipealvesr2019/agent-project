@@ -16,6 +16,7 @@ add_library(Cognitive STATIC
     SummarizerAgent.cpp
     UserProfileManager.cpp
     MockEmbeddingEngine.cpp
+    LlamaEmbeddingEngine.cpp
     ../LocalRuntime/LlamaRuntime.cpp
 )
 

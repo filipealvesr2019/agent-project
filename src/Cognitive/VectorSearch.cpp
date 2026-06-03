@@ -175,7 +175,11 @@ bool VectorSearch::load(const std::string& path)
                 std::stringstream ss(vecStr);
                 std::string val;
                 while (std::getline(ss, val, ',')) {
-                    emb.vector.push_back(std::stof(val));
+                    try {
+                        emb.vector.push_back(std::stof(val));
+                    } catch (...) {
+                        std::cerr << "[VectorSearch] Corrupted vector data skipped.\n";
+                    }
                 }
             }
         }

@@ -20,7 +20,7 @@ LlamaRuntime::~LlamaRuntime() {
     llama_backend_free();
 }
 
-bool LlamaRuntime::loadModel(const std::string& ggufPath) {
+bool LlamaRuntime::loadModel(const std::string& ggufPath, bool isEmbedding) {
     if (model_) {
         llama_free_model(model_);
         model_ = nullptr;
@@ -29,6 +29,8 @@ bool LlamaRuntime::loadModel(const std::string& ggufPath) {
         llama_free(ctx_);
         ctx_ = nullptr;
     }
+    
+    isEmbedding_ = isEmbedding;
 
     llama_model_params mparams = llama_model_default_params();
     mparams.n_gpu_layers = 99; // Offload as much as possible
@@ -40,7 +42,10 @@ bool LlamaRuntime::loadModel(const std::string& ggufPath) {
     }
 
     llama_context_params cparams = llama_context_default_params();
-    cparams.n_ctx = 2048; // Simple context size for now
+    cparams.n_ctx = isEmbedding ? 512 : 2048; // BGE max length is 512
+    cparams.n_batch = isEmbedding ? 512 : 2048;
+    cparams.n_ubatch = isEmbedding ? 512 : 2048;
+    cparams.embeddings = isEmbedding;
 
     ctx_ = llama_new_context_with_model(model_, cparams);
     if (!ctx_) {
@@ -141,6 +146,71 @@ GenerationResult LlamaRuntime::generateWithStats(const std::string& prompt, int3
 
     llama_batch_free(batch);
     llama_sampler_free(smpl);
+    return res;
+}
+
+std::vector<float> LlamaRuntime::getEmbedding(const std::string& prompt) {
+    if (!ctx_ || !model_ || !isEmbedding_) {
+        std::cerr << "[LlamaRuntime] Model not loaded or not in embedding mode!\n";
+        return {};
+    }
+
+    llama_memory_clear(llama_get_memory(ctx_), true);
+
+    const llama_vocab* vocab = llama_model_get_vocab(model_);
+    
+    std::vector<llama_token> tokens(prompt.size() + 128);
+    int32_t n_tokens = llama_tokenize(vocab, prompt.c_str(), prompt.length(), tokens.data(), tokens.size(), true, true);
+    if (n_tokens < 0) {
+        tokens.resize(-n_tokens);
+        n_tokens = llama_tokenize(vocab, prompt.c_str(), prompt.length(), tokens.data(), tokens.size(), true, true);
+    }
+    
+    // Clamp to context size (2048) to avoid decoding errors on huge strings
+    uint32_t n_ctx = llama_n_ctx(ctx_);
+    if (n_tokens > n_ctx) {
+        n_tokens = n_ctx;
+    }
+    
+    tokens.resize(n_tokens);
+
+    llama_batch batch = llama_batch_init(n_tokens, 0, 1);
+    batch.n_tokens = n_tokens;
+    for (int i = 0; i < n_tokens; i++) {
+        batch.token[i] = tokens[i];
+        batch.pos[i] = i;
+        batch.n_seq_id[i] = 1;
+        batch.seq_id[i][0] = 0;
+        batch.logits[i] = (i == n_tokens - 1 ? 1 : 0);
+    }
+
+    if (llama_decode(ctx_, batch) != 0) {
+        std::cerr << "[LlamaRuntime] llama_decode failed on embedding generation\n";
+        llama_batch_free(batch);
+        return {};
+    }
+
+    int n_embd = llama_model_n_embd(model_);
+    float* embd_data = llama_get_embeddings_seq(ctx_, 0);
+    if (!embd_data) {
+        embd_data = llama_get_embeddings(ctx_);
+    }
+
+    std::vector<float> res;
+    if (embd_data) {
+        res.assign(embd_data, embd_data + n_embd);
+        // Normalize L2
+        float sumSq = 0.0f;
+        for (float v : res) sumSq += v * v;
+        if (sumSq > 0.0f) {
+            float mag = std::sqrt(sumSq);
+            for (float& v : res) v /= mag;
+        }
+    } else {
+        std::cerr << "[LlamaRuntime] Failed to get embedding data from context\n";
+    }
+
+    llama_batch_free(batch);
     return res;
 }
 

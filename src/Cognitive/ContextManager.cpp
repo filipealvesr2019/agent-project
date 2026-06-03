@@ -60,7 +60,6 @@ void ContextManager::addTurn(const std::string& role, const std::string& content
     turn.content = content;
     turn.estimatedTokens = estimateTokens(role + ": " + content);
     turns_.push_back(turn);
-    trimToFit();
 }
 
 void ContextManager::setSystemPrompt(const std::string& prompt)

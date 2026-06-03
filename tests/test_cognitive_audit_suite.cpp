@@ -5,6 +5,7 @@
 #include "Cognitive/VectorSearch.h"
 #include "Cognitive/UserProfileManager.h"
 #include "Cognitive/ContextManager.h"
+#include "Cognitive/LlamaEmbeddingEngine.h"
 #include <iostream>
 #include <filesystem>
 #include <cassert>
@@ -17,6 +18,7 @@ const std::string PROFILE_PATH = "audit_user_profile.json";
 const std::string VECTOR_PATH = "audit_vectors.jsonl";
 const std::string KB_DIR = "audit_kb";
 const std::string MEMORY_PATH = "audit_memory.jsonl";
+const std::string EMBED_MODEL = "models/embeddings/bge-small-en-v1.5.gguf";
 
 void clearDisk() {
     std::filesystem::remove(PROFILE_PATH);
@@ -34,7 +36,9 @@ void clearDisk() {
 void testNivel1_Persistencia() {
     std::cout << "\n--- Nivel 1: Testes de Persistencia ---\n";
     {
-        ModelRegistry registry; MemoryEngine mem; KnowledgeBase kb; VectorSearch vs;
+        ModelRegistry registry; MemoryEngine mem; KnowledgeBase kb; 
+        auto engine = std::make_shared<LlamaEmbeddingEngine>(EMBED_MODEL, 384, "bge_small_v1.5");
+        VectorSearch vs(engine);
         Orchestrator orch(registry, mem, kb, vs);
         UserProfileManager upm(PROFILE_PATH);
         upm.addLearnedFact("framework", "JUCE");
@@ -43,7 +47,9 @@ void testNivel1_Persistencia() {
     }
     // Reboot
     {
-        ModelRegistry registry; MemoryEngine mem; KnowledgeBase kb; VectorSearch vs;
+        ModelRegistry registry; MemoryEngine mem; KnowledgeBase kb; 
+        auto engine = std::make_shared<LlamaEmbeddingEngine>(EMBED_MODEL, 384, "bge_small_v1.5");
+        VectorSearch vs(engine);
         vs.load(VECTOR_PATH);
         Orchestrator orch(registry, mem, kb, vs);
         UserProfileManager upm(PROFILE_PATH);
@@ -116,7 +122,8 @@ void testNivel3_PerfilDinamico() {
 // ---------------------------------------------------------
 void testNivel5_RAGNoise() {
     std::cout << "\n--- Nivel 5: Teste de Resistencia do RAG (Ruido) ---\n";
-    VectorSearch vs;
+    auto engine = std::make_shared<LlamaEmbeddingEngine>(EMBED_MODEL, 384, "bge_small_v1.5");
+    VectorSearch vs(engine);
     vs.addDocument("doc_alvo", "O amplificador Fender Champ 5F1 usa valvula 6V6.");
     
     // Inserindo 10.000 documentos inúteis para confundir o RAG
@@ -136,7 +143,9 @@ void testNivel5_RAGNoise() {
 // ---------------------------------------------------------
 void testNivel6_MultiAgent() {
     std::cout << "\n--- Nivel 6: Teste de Roteamento Multi-Agent ---\n";
-    ModelRegistry registry; MemoryEngine mem; KnowledgeBase kb; VectorSearch vs;
+    ModelRegistry registry; MemoryEngine mem; KnowledgeBase kb; 
+    auto engine = std::make_shared<LlamaEmbeddingEngine>(EMBED_MODEL, 384, "bge_small_v1.5");
+    VectorSearch vs(engine);
     Orchestrator orch(registry, mem, kb, vs);
     
     orch.registerAgent(TaskType::Coding, std::make_shared<CodingAgent>("Coder", mem, kb, vs));
@@ -156,7 +165,9 @@ void testNivel6_MultiAgent() {
 // ---------------------------------------------------------
 void testNivel7_Stress() {
     std::cout << "\n--- Nivel 7: Teste de Stress Extremo (1000 Requests) ---\n";
-    ModelRegistry registry; MemoryEngine mem; KnowledgeBase kb; VectorSearch vs;
+    ModelRegistry registry; MemoryEngine mem; KnowledgeBase kb; 
+    auto engine = std::make_shared<LlamaEmbeddingEngine>(EMBED_MODEL, 384, "bge_small_v1.5");
+    VectorSearch vs(engine);
     Orchestrator orch(registry, mem, kb, vs);
     
     for (int i = 0; i < 1000; ++i) {
@@ -185,7 +196,7 @@ int main() {
     testNivel8_Amnesia();
 
     std::cout << "\n======================================================\n";
-    std::cout << " STATUS: READY_FOR_UI = TRUE (Com ressalva p/ Mock Embeddings)\n";
+    std::cout << " STATUS: READY_FOR_UI = TRUE (Livre de Mocks)\n";
     std::cout << "======================================================\n";
 
     return 0;

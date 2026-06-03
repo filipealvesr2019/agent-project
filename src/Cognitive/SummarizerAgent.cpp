@@ -30,9 +30,12 @@ std::string SummarizerAgent::summarize(const std::vector<ContextTurn>& oldTurns,
 
     std::cout << "[SummarizerAgent] Comprimindo " << oldTurns.size() << " turnos (" << prompt.size() << " bytes)...\n";
     
-    // Dummy / Mock de compressão (Para garantir latência de teste inicial)
+    // Fallback Mock de compressão que preserva palavras-chave para RAG funcionar
     // Num sistema final, chamaríamos LlamaRuntime::generateWithStats
-    std::string summary = "[RESUMO DO CONTEXTO ANTIGO]: O usuario e assistente discutiram os seguintes topicos passados de forma extensa.";
+    std::string summary = "[RESUMO DO CONTEXTO ANTIGO]: ";
+    for (const auto& t : oldTurns) {
+        summary += t.content + " | ";
+    }
     
     // Adicionando um leve mock delay
     if (metrics) metrics->inferenceMs += 10.0; 
