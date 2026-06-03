@@ -1,46 +1,25 @@
 #include "Cognitive/VectorSearch.h"
+#include "Cognitive/MockEmbeddingEngine.h"
 #include <cmath>
 #include <algorithm>
 #include <numeric>
 #include <fstream>
 #include <sstream>
+#include <iostream>
 
 namespace AgentOS {
 
-std::vector<float> VectorSearch::embed(const std::string& text) const
+VectorSearch::VectorSearch(std::shared_ptr<IEmbeddingEngine> engine)
+    : engine_(engine)
 {
-    // MOCK EMBEDDING: Generate a reproducible pseudo-vector based on char frequencies
-    // Real implementation would pass text through an embedding model (e.g., all-MiniLM-L6-v2)
-    std::vector<float> vec(64, 0.0f);
-    if (text.empty()) return vec;
-
-    std::string lowerText = text;
-    for (char& c : lowerText) c = std::tolower(c);
-
-    // Simple word-bag pseudo-embedding to allow exact word overlap to score high
-    // We map letters to vector buckets
-    for (size_t i = 0; i < lowerText.size(); ++i) {
-        char c = lowerText[i];
-        if (c >= 'a' && c <= 'z') {
-            int bucket = (c - 'a') % 64;
-            vec[bucket] += 1.0f;
-            // Add some locality context (bigram overlap pseudo)
-            if (i > 0 && lowerText[i-1] >= 'a' && lowerText[i-1] <= 'z') {
-                int bucket2 = ((c - 'a') + (lowerText[i-1] - 'a')) % 64;
-                vec[bucket2] += 0.5f;
-            }
-        }
+    if (!engine_) {
+        engine_ = std::make_shared<MockEmbeddingEngine>();
     }
+}
 
-    // L2 Normalize
-    float sumSq = 0.0f;
-    for (float v : vec) sumSq += v * v;
-    if (sumSq > 0.0f) {
-        float mag = std::sqrt(sumSq);
-        for (float& v : vec) v /= mag;
-    }
-    
-    return vec;
+size_t VectorSearch::getDimension() const
+{
+    return engine_->getDimension();
 }
 
 float VectorSearch::cosineSimilarity(const std::vector<float>& a, const std::vector<float>& b) const
@@ -66,13 +45,13 @@ void VectorSearch::addDocument(const std::string& id, const std::string& text)
     Embedding emb;
     emb.id = id;
     emb.text = text;
-    emb.vector = embed(text);
+    emb.vector = engine_->embed(text);
     embeddings_.push_back(emb);
 }
 
 std::vector<SearchResult> VectorSearch::search(const std::string& query, size_t topK) const
 {
-    std::vector<float> queryVec = embed(query);
+    std::vector<float> queryVec = engine_->embed(query);
     std::vector<SearchResult> results;
 
     for (const auto& emb : embeddings_) {
@@ -102,6 +81,10 @@ bool VectorSearch::save(const std::string& path) const
     std::ofstream f(path);
     if (!f.is_open()) return false;
 
+    // Metadados da Fase 7 (Vector DB Versioning)
+    f << "{\"_metadata\":true,\"modelId\":\"" << engine_->getModelId() 
+      << "\",\"dimension\":" << engine_->getDimension() << "}\n";
+
     for (const auto& emb : embeddings_) {
         // Formato simples JSONL para vetores
         f << "{\"id\":\"" << emb.id << "\",\"text\":\"";
@@ -128,10 +111,28 @@ bool VectorSearch::load(const std::string& path)
     std::ifstream f(path);
     if (!f.is_open()) return false;
 
-    embeddings_.clear();
+    std::vector<Embedding> loadedEmbeddings;
     std::string line;
+    bool needsReindex = false;
+
     while (std::getline(f, line)) {
         if (line.empty()) continue;
+
+        // Verifica Metadados
+        if (line.find("\"_metadata\":true") != std::string::npos) {
+            size_t modelPos = line.find("\"modelId\":\"");
+            if (modelPos != std::string::npos) {
+                modelPos += 11;
+                size_t modelEnd = line.find("\"", modelPos);
+                std::string savedModelId = line.substr(modelPos, modelEnd - modelPos);
+                
+                if (savedModelId != engine_->getModelId()) {
+                    std::cout << "[VectorSearch] Model mismatch (" << savedModelId << " vs " << engine_->getModelId() << "). REINDEX REQUIRED!\n";
+                    needsReindex = true;
+                }
+            }
+            continue;
+        }
 
         Embedding emb;
         
@@ -180,9 +181,23 @@ bool VectorSearch::load(const std::string& path)
         }
 
         if (!emb.id.empty() && !emb.vector.empty()) {
-            embeddings_.push_back(emb);
+            loadedEmbeddings.push_back(emb);
         }
     }
+
+    embeddings_.clear();
+    if (needsReindex) {
+        for (auto& emb : loadedEmbeddings) {
+            emb.vector = engine_->embed(emb.text);
+            embeddings_.push_back(emb);
+        }
+        std::cout << "[VectorSearch] Reindexacao concluida para " << embeddings_.size() << " documentos.\n";
+        // Opcional: auto-save para gravar o novo formato em disco
+        save(path);
+    } else {
+        embeddings_ = loadedEmbeddings;
+    }
+
     return true;
 }
 

@@ -15,6 +15,7 @@ add_library(Cognitive STATIC
     HardwareWatchdog.cpp
     SummarizerAgent.cpp
     UserProfileManager.cpp
+    MockEmbeddingEngine.cpp
     ../LocalRuntime/LlamaRuntime.cpp
 )
 
