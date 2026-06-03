@@ -1,0 +1,1 @@
+add_library(MultiAgentCollaboration STATIC MultiAgentCollaboration.cpp)

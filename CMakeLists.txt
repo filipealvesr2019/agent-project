@@ -41,6 +41,7 @@ add_subdirectory(src/ReasoningEngine)
 add_subdirectory(src/ContextEngine)
 add_subdirectory(src/CapabilityEngine)
 add_subdirectory(src/MemoryAPI)
+add_subdirectory(src/MultiAgentCollaboration)
 add_subdirectory(src/PromptEngine)
 add_subdirectory(src/ObjectiveEngine)
 add_subdirectory(src/CostMonitor)
@@ -74,6 +75,7 @@ target_link_libraries(AgentOS PRIVATE
     CapabilityEngine
     MemoryAPI
     KnowledgeGraphEngine
+    MultiAgentCollaboration
     PromptEngine
     ObjectiveEngine
     CostMonitor
@@ -274,6 +276,17 @@ if(BUILD_PHASE12_TESTS)
     target_include_directories(AgentOS_MemoryV2Test PRIVATE include libs/sqlite)
     target_link_libraries(AgentOS_MemoryV2Test PRIVATE sqlite)
     target_compile_features(AgentOS_MemoryV2Test PRIVATE cxx_std_20)
+endif()
+
+# Phase 13 Multi-Agent Collaboration test suite
+option(BUILD_PHASE13_TESTS "Build AgentOS Phase 13 tests" OFF)
+if(BUILD_PHASE13_TESTS)
+    add_executable(AgentOS_MultiAgentTest
+        tests/test_multiagent.cpp
+        src/MultiAgentCollaboration/MultiAgentCollaboration.cpp
+    )
+    target_include_directories(AgentOS_MultiAgentTest PRIVATE include)
+    target_compile_features(AgentOS_MultiAgentTest PRIVATE cxx_std_20)
 endif()
 
 # Test runner (opcional, compilar com -DBUILD_TESTS=ON)
