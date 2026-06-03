@@ -194,14 +194,28 @@ std::string Orchestrator::processRequest(const std::string& prompt, PipelineMetr
     // Adiciona o novo prompt ao sessionContext_
     sessionContext_.addTurn("user", prompt);
     
+    // RAG: Recupera contexto semântico relevante e injeta invisivelmente
+    auto ragResults = vectorSearch_.search(prompt, 3); // Top-3
+    std::string ragContext = "";
+    for (const auto& res : ragResults) {
+        if (res.score > 0.65f) { // Threshold de relevância
+            ragContext += "- " + res.text + "\n";
+        }
+    }
+    
+    std::string contextualizedPrompt = sessionContext_.buildPrompt();
+    if (!ragContext.empty()) {
+        contextualizedPrompt += "\n[MEMÓRIA RECUPERADA PELO RAG]:\n" + ragContext;
+    }
+    
     // Constrói o Prompt final para enviar à Inference
-    // Obs: Idealmente os sub-agents deveriam interagir com o sessionContext_.
+    // Obs: Os sub-agents processam o prompt enriquecido com RAG
     // Para simplificar, passaremos o prompt processado pelo agente.
     std::string finalPrompt;
     if (agents_.count(task)) {
-        finalPrompt = agents_[task]->execute(sessionContext_.buildPrompt(), idealModel, &metrics);
+        finalPrompt = agents_[task]->execute(contextualizedPrompt, idealModel, &metrics);
     } else {
-        finalPrompt = prompt;
+        finalPrompt = contextualizedPrompt;
     }
 
     // 4. Llama.cpp / LLM Execution
