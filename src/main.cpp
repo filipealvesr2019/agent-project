@@ -1,32 +1,22 @@
 #include <juce_gui_extra/juce_gui_extra.h>
-
-// Forward declaration of our main UI component (to be implemented)
-class MainComponent : public juce::Component {
-public:
-    MainComponent() {
-        setSize(1000, 700);
-    }
-    
-    void paint(juce::Graphics& g) override {
-        g.fillAll(juce::Colours::darkgrey);
-        g.setColour(juce::Colours::white);
-        g.setFont(24.0f);
-        g.drawText("AgentOS UI v1.0", getLocalBounds(), juce::Justification::centred, true);
-    }
-};
+#include "UI/UI.h"
+#include "UI/DashboardComponent.h"
 
 class MainWindow : public juce::DocumentWindow {
 public:
-    MainWindow(juce::String name) 
-        : DocumentWindow(name, juce::Colours::lightgrey, DocumentWindow::allButtons) {
+    MainWindow(juce::String name)
+        : DocumentWindow(name, juce::Colour(0xFF0d1117), DocumentWindow::allButtons) {
         setUsingNativeTitleBar(true);
-        setContentOwned(new MainComponent(), true);
+        auto* dashboard = new AgentOS::DashboardComponent();
+        setContentOwned(dashboard, true);
         setResizable(true, true);
-        centreWithSize(getWidth(), getHeight());
+        centreWithSize(1200, 800);
         setVisible(true);
+        AgentOS::UI::getInstance().init(dashboard);
     }
 
     void closeButtonPressed() override {
+        AgentOS::UI::getInstance().shutdown();
         juce::JUCEApplication::getInstance()->systemRequestedQuit();
     }
 };
@@ -56,5 +46,4 @@ private:
     std::unique_ptr<MainWindow> mainWindow;
 };
 
-// This macro generates the main() routine that launches the app.
 START_JUCE_APPLICATION(AgentOSApplication)

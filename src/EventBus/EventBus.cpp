@@ -34,4 +34,9 @@ void EventBus::publish(const Event& event) {
     }
 }
 
+void EventBus::clear() {
+    std::lock_guard<std::recursive_mutex> lock(mutex_);
+    listeners_.clear();
+}
+
 } // namespace AgentOS

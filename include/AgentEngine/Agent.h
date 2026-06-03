@@ -48,6 +48,7 @@ private:
     std::string role_;
     std::string department_;
     AgentState currentState_;
+    int currentTaskId_{0};
 
     // Métricas futuras
     int tasksCompleted_{0};

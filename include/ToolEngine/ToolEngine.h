@@ -31,6 +31,34 @@ public:
     std::string execute(const std::map<std::string, std::string>& parameters) override;
 };
 
+class EditFileTool : public Tool {
+public:
+    std::string getName() const override { return "edit_file"; }
+    std::string getDescription() const override { return "Edita um arquivo existente (append ou substitui)." ; }
+    std::string execute(const std::map<std::string, std::string>& parameters) override;
+};
+
+class DeleteFileTool : public Tool {
+public:
+    std::string getName() const override { return "delete_file"; }
+    std::string getDescription() const override { return "Exclui um arquivo do disco."; }
+    std::string execute(const std::map<std::string, std::string>& parameters) override;
+};
+
+class CreateDirTool : public Tool {
+public:
+    std::string getName() const override { return "create_dir"; }
+    std::string getDescription() const override { return "Cria um diretório."; }
+    std::string execute(const std::map<std::string, std::string>& parameters) override;
+};
+
+class ExecuteTool : public Tool {
+public:
+    std::string getName() const override { return "execute"; }
+    std::string getDescription() const override { return "Executa um comando no sistema e retorna a saída."; }
+    std::string execute(const std::map<std::string, std::string>& parameters) override;
+};
+
 // Gerenciador central de Ferramentas
 class ToolEngine {
 public:

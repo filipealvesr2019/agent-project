@@ -24,6 +24,9 @@ public:
     // Publicação imediata (pode ser expandido para fila no dispatch)
     void publish(const Event& event);
 
+    // Limpa todos os listeners (útil para reset em testes)
+    void clear();
+
 private:
     EventBus() = default;
     ~EventBus() = default;

@@ -43,18 +43,28 @@ juce_add_gui_app(AgentOS
 target_sources(AgentOS PRIVATE src/main.cpp)
 
 target_link_libraries(AgentOS PRIVATE 
+    UI
     AgentEngine 
     EventBus 
     MemoryEngine 
     sqlite
-    juce::juce_gui_extra
-    juce::juce_gui_basics
-    juce::juce_graphics
-    juce::juce_events
-    juce::juce_core
-    juce::juce_data_structures
 )
 
 add_library(sqlite STATIC libs/sqlite/sqlite3.c)
 target_include_directories(sqlite PUBLIC libs/sqlite)
 target_link_libraries(AgentOS PRIVATE MemoryEngine sqlite)
+
+# Test runner (opcional, compilar com -DBUILD_TESTS=ON)
+option(BUILD_TESTS "Build AgentOS test runner" OFF)
+if(BUILD_TESTS)
+    add_executable(AgentOS_Tests
+        src/test_runner.cpp
+        src/AgentEngine/Agent.cpp
+        src/EventBus/EventBus.cpp
+        src/MemoryEngine/MemoryEngine.cpp
+        src/ToolEngine/ToolEngine.cpp
+    )
+    target_include_directories(AgentOS_Tests PRIVATE include libs/sqlite)
+    target_link_libraries(AgentOS_Tests PRIVATE sqlite)
+    target_compile_features(AgentOS_Tests PRIVATE cxx_std_20)
+endif()

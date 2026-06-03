@@ -10,10 +10,10 @@ Agent::Agent(std::string name, std::string role, std::string department)
 }
 
 void Agent::initialize() {
-    // Registra a tarefa inicial no banco de memória
-    MemoryEngine::getInstance().addTaskMemory({1, "Planejar módulo", "Idle", name_});
+    static int nextTaskId = 1;
+    currentTaskId_ = nextTaskId++;
+    MemoryEngine::getInstance().addTaskMemory({currentTaskId_, "Planejar módulo", "Idle", name_});
 
-    // Inscreve o agente em todos os eventos do EventBus
     auto callback = [this](const Event& e) { this->handleEvent(e); };
     EventBus::getInstance().subscribe(EventType::TaskAssigned, callback);
     EventBus::getInstance().subscribe(EventType::TaskCompleted, callback);
@@ -29,9 +29,8 @@ void Agent::handleEvent(const Event& event) {
 
     if (event.type == EventType::TaskAssigned && currentState_ == AgentState::Idle) {
         setState(AgentState::Working);
-        MemoryEngine::getInstance().updateTaskMemory(1, "Working");
+        MemoryEngine::getInstance().updateTaskMemory(currentTaskId_, "Working");
         
-        // Simula trabalho concluído e dispara evento
         Event completedEvt{EventType::TaskCompleted, name_, "", "Trabalho pronto"};
         EventBus::getInstance().publish(completedEvt);
     }

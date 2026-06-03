@@ -1,2 +1,21 @@
 # CMakeLists for UI
-add_library(UI STATIC UI.cpp)
+add_library(UI STATIC
+    UI.cpp
+    DashboardComponent.cpp
+    AgentListComponent.cpp
+    SidebarComponent.cpp
+    LogViewerComponent.cpp
+    CreateAgentDialog.cpp
+)
+target_include_directories(UI PUBLIC ${CMAKE_SOURCE_DIR}/include)
+target_link_libraries(UI PUBLIC
+    juce::juce_gui_extra
+    juce::juce_gui_basics
+    juce::juce_graphics
+    juce::juce_events
+    juce::juce_core
+    juce::juce_data_structures
+    AgentEngine
+    EventBus
+    MemoryEngine
+)

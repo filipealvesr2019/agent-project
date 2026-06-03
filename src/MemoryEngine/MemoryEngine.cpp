@@ -51,7 +51,7 @@ bool MemoryEngine::initDatabase() {
 void MemoryEngine::addTaskMemory(const TaskMemory& task) {
     sqlite3* db;
     sqlite3_open(m_dbPath.c_str(), &db);
-    std::string sql = "INSERT INTO Tasks(taskId, description, status, agentName) VALUES(" +
+    std::string sql = "INSERT OR REPLACE INTO Tasks(taskId, description, status, agentName) VALUES(" +
                       std::to_string(task.taskId) + ", '" + task.description + "', '" + task.status + "', '" + task.agentName + "');";
     sqlite3_exec(db, sql.c_str(), 0, 0, 0);
     sqlite3_close(db);
