@@ -489,3 +489,30 @@ if(BUILD_RUNTIME_LEARNING_TEST)
     target_include_directories(AgentOS_RuntimeLearningTest PRIVATE include)
     target_compile_features(AgentOS_RuntimeLearningTest PRIVATE cxx_std_20)
 endif()
+
+# Phase 16.15 & 16.16 Hardware Adaptive & HellBreaker 3.0
+option(BUILD_HELL_BREAKER_3 "Build AgentOS Hell Breaker 3.0 Test" ON)
+if(BUILD_HELL_BREAKER_3)
+    add_executable(AgentOS_HellBreaker3
+        tests/test_hell_breaker_3.cpp
+        src/OrganizationEngine/OrganizationEngine.cpp
+        src/ProjectManager/ProjectManager.cpp
+        src/AgentEngine/Agent.cpp
+        src/ReasoningTimelineEngine/ReasoningTimelineEngine.cpp
+        src/EventBus/EventBus.cpp
+        src/MemoryEngine/MemoryEngine.cpp
+        src/KnowledgeGraphEngine/KnowledgeGraphEngine.cpp
+        src/ContextEngine/ContextEngine.cpp
+        src/ModelRouter/ModelRouter.cpp
+        src/LocalRuntime/LocalRuntimeEngine.cpp
+        src/LocalRuntime/TaskScheduler.cpp
+        src/LocalRuntime/ModelPoolManager.cpp
+        src/SurrogateDecisionLayer/SurrogateRouter.cpp
+        src/ExperienceReplayEngine/ExperienceReplayEngine.cpp
+        src/RuntimeLearningLayer/RuntimeLearningLayer.cpp
+        src/HardwareAdaptiveRuntime/HardwareProfileManager.cpp
+    )
+    target_include_directories(AgentOS_HellBreaker3 PRIVATE include libs/sqlite)
+    target_link_libraries(AgentOS_HellBreaker3 PRIVATE sqlite)
+    target_compile_features(AgentOS_HellBreaker3 PRIVATE cxx_std_20)
+endif()
