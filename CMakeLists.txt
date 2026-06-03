@@ -629,6 +629,14 @@ if(BUILD_COGNITIVE_TESTS)
     target_include_directories(AgentOS_StressTest PRIVATE include)
     target_link_libraries(AgentOS_StressTest PRIVATE Cognitive)
     target_compile_features(AgentOS_StressTest PRIVATE cxx_std_20)
+
+    # Fase 13: Performance Profiler
+    add_executable(AgentOS_ProfilerTest
+        tests/test_performance_profiler.cpp
+    )
+    target_include_directories(AgentOS_ProfilerTest PRIVATE include)
+    target_link_libraries(AgentOS_ProfilerTest PRIVATE Cognitive)
+    target_compile_features(AgentOS_ProfilerTest PRIVATE cxx_std_20)
 endif()
 
 

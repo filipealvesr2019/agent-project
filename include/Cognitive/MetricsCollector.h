@@ -23,6 +23,17 @@ struct SystemMetrics {
     double avgLatencyMs = 0.0;
 };
 
+// Phase 13: Profiling de performance do pipeline cognitivo
+struct PipelineMetrics {
+    double taskAnalysisMs = 0.0;
+    double routingMs = 0.0;
+    double ragSearchMs = 0.0;
+    double promptBuildMs = 0.0;
+    double inferenceMs = 0.0;
+    double memorySaveMs = 0.0;
+    double totalMs = 0.0;
+};
+
 class MetricsCollector
 {
 public:

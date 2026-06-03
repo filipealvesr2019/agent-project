@@ -6,6 +6,7 @@
 #include "Cognitive/KnowledgeBase.h"
 #include "Cognitive/VectorSearch.h"
 #include "Cognitive/ContextManager.h"
+#include "Cognitive/MetricsCollector.h"
 
 namespace AgentOS {
 
@@ -25,7 +26,8 @@ public:
 
     // Execute the task. Returns the final response.
     virtual std::string execute(const std::string& prompt, 
-                                const std::string& modelId) = 0;
+                                const std::string& modelId,
+                                PipelineMetrics* metrics = nullptr) = 0;
 
 protected:
     std::string name_;
@@ -34,7 +36,7 @@ protected:
     VectorSearch& vectorSearch_;
     
     // Utilitário interno para RAG: Busca na VectorSearch e formata o contexto
-    std::string retrieveContext(const std::string& prompt) const;
+    std::string retrieveContext(const std::string& prompt, PipelineMetrics* metrics = nullptr) const;
 };
 
 } // namespace AgentOS

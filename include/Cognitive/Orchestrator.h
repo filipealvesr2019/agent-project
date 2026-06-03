@@ -23,7 +23,7 @@ public:
     void registerAgent(TaskType type, std::shared_ptr<Agent> agent);
 
     // Fluxo principal: Planner -> Router -> Context -> SubAgent -> Resultado
-    std::string processRequest(const std::string& prompt);
+    std::string processRequest(const std::string& prompt, PipelineMetrics* metrics = nullptr);
 
 private:
     ModelRegistry& registry_;
@@ -51,19 +51,19 @@ private:
 class DSPAgent : public Agent {
 public:
     using Agent::Agent;
-    std::string execute(const std::string& prompt, const std::string& modelId) override;
+    std::string execute(const std::string& prompt, const std::string& modelId, PipelineMetrics* metrics = nullptr) override;
 };
 
 class CodingAgent : public Agent {
 public:
     using Agent::Agent;
-    std::string execute(const std::string& prompt, const std::string& modelId) override;
+    std::string execute(const std::string& prompt, const std::string& modelId, PipelineMetrics* metrics = nullptr) override;
 };
 
 class ChatAgent : public Agent {
 public:
     using Agent::Agent;
-    std::string execute(const std::string& prompt, const std::string& modelId) override;
+    std::string execute(const std::string& prompt, const std::string& modelId, PipelineMetrics* metrics = nullptr) override;
 };
 
 } // namespace AgentOS

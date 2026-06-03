@@ -2,68 +2,94 @@
 #include <iostream>
 #include <sstream>
 #include <iomanip>
+#include <chrono>
+#include <thread>
 
 namespace AgentOS {
 
-std::string Agent::retrieveContext(const std::string& prompt) const
+template<typename Func>
+double measureTimeMs(Func f) {
+    auto start = std::chrono::high_resolution_clock::now();
+    f();
+    auto end = std::chrono::high_resolution_clock::now();
+    return std::chrono::duration<double, std::milli>(end - start).count();
+}
+
+std::string Agent::retrieveContext(const std::string& prompt, PipelineMetrics* metrics) const
 {
-    // Search VectorSearch for top 2 similar documents/memories
-    auto results = vectorSearch_.search(prompt, 2);
+    std::vector<SearchResult> results;
+    double ms = measureTimeMs([&]() {
+        results = vectorSearch_.search(prompt, 2);
+    });
+    if (metrics) metrics->ragSearchMs += ms;
+
     if (results.empty()) return "";
 
     std::ostringstream oss;
     oss << "[RAG Context retrieved:]\n";
     for (const auto& r : results) {
-        if (r.score > 0.6f) { // Threshold de similaridade
+        if (r.score > 0.6f) {
             oss << "- " << r.text << "\n";
         }
     }
     return oss.str();
 }
 
-std::string DSPAgent::execute(const std::string& prompt, const std::string& modelId)
+std::string DSPAgent::execute(const std::string& prompt, const std::string& modelId, PipelineMetrics* metrics)
 {
-    std::string context = retrieveContext(prompt);
+    std::string context = retrieveContext(prompt, metrics);
     
-    ContextManager cm(modelId);
-    cm.addTurn("system", "Voce e o DSPAgent. Responda com foco em engenharia de audio, circuitos e DSP. Use o contexto fornecido.");
-    if (!context.empty()) {
-        cm.addTurn("system", context);
-    }
-    cm.addTurn("user", prompt);
+    std::string finalPrompt;
+    double ms = measureTimeMs([&]() {
+        ContextManager cm(modelId);
+        cm.addTurn("system", "Voce e o DSPAgent. Responda com foco em engenharia de audio, circuitos e DSP. Use o contexto fornecido.");
+        if (!context.empty()) {
+            cm.addTurn("system", context);
+        }
+        cm.addTurn("user", prompt);
+        finalPrompt = cm.buildPrompt();
+    });
+    if (metrics) metrics->promptBuildMs += ms;
 
-    std::cout << "  [" << name_ << "] Construindo prompt final (" << cm.totalTokens() << " tokens)...\n";
-    return cm.buildPrompt();
+    return finalPrompt;
 }
 
-std::string CodingAgent::execute(const std::string& prompt, const std::string& modelId)
+std::string CodingAgent::execute(const std::string& prompt, const std::string& modelId, PipelineMetrics* metrics)
 {
-    std::string context = retrieveContext(prompt);
+    std::string context = retrieveContext(prompt, metrics);
     
-    ContextManager cm(modelId);
-    cm.addTurn("system", "Voce e o CodingAgent. Responda apenas com codigo limpo, arquitetura e C++ moderno.");
-    if (!context.empty()) {
-        cm.addTurn("system", context);
-    }
-    cm.addTurn("user", prompt);
+    std::string finalPrompt;
+    double ms = measureTimeMs([&]() {
+        ContextManager cm(modelId);
+        cm.addTurn("system", "Voce e o CodingAgent. Responda apenas com codigo limpo, arquitetura e C++ moderno.");
+        if (!context.empty()) {
+            cm.addTurn("system", context);
+        }
+        cm.addTurn("user", prompt);
+        finalPrompt = cm.buildPrompt();
+    });
+    if (metrics) metrics->promptBuildMs += ms;
 
-    std::cout << "  [" << name_ << "] Construindo prompt final (" << cm.totalTokens() << " tokens)...\n";
-    return cm.buildPrompt();
+    return finalPrompt;
 }
 
-std::string ChatAgent::execute(const std::string& prompt, const std::string& modelId)
+std::string ChatAgent::execute(const std::string& prompt, const std::string& modelId, PipelineMetrics* metrics)
 {
-    std::string context = retrieveContext(prompt);
+    std::string context = retrieveContext(prompt, metrics);
     
-    ContextManager cm(modelId);
-    cm.addTurn("system", "Voce e o ChatAgent, focado em suporte geral e duvidas do dia a dia.");
-    if (!context.empty()) {
-        cm.addTurn("system", context);
-    }
-    cm.addTurn("user", prompt);
+    std::string finalPrompt;
+    double ms = measureTimeMs([&]() {
+        ContextManager cm(modelId);
+        cm.addTurn("system", "Voce e o ChatAgent, focado em suporte geral e duvidas do dia a dia.");
+        if (!context.empty()) {
+            cm.addTurn("system", context);
+        }
+        cm.addTurn("user", prompt);
+        finalPrompt = cm.buildPrompt();
+    });
+    if (metrics) metrics->promptBuildMs += ms;
 
-    std::cout << "  [" << name_ << "] Construindo prompt final (" << cm.totalTokens() << " tokens)...\n";
-    return cm.buildPrompt();
+    return finalPrompt;
 }
 
 // --- Orchestrator ---
@@ -83,16 +109,21 @@ void Orchestrator::registerAgent(TaskType type, std::shared_ptr<Agent> agent)
 
 std::string Orchestrator::mockLLMResponse(const std::string& finalPrompt, const std::string& modelId)
 {
+    // Simula tempo de inferência real para os testes baseados em quantidade de tokens
+    std::this_thread::sleep_for(std::chrono::milliseconds(finalPrompt.size() / 10));
     return "Resposta gerada por " + modelId + " baseada em " + std::to_string(finalPrompt.size()) + " bytes de contexto.";
 }
 
-std::string Orchestrator::processRequest(const std::string& prompt)
+std::string Orchestrator::processRequest(const std::string& prompt, PipelineMetrics* outMetrics)
 {
-    std::cout << "------------------------------------------------------\n";
-    std::cout << "[Orchestrator] Nova Requisicao: \"" << prompt << "\"\n";
+    PipelineMetrics metrics;
+    auto tStart = std::chrono::high_resolution_clock::now();
 
     // 1. Task Analyzer
-    TaskType task = analyzer_.analyze(prompt);
+    TaskType task;
+    metrics.taskAnalysisMs = measureTimeMs([&]() {
+        task = analyzer_.analyze(prompt);
+    });
     
     std::string taskName;
     switch(task) {
@@ -102,69 +133,64 @@ std::string Orchestrator::processRequest(const std::string& prompt)
         case TaskType::Writing: taskName = "Writing"; break;
         default: taskName = "Chat"; break;
     }
-    std::cout << "[Orchestrator] Classificado como: " << taskName << "\n";
 
     // 2. Bottleneck Detector & Router
-    SystemMetrics metrics = collector_.collect();
-    BottleneckType bt = detector_.detect(metrics);
-    
-    std::string idealModel = router_.chooseModel(task, metrics);
-    
-    if (detector_.isCritical(bt) || bt != BottleneckType::None) {
-        std::cout << "[Orchestrator] Gargalo detectado (" << detector_.describe(bt) << ")\n";
-        idealModel = recovery_.recover(bt, idealModel);
-    }
-    std::cout << "[Orchestrator] Modelo selecionado: " << idealModel << "\n";
+    std::string idealModel;
+    metrics.routingMs = measureTimeMs([&]() {
+        SystemMetrics sysMetrics = collector_.collect();
+        BottleneckType bt = detector_.detect(sysMetrics);
+        
+        idealModel = router_.chooseModel(task, sysMetrics);
+        
+        if (detector_.isCritical(bt) || bt != BottleneckType::None) {
+            idealModel = recovery_.recover(bt, idealModel);
+        }
+    });
 
     // 3. Delegation to Planner (Agent)
     auto it = agents_.find(task);
     if (it == agents_.end()) {
-        // Fallback to chat if no specific agent
         it = agents_.find(TaskType::Chat);
     }
 
     std::string response = "Falha ao processar";
     if (it != agents_.end()) {
-        std::cout << "[Orchestrator] Delegando para agente: " << it->second->getName() << "\n";
-        
-        // Agent calls RAG -> ContextManager -> Builds final prompt
-        std::string finalPrompt = it->second->execute(prompt, idealModel);
-        
-        // Phase 11: Real Runtime Execution
-        std::cout << "[Orchestrator] Preparando inferencia com " << idealModel << "...\n";
+        std::string finalPrompt = it->second->execute(prompt, idealModel, &metrics);
         
         bool runtimeReady = false;
         if (activeModelId_ != idealModel) {
-            std::cout << "[Orchestrator] Carregando modelo real: " << idealModel << "\n";
-            // Check if model file exists locally
-            std::string modelPath = "models/" + idealModel; // Basic assumption
+            std::string modelPath = "models/" + idealModel; 
             if (runtime_.loadModel(modelPath)) {
                 activeModelId_ = idealModel;
                 runtimeReady = true;
-            } else {
-                std::cout << "[Orchestrator] AVISO: Falha ao carregar " << modelPath << ". Usando simulador.\n";
             }
         } else {
             runtimeReady = true;
         }
 
-        if (runtimeReady) {
-            auto stats = runtime_.generateWithStats(finalPrompt, 128); // limiting output tokens for testing
-            if (stats.ok) {
-                response = stats.text;
-                std::cout << "[Orchestrator] LLM real executou a tarefa com sucesso (" << stats.duration_ms << "ms).\n";
+        metrics.inferenceMs = measureTimeMs([&]() {
+            if (runtimeReady) {
+                auto stats = runtime_.generateWithStats(finalPrompt, 128);
+                if (stats.ok) {
+                    response = stats.text;
+                } else {
+                    response = mockLLMResponse(finalPrompt, idealModel);
+                }
             } else {
-                std::cout << "[Orchestrator] ERRO na geracao real. Fazendo fallback para simulador.\n";
                 response = mockLLMResponse(finalPrompt, idealModel);
             }
-        } else {
-            response = mockLLMResponse(finalPrompt, idealModel);
-        }
+        });
         
         // 4. Memory Persistence
-        memory_.addMemory(taskName, prompt, response, idealModel);
-        std::cout << "[Orchestrator] Interacao salva na Memoria Episodica.\n";
+        metrics.memorySaveMs = measureTimeMs([&]() {
+            memory_.addMemory(taskName, prompt, response, idealModel);
+        });
     }
+
+    auto tEnd = std::chrono::high_resolution_clock::now();
+    metrics.totalMs = std::chrono::duration<double, std::milli>(tEnd - tStart).count();
+
+    if (outMetrics) *outMetrics = metrics;
 
     return response;
 }
