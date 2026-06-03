@@ -30,7 +30,7 @@ LocalRuntimeEngine::~LocalRuntimeEngine() {
 int LocalRuntimeEngine::loadModel(const std::string& path, const std::string& type) {
     std::lock_guard<std::mutex> lock(runtimeMutex_);
     
-    auto instance = std::make_unique<LocalModelInstance>();
+    auto instance = std::make_shared<LocalModelInstance>();
     instance->id = nextModelId_++;
     instance->path = path;
     instance->type = type;
@@ -70,7 +70,7 @@ std::future<std::string> LocalRuntimeEngine::executeAsync(int modelId, const std
         return p.get_future();
     }
     
-    LocalModelInstance* instance = it->second.get();
+    std::shared_ptr<LocalModelInstance> instance = it->second;
     
     if (context.tokenCount > 128000) { // simple fallback threshold mock
         std::promise<std::string> p;

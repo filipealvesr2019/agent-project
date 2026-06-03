@@ -15,6 +15,8 @@
 #include "ReasoningTimelineEngine/ReasoningTimelineEngine.h"
 #include "ContextEngine/ContextEngine.h"
 #include "ModelRouter/ModelRouter.h"
+#include "LocalRuntime/TaskScheduler.h"
+#include "LocalRuntime/ModelPoolManager.h"
 #include "LocalRuntime/LocalRuntimeEngine.h"
 
 using namespace AgentOS;
@@ -45,20 +47,14 @@ void generateReport(const BenchmarkResult& res) {
     file << res.level << "," << res.agents << "," << res.models << "," << res.durationMs << "," << res.peakVramGB << "," << res.tokenThroughput << "\n";
 }
 
-void runHellBreaker(const std::string& levelName, int numModels, int numOrgs, int deptsPerOrg, int projectsPerDept, int teamsPerProject, int agentsPerTeam) {
-    std::cout << "\n[HellBreaker] Initiating " << levelName << "...\n";
+void runHellBreakerV2(const std::string& levelName, int numModels, int numOrgs, int deptsPerOrg, int projectsPerDept, int teamsPerProject, int agentsPerTeam) {
+    std::cout << "\n[HellBreaker V2] Initiating " << levelName << "...\n";
     
     int totalAgents = numOrgs * deptsPerOrg * projectsPerDept * teamsPerProject * agentsPerTeam;
-    std::cout << "[HellBreaker] Provisioning " << numModels << " models and " << totalAgents << " agents.\n";
+    std::cout << "[HellBreaker V2] Provisioning " << numModels << " available models and " << totalAgents << " agents.\n";
 
-    std::vector<int> modelPool;
-    float totalVram = 0.0f;
-    for (int i = 0; i < numModels; ++i) {
-        std::string type = (i % 2 == 0) ? "GGUF" : "SAFETENSORS";
-        int mId = LocalRuntimeEngine::getInstance().loadModel("/models/model_" + std::to_string(i) + ".bin", type);
-        modelPool.push_back(mId);
-        totalVram += LocalRuntimeEngine::getInstance().getStatus(mId).vramUsageGB;
-    }
+    // VRAM Limit: 24 GB
+    ModelPoolManager::getInstance().setVramLimit(24000);
 
     auto start = high_resolution_clock::now();
     std::vector<std::future<std::string>> pendingTasks;
@@ -85,8 +81,12 @@ void runHellBreaker(const std::string& levelName, int numModels, int numOrgs, in
                         AgentStateMemory state{agentId, "Working", "now"};
                         MemoryEngine::getInstance().updateAgentState(state);
                         
-                        // Select model from pool round-robin
-                        int selectedModel = modelPool[a % numModels];
+                        // Model Pool assigns a model (loads/evicts as needed based on LRU)
+                        std::string mockModelPath = "/models/model_" + std::to_string(a % numModels) + ".bin";
+                        std::string type = ((a % numModels) % 2 == 0) ? "GGUF" : "SAFETENSORS";
+                        uint64_t estVram = (type == "GGUF") ? 4000 : 7000; // Mock 4GB/7GB per model
+                        
+                        int selectedModel = ModelPoolManager::getInstance().requestModel(mockModelPath, type, estVram);
                         
                         AgentThought thought{agentId, "Model_" + std::to_string(selectedModel), "System", "Action", "HellBreaker Reasoning", "now"};
                         ReasoningTimelineEngine::getInstance().recordThought(thought);
@@ -113,11 +113,16 @@ void runHellBreaker(const std::string& levelName, int numModels, int numOrgs, in
     long long durationMs = duration_cast<milliseconds>(end - start).count();
     float tps = (durationMs > 0) ? (tokensProcessed.load() / (durationMs / 1000.0f)) : 0.0f;
 
-    BenchmarkResult res{levelName, totalAgents, numModels, durationMs, 0, totalVram, tps, true};
+    ModelPoolMetrics metrics = ModelPoolManager::getInstance().getMetrics();
+    float peakVram = metrics.usedVRAM_MB / 1000.0f;
+    
+    std::cout << "[HellBreaker V2] Model Pool Stats: Evictions=" << metrics.evictions 
+              << ", Reloads=" << metrics.reloads 
+              << ", Peak VRAM=" << peakVram << " GB\n";
+
+    BenchmarkResult res{levelName, totalAgents, numModels, durationMs, 0, peakVram, tps, true};
     generateReport(res);
 }
-
-#include "LocalRuntime/TaskScheduler.h"
 
 int main(int argc, char** argv) {
     std::cout << "AgentOS Scalability & Benchmark Framework (Phase 16.8)\n";
@@ -127,20 +132,17 @@ int main(int argc, char** argv) {
     
     MemoryEngine::getInstance().initDatabase();
     
-    // Level: Bronze (2 models, 100 agents)
-    // 1 Org, 2 Dept, 5 Proj, 5 Teams, 2 Agents
-    runHellBreaker("Bronze", 2, 1, 2, 5, 5, 2);
+    // Level: Bronze V2 (2 models, 100 agents)
+    runHellBreakerV2("Bronze V2", 2, 1, 2, 5, 5, 2);
 
-    // Level: Silver (10 models, 1000 agents)
-    // 1 Org, 5 Dept, 10 Proj, 10 Teams, 2 Agents
-    runHellBreaker("Silver", 10, 1, 5, 10, 10, 2);
+    // Level: Silver V2 (10 models, 1000 agents)
+    runHellBreakerV2("Silver V2", 10, 1, 5, 10, 10, 2);
     
-    // Level: Gold (25 models, 5000 agents)
-    // 5 Org, 10 Dept, 10 Proj, 5 Teams, 2 Agents
-    runHellBreaker("Gold", 25, 5, 10, 10, 5, 2);
+    // Level: Gold V2 (25 models, 5000 agents)
+    runHellBreakerV2("Gold V2", 25, 5, 10, 10, 5, 2);
 
-    // Platinum and Apocalypse can be uncommented for full scale
-    // runHellBreaker("Platinum", 50, 10, 20, 20, 5, 5); // 10k agents
+    // Level: Platinum V2 (50 models, 10000 agents)
+    runHellBreakerV2("Platinum V2", 50, 10, 20, 10, 5, 5);
     
     std::cout << "Benchmarks completed successfully.\n";
     return 0;

@@ -424,6 +424,7 @@ if(BUILD_BENCHMARK_RUNNER)
         src/ModelRouter/ModelRouter.cpp
         src/LocalRuntime/LocalRuntimeEngine.cpp
         src/LocalRuntime/TaskScheduler.cpp
+        src/LocalRuntime/ModelPoolManager.cpp
     )
     target_include_directories(AgentOS_BenchmarkRunner PRIVATE include libs/sqlite)
     target_link_libraries(AgentOS_BenchmarkRunner PRIVATE sqlite)

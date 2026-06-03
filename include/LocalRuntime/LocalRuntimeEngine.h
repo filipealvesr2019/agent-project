@@ -68,7 +68,7 @@ private:
     LocalRuntimeEngine& operator=(const LocalRuntimeEngine&) = delete;
 
     int nextModelId_ = 1;
-    std::unordered_map<int, std::unique_ptr<LocalModelInstance>> models_;
+    std::unordered_map<int, std::shared_ptr<LocalModelInstance>> models_;
     std::mutex runtimeMutex_;
 };
 
