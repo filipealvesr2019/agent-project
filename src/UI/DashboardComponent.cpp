@@ -3,14 +3,15 @@
 #include "UI/AgentListComponent.h"
 #include "UI/LogViewerComponent.h"
 #include "UI/CreateAgentDialog.h"
+#include "UI/ModelManagerDialog.h"
 #include "UI/UI.h"
 #include "ChangeManagement/ChangeManagement.h"
+#include "AgentProfiles/AgentProfiles.h"
 #include "PlannerEngine/PlannerEngine.h"
 #include "ModelRouter/ModelRouter.h"
 #include "ReasoningEngine/ReasoningEngine.h"
 #include "ObjectiveEngine/ObjectiveEngine.h"
 #include "CostMonitor/CostMonitor.h"
-#include "AgentProfiles/AgentProfiles.h"
 #include <juce_gui_extra/juce_gui_extra.h>
 
 namespace AgentOS {
@@ -207,6 +208,8 @@ void DashboardComponent::mouseDown(const juce::MouseEvent& event) {
         menu.addItem(42, "Ver Objetivos");
         menu.addItem(43, "Ver Modelos");
         menu.addSeparator();
+        menu.addItem(45, "Gerenciar Modelos");
+        menu.addSeparator();
         menu.addItem(44, "Resetar Custos");
         menu.showMenuAsync(juce::PopupMenu::Options(), [this](int result) { handleMenuClick(result); });
     } else if (menuHelp_.contains(pos)) {
@@ -268,6 +271,10 @@ void DashboardComponent::handleMenuClick(int itemId) {
         case 44:
             CostMonitor::getInstance().reset();
             addLogMessage("Custos resetados");
+            break;
+        case 45:
+            addLogMessage("Abrindo gerenciador de modelos...");
+            ModelManagerDialog::show();
             break;
     }
 }

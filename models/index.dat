@@ -1,0 +1,7 @@
+# AgentOS Model Index
+# Format: id|name|source|sourceUrl|type|format|filePath|status|fileSize|loadedAt
+1|Mistral-7B-Teste|huggingface|https://huggingface.co/mistralai/Mistral-7B-v0.1|Texto|gguf|models/Mistral-7B-Teste.gguf|Carregado|89|2026-06-02 23:03:47
+4|Modelo-Teste_123|huggingface|https://huggingface.co/test/model|Texto|fp16|models/Modelo-Teste_123.fp16|Carregado|74|2026-06-02 23:03:47
+5|Alpha|local|test_model.bin|Texto|gguf|models/Alpha.gguf|Carregado|15|2026-06-02 23:03:47
+6|Beta|local|test_model.bin|Imagem|ggml|models/Beta.ggml|Carregado|15|2026-06-02 23:03:47
+7|RealModel|huggingface|https://huggingface.co/test/real|Texto|gguf|models/RealModel.gguf|Offline|0|

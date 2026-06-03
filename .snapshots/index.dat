@@ -78,3 +78,30 @@
 78|SYSTEM|Tue Jun  2 22:35:26 2026|EMERGENCY|Falha crítica na execução|00001505|0
 79|Dev1|Tue Jun  2 22:35:26 2026|test_cm07a.txt|snap A|80562edb|10
 80|Dev1|Tue Jun  2 22:35:26 2026|test_cm07b.txt|snap B|8460bffc|10
+81|Dev1|Tue Jun  2 22:58:53 2026|test_cm01.txt|teste inicial|5ad2169b|17
+82|Dev1|Tue Jun  2 22:58:53 2026|test_cm01.txt|segundo snapshot|bae44c32|17
+83|Dev1|Tue Jun  2 22:58:53 2026|test_cm03.txt|Change proposal #1|5ad2169b|17
+84|Dev1|Tue Jun  2 22:58:53 2026|test_cm04.txt|Change proposal #2|5ad2169b|17
+85|Dev1|Tue Jun  2 22:58:53 2026|test_cm05.txt|antes da alteracao|5ad2169b|17
+86|SYSTEM|Tue Jun  2 22:58:53 2026|EMERGENCY|Falha crítica na execução|00001505|0
+87|Dev1|Tue Jun  2 22:58:53 2026|test_cm07a.txt|snap A|80562edb|10
+88|Dev1|Tue Jun  2 22:58:53 2026|test_cm07b.txt|snap B|8460bffc|10
+89|Becca|Tue Jun  2 23:00:53 2026|tests/workflow_test/important.txt|Antes da alteracao critica|3bef2aa1|27
+90|Becca|Tue Jun  2 23:00:53 2026|tests/workflow_test/important.txt|Change proposal #1|3bef2aa1|27
+91|Dev1|Tue Jun  2 23:01:10 2026|test_cm01.txt|teste inicial|5ad2169b|17
+92|Dev1|Tue Jun  2 23:01:10 2026|test_cm01.txt|segundo snapshot|bae44c32|17
+93|Dev1|Tue Jun  2 23:01:10 2026|test_cm03.txt|Change proposal #1|5ad2169b|17
+94|Dev1|Tue Jun  2 23:01:10 2026|test_cm04.txt|Change proposal #2|5ad2169b|17
+95|Dev1|Tue Jun  2 23:01:10 2026|test_cm05.txt|antes da alteracao|5ad2169b|17
+96|SYSTEM|Tue Jun  2 23:01:10 2026|EMERGENCY|Falha crítica na execução|00001505|0
+97|Dev1|Tue Jun  2 23:01:10 2026|test_cm07a.txt|snap A|80562edb|10
+98|Dev1|Tue Jun  2 23:01:10 2026|test_cm07b.txt|snap B|8460bffc|10
+99|Becca|Tue Jun  2 23:01:38 2026|tests/workflow_test/important.txt|Antes da alteracao critica|3bef2aa1|27
+100|Becca|Tue Jun  2 23:01:38 2026|tests/workflow_test/important.txt|Change proposal #1|3bef2aa1|27
+101|Becca|Tue Jun  2 23:01:53 2026|tests/test_snapshot.txt|Antes da alteracao|9a65520d|27
+102|Becca|Tue Jun  2 23:01:53 2026|tests/test_snapshot.txt|Change proposal #1|9a65520d|27
+103|SYSTEM|Tue Jun  2 23:01:53 2026|EMERGENCY|Falha critica simulada - agente Becca em loop|00001505|0
+104|TestAgent|Tue Jun  2 23:03:40 2026|tests/phase6_recovery_test.txt|Recovery test|ff95d67b|17
+105|TestAgent|Tue Jun  2 23:03:40 2026|tests/phase6_plan_rollback.txt|Plan rollback test|48f82f08|48
+106|Becca|Tue Jun  2 23:03:40 2026|tests/phase6_ceo_approval.txt|CEO approval test|ff95d67b|17
+107|Becca|Tue Jun  2 23:03:40 2026|tests/phase6_ceo_approval.txt|Change proposal #1|ff95d67b|17

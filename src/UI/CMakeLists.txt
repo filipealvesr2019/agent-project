@@ -6,6 +6,7 @@ add_library(UI STATIC
     SidebarComponent.cpp
     LogViewerComponent.cpp
     CreateAgentDialog.cpp
+    ModelManagerDialog.cpp
 )
 target_include_directories(UI PUBLIC ${CMAKE_SOURCE_DIR}/include)
 target_link_libraries(UI PUBLIC
@@ -20,4 +21,5 @@ target_link_libraries(UI PUBLIC
     MemoryEngine
     GovernanceEngine
     Sandbox
+    ModelManager
 )
