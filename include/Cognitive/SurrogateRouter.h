@@ -2,14 +2,9 @@
 #include <string>
 #include "Cognitive/TaskType.h"
 #include "Cognitive/ModelRegistry.h"
+#include "Cognitive/MetricsCollector.h"
 
 namespace AgentOS {
-
-struct SystemMetrics {
-    double tps       = 0.0;
-    double latencyMs = 0.0;
-    double ramUsagePct = 0.0; // 0-100
-};
 
 class SurrogateRouter
 {

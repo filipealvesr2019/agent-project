@@ -15,3 +15,6 @@ Qwen2.5-7B-Instruct-Q8_0.gguf,Cenario B,Prompt 1,126485,256,2.02396,0,7361,OK
 Qwen2.5-7B-Instruct-Q8_0.gguf,Cenario B,Prompt 2,139803,256,1.83115,0,7367,OK
 Qwen2.5-7B-Instruct-Q8_0.gguf,Cenario B,Prompt 3,140295,256,1.82473,0,7367,OK
 gemma-2-9b-it-Q6_K_L.gguf,Cenario C,Prompt 1,119575,256,2.14092,0,8186,OK
+gemma-2-9b-it-Q6_K_L.gguf,Cenario C,Prompt 2,146221,256,1.75077,0,8192,OK
+gemma-2-9b-it-Q6_K_L.gguf,Cenario C,Prompt 3,146187,256,1.75118,0,8192,OK
+Meta-Llama-3.1-8B-Instruct-Q8_0.gguf,Cenario C,Prompt 1,126816,256,2.01867,0,7947,OK

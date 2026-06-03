@@ -1,0 +1,5 @@
+Timestamp,Model,TPS,RAM_MB,Latency_ms
+1780516930,gemma-2-9b-it-Q6_K_L.gguf,0,800,0
+1780516930,gemma-2-9b-it-IQ2_M.gguf,0.7,5000,145000
+1780516930,OLMo-2-1124-7B-Instruct-Q5_K_L.gguf,2.1,4200,135000
+1780516930,Phi-3-mini-4k-instruct-Q6_K.gguf,4.5,14000,55000

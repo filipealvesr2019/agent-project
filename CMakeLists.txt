@@ -557,6 +557,15 @@ if(BUILD_COGNITIVE_TESTS)
     target_include_directories(AgentOS_CognitivePipelineTest PRIVATE include)
     target_link_libraries(AgentOS_CognitivePipelineTest PRIVATE Cognitive)
     target_compile_features(AgentOS_CognitivePipelineTest PRIVATE cxx_std_20)
+
+    # Semana 3: Observability - MetricsCollector + BottleneckDetector + AutoRecovery
+    add_executable(AgentOS_ObservabilityTest
+        tests/test_observability.cpp
+    )
+    target_include_directories(AgentOS_ObservabilityTest PRIVATE include)
+    target_link_libraries(AgentOS_ObservabilityTest PRIVATE Cognitive)
+    target_compile_features(AgentOS_ObservabilityTest PRIVATE cxx_std_20)
 endif()
+
 
 
