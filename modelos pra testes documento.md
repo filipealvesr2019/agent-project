@@ -111,7 +111,3 @@ Phi-3-mini,Cenário A,Prompt 1,1234,256,207,500,120,OK
 * **Cenário C** só para medir limites máximos — use com cuidado.
 
 ---
-
-Se quiser, posso gerar **um script C++ completo** que automatiza todo esse processo de benchmark para cada pasta e prompt, salvando os logs em CSV. Assim você só roda o `AgentOS_RealInferenceTest.exe` e já terá os resultados.
-
-Quer que eu faça isso agora?
