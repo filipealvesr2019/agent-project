@@ -1,3 +1,117 @@
+Perfeito! Com base no que você já implementou no **WorkflowEditorComponent**, temos a UI central totalmente funcional, mas ainda podemos evoluir para uma experiência mais interativa e profissional. Aqui está uma visão detalhada das próximas melhorias e integrações para a aba do **Workflow Editor**:
+
+---
+
+### **1. Zoom e Pan no Canvas**
+
+* Permitir que o usuário:
+
+  * Aproxime e afaste da organização inteira.
+  * Arraste para navegar pelo canvas infinito.
+* Sugestão de implementação com JUCE:
+
+  ```cpp
+  float zoomFactor = 1.0f;
+  Point<float> panOffset{0.0f, 0.0f};
+
+  void paint(juce::Graphics& g) override {
+      g.addTransform(AffineTransform::scale(zoomFactor)
+                     .translated(panOffset.x, panOffset.y));
+      drawNodesAndConnections(g);
+  }
+
+  void mouseDrag(const MouseEvent& event) override {
+      panOffset += event.getOffsetFromDragStart().toFloat();
+      repaint();
+  }
+
+  void mouseWheelMove(const MouseEvent& event, const MouseWheelDetails& wheel) override {
+      zoomFactor += wheel.deltaY * 0.05f; // Ajuste de sensibilidade
+      zoomFactor = jlimit(0.2f, 3.0f, zoomFactor);
+      repaint();
+  }
+  ```
+
+---
+
+### **2. Integração com Projetos Reais**
+
+* Atualmente os nodes são mockados (`AgentOS_Global` → `AI Dept` → `Project Vision UI` → `Teams` → `Agents`).
+* Próximo passo:
+
+  * Puxar dados reais da **API de Projetos**.
+  * Atualizar nodes dinamicamente com o `ProjectManager` e `OrganizationEngine`.
+  * Mapear status ativo/inativo e progresso diretamente no canvas.
+
+---
+
+### **3. Timeline e Corporate Chat**
+
+* Já estão no painel lateral superior:
+
+  * **Corporate Chat**: tradutor de raciocínio dos agentes.
+  * **Timeline**: histórico auditável.
+* Próximo passo:
+
+  * Conectar eventos reais dos agentes em execução.
+  * Permitir filtro por departamento, projeto ou agente.
+  * Scroll infinito e marcação de eventos críticos.
+
+---
+
+### **4. Agent Inspector**
+
+* Já exibe métricas e histórico de raciocínio.
+* Próximo passo:
+
+  * Mostrar **relação com outros agentes** (quem delegou para quem).
+  * Exibir logs de execução em **tempo real**.
+  * Permitir **ações rápidas**: pausar, reiniciar ou enviar prompt manual ao agente.
+
+---
+
+### **5. Hierarquia Atualizada**
+
+O fluxo visual completo no Canvas é assim:
+
+```text
+Organization: AgentOS_Global
+│
+├── Department: AI
+│   ├── Project: Vision UI
+│   │   └── Team: OCR Development
+│   │       ├── Agent: OCR Agent (Working)
+│   │       ├── Agent: Florence Agent (Idle)
+│   │       └── Agent: Qwen-VL Agent (Busy)
+│   └── Project: NLP Backend
+│       └── Team: Language Models
+│           ├── Agent: Phi-4
+│           └── Agent: GPT-5 Mini
+└── Department: Engineering
+    └── Project: Frontend
+        └── Team: React Team
+            ├── Agent: React Agent
+            └── Agent: QA Agent
+```
+
+* **Linhas**: curvas de Bezier conectando pai → filho.
+* **Cores por nível**: Organization (Dourado), Department (Azul), Project (Verde), Team (Cinza), Agents (Cinza-claro com status colorido).
+
+---
+
+### **6. Próximos Passos de UI**
+
+1. Implementar **Zoom & Pan** no Canvas.
+2. Substituir mocks por **API real de Projects / Agents**.
+3. Conectar **Timeline e Chat** a eventos reais.
+4. Melhorar **Agent Inspector** com logs e ações.
+5. Adicionar **auto-layout dinâmico** quando novos agentes ou projetos forem adicionados.
+6. (Opcional) Permitir **arrastar e soltar agentes entre Teams** para simulação de realocação.
+
+---
+
+
+
 Aqui está um **diagrama completo em texto** da UI do **Workflow Editor** mostrando todos os painéis conectados visualmente e o fluxo de dados entre eles:
 
 ```text
