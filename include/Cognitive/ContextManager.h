@@ -36,6 +36,9 @@ public:
 
     // Add a turn to the conversation
     void addTurn(const std::string& role, const std::string& content);
+    
+    // Set a global system prompt (useful for User Profile Injection)
+    void setSystemPrompt(const std::string& prompt);
 
     // Build the final prompt respecting the token budget
     // Trims oldest turns if necessary

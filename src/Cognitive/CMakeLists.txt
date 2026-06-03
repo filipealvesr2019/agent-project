@@ -14,6 +14,7 @@ add_library(Cognitive STATIC
     AutonomousLoop.cpp
     HardwareWatchdog.cpp
     SummarizerAgent.cpp
+    UserProfileManager.cpp
     ../LocalRuntime/LlamaRuntime.cpp
 )
 

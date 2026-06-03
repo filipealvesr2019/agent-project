@@ -101,9 +101,19 @@ Orchestrator::Orchestrator(ModelRegistry& registry,
     : registry_(registry), memory_(mem), kb_(kb), vectorSearch_(vs),
       router_(registry_), recovery_(registry_),
       summarizer_("SummarizerAgent", mem, kb, vs),
+      userProfile_("user_profile.json"),
       sessionContext_("Phi-3-mini-4k-instruct-Q6_K.gguf") // default fallback
 {
     watchdog_.start();
+    
+    // Injeta o User Profile logo no boot do Orchestrator
+    auto profile = userProfile_.getProfile();
+    std::string sysPrompt = "Usuário: " + profile.name + " | Profissão: " + profile.profession + "\nPreferências: ";
+    for (const auto& p : profile.preferences) sysPrompt += p + "; ";
+    sysPrompt += "\nNotas: ";
+    for (const auto& n : profile.customNotes) sysPrompt += n + "; ";
+    
+    sessionContext_.setSystemPrompt(sysPrompt);
 }
 
 void Orchestrator::registerAgent(TaskType type, std::shared_ptr<Agent> agent)

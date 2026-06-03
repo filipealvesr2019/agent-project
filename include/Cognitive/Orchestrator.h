@@ -6,6 +6,7 @@
 #include "Cognitive/HardwareWatchdog.h"
 #include "Cognitive/BottleneckDetector.h"
 #include "Cognitive/SummarizerAgent.h"
+#include "Cognitive/UserProfileManager.h"
 #include "Cognitive/ContextManager.h"
 #include "Cognitive/AutoRecovery.h"
 #include "LocalRuntime/LlamaRuntime.h"
@@ -42,6 +43,7 @@ private:
     BottleneckDetector detector_;
     AutoRecovery recovery_;
     SummarizerAgent summarizer_;
+    UserProfileManager userProfile_;
     ContextManager sessionContext_;
 
     LlamaRuntime runtime_;

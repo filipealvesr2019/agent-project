@@ -63,6 +63,21 @@ void ContextManager::addTurn(const std::string& role, const std::string& content
     trimToFit();
 }
 
+void ContextManager::setSystemPrompt(const std::string& prompt)
+{
+    // Remove previous system prompts to replace with the new one
+    turns_.erase(
+        std::remove_if(turns_.begin(), turns_.end(),
+            [](const ContextTurn& t){ return t.role == "system"; }),
+        turns_.end());
+        
+    ContextTurn turn;
+    turn.role = "system";
+    turn.content = prompt;
+    turn.estimatedTokens = estimateTokens("system: " + prompt);
+    turns_.insert(turns_.begin(), turn); // Always at the very beginning
+}
+
 void ContextManager::trimToFit()
 {
     // Keep at least 1 turn always (the latest user message)
