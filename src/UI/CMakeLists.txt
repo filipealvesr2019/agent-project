@@ -8,6 +8,7 @@ add_library(UI STATIC
     CreateAgentDialog.cpp
     ModelManagerDialog.cpp
     ProjectPanelComponent.cpp
+    CognitiveDashboardComponent.cpp
     WorkflowEditor/WorkflowEditorComponent.cpp
     MemoryVisualization/MemoryVisualizationComponent.cpp
 )

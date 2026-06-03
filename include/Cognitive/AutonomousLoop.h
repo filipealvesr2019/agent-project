@@ -46,6 +46,11 @@ public:
     // Verifica se a fila de processamento ainda tem requisições
     bool hasPendingRequests() const;
 
+    // Callbacks Globais para a UI
+    std::function<void(int)> onTokensUpdated;
+    std::function<void(const std::vector<std::string>&)> onSemanticMemoryUpdated;
+    std::function<void(const std::string&)> onLogMessage;
+
 private:
     Orchestrator& orchestrator_;
     

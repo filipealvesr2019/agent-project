@@ -7,6 +7,7 @@
 #include "UI/ProjectPanelComponent.h"
 #include "UI/WorkflowEditor/WorkflowEditorComponent.h"
 #include "UI/MemoryVisualization/MemoryVisualizationComponent.h"
+#include "UI/CognitiveDashboardComponent.h"
 #include "UI/UI.h"
 #include "VisionEngine/VisionEngine.h"
 #include "ChangeManagement/ChangeManagement.h"
@@ -35,12 +36,14 @@ DashboardComponent::DashboardComponent() {
     workflowEditor_ = std::make_unique<WorkflowEditorComponent>();
     memoryVisualization_ = std::make_unique<MemoryVisualizationComponent>();
 
-    mainTabs_->addTab("Dashboard", juce::Colour(0xFF161b22), new juce::Component(), false); // Mock for now
+    cognitiveDashboard_ = std::make_unique<CognitiveDashboardComponent>();
+    
+    mainTabs_->addTab("Cognitive Dashboard", juce::Colour(0xFF161b22), cognitiveDashboard_.get(), false);
     mainTabs_->addTab("Agents", juce::Colour(0xFF161b22), agentList_.get(), false);
     mainTabs_->addTab("Projects", juce::Colour(0xFF161b22), projectPanel_.get(), false);
     mainTabs_->addTab("Workflow Editor", juce::Colour(0xFF161b22), workflowEditor_.get(), false);
     mainTabs_->addTab("Memory Viz", juce::Colour(0xFF161b22), memoryVisualization_.get(), false);
-    mainTabs_->setCurrentTabIndex(4); // Go to memory viz initially to test
+    mainTabs_->setCurrentTabIndex(0); // Go to cognitive dashboard initially
 
     logViewer_ = std::make_unique<LogViewerComponent>();
     addAndMakeVisible(logViewer_.get());
