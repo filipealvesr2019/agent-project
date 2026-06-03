@@ -5,6 +5,8 @@
 #include "Cognitive/MetricsCollector.h"
 #include "Cognitive/HardwareWatchdog.h"
 #include "Cognitive/BottleneckDetector.h"
+#include "Cognitive/SummarizerAgent.h"
+#include "Cognitive/ContextManager.h"
 #include "Cognitive/AutoRecovery.h"
 #include "LocalRuntime/LlamaRuntime.h"
 #include <unordered_map>
@@ -39,6 +41,8 @@ private:
     HardwareWatchdog watchdog_;
     BottleneckDetector detector_;
     AutoRecovery recovery_;
+    SummarizerAgent summarizer_;
+    ContextManager sessionContext_;
 
     LlamaRuntime runtime_;
     std::string activeModelId_;

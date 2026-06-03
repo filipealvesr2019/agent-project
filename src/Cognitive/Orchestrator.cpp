@@ -99,7 +99,9 @@ Orchestrator::Orchestrator(ModelRegistry& registry,
                            KnowledgeBase& kb,
                            VectorSearch& vs)
     : registry_(registry), memory_(mem), kb_(kb), vectorSearch_(vs),
-      router_(registry_), recovery_(registry_)
+      router_(registry_), recovery_(registry_),
+      summarizer_("SummarizerAgent", mem, kb, vs),
+      sessionContext_("Phi-3-mini-4k-instruct-Q6_K.gguf") // default fallback
 {
     watchdog_.start();
 }
@@ -155,39 +157,62 @@ std::string Orchestrator::processRequest(const std::string& prompt, PipelineMetr
         it = agents_.find(TaskType::Chat);
     }
 
-    std::string response = "Falha ao processar";
-    if (it != agents_.end()) {
-        std::string finalPrompt = it->second->execute(prompt, idealModel, &metrics);
+    // 3. Context Compression Trigger (Fase 14)
+    if (sessionContext_.needsCompression()) {
+        std::cout << "[Orchestrator] Alerta de contexto (" 
+                  << sessionContext_.totalTokens() << "/" << sessionContext_.getBudget().safeContext 
+                  << "). Iniciando Compressao..." << std::endl;
         
-        bool runtimeReady = false;
-        if (activeModelId_ != idealModel) {
-            std::string modelPath = "models/" + idealModel; 
-            if (runtime_.loadModel(modelPath)) {
-                activeModelId_ = idealModel;
-                runtimeReady = true;
-            }
-        } else {
+        int n = 4; // Resumir ultimos 4 turnos antigos
+        auto oldTurns = sessionContext_.getOldestTurns(n);
+        std::string summary = summarizer_.summarize(oldTurns, idealModel, metrics);
+        sessionContext_.replaceOldestWithSummary(n, summary);
+    }
+
+    // Adiciona o novo prompt ao sessionContext_
+    sessionContext_.addTurn("user", prompt);
+    
+    // Constrói o Prompt final para enviar à Inference
+    // Obs: Idealmente os sub-agents deveriam interagir com o sessionContext_.
+    // Para simplificar, passaremos o prompt processado pelo agente.
+    std::string finalPrompt;
+    if (agents_.count(task)) {
+        finalPrompt = agents_[task]->execute(sessionContext_.buildPrompt(), idealModel, metrics);
+    } else {
+        finalPrompt = prompt;
+    }
+
+    // 4. Llama.cpp / LLM Execution
+    std::string response = "Falha ao processar";
+    
+    bool runtimeReady = false;
+    if (activeModelId_ != idealModel) {
+        std::string modelPath = "models/" + idealModel; 
+        if (runtime_.loadModel(modelPath)) {
+            activeModelId_ = idealModel;
             runtimeReady = true;
         }
+    } else {
+        runtimeReady = true;
+    }
 
-        metrics.inferenceMs = measureTimeMs([&]() {
-            if (runtimeReady) {
-                auto stats = runtime_.generateWithStats(finalPrompt, 128);
-                if (stats.ok) {
-                    response = stats.text;
-                } else {
-                    response = mockLLMResponse(finalPrompt, idealModel);
-                }
+    metrics.inferenceMs = measureTimeMs([&]() {
+        if (runtimeReady) {
+            auto stats = runtime_.generateWithStats(finalPrompt, 128);
+            if (stats.ok) {
+                response = stats.text;
             } else {
                 response = mockLLMResponse(finalPrompt, idealModel);
             }
-        });
-        
-        // 4. Memory Persistence
-        metrics.memorySaveMs = measureTimeMs([&]() {
-            memory_.addMemory(taskName, prompt, response, idealModel);
-        });
-    }
+        } else {
+            response = mockLLMResponse(finalPrompt, idealModel);
+        }
+    });
+    
+    // 4. Memory Persistence
+    metrics.memorySaveMs = measureTimeMs([&]() {
+        memory_.addMemory(taskName, prompt, response, idealModel);
+    });
 
     auto tEnd = std::chrono::high_resolution_clock::now();
     metrics.totalMs = std::chrono::duration<double, std::milli>(tEnd - tStart).count();
