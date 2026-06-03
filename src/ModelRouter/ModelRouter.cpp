@@ -1,10 +1,58 @@
 #include "ModelRouter/ModelRouter.h"
+#include <algorithm>
 
 namespace AgentOS {
+
+ModelInstance::ModelInstance(const std::string& name, int maxTokens) 
+    : modelName(name), maxContextTokens(maxTokens), currentUsedTokens(0) {}
+
+bool ModelInstance::canProcess(int tokens) const {
+    return (currentUsedTokens + tokens) <= maxContextTokens;
+}
+
+std::string ModelInstance::runTask(const std::string& input) {
+    // Mock simulation
+    return "[Mock Output from " + modelName + "]: Processed " + std::to_string(input.length()) + " bytes.";
+}
 
 ModelRouter& ModelRouter::getInstance() {
     static ModelRouter instance;
     return instance;
+}
+
+void ModelRouter::registerModel(std::unique_ptr<ModelInstance> model) {
+    models_[model->modelName] = std::move(model);
+}
+
+ModelInstance* ModelRouter::selectModel(const std::string& agentName, int tokensNeeded) {
+    // Try to find a model that can process the tokens.
+    // In a real scenario, this would check agent routing configs and auto-escalate.
+    for (auto& [name, model] : models_) {
+        if (model->canProcess(tokensNeeded)) {
+            return model.get();
+        }
+    }
+    return nullptr;
+}
+
+std::string ModelRouter::splitInputByContext(const std::string& input, int maxTokens) {
+    // Very naive split for testing purposes
+    if (input.length() > (size_t)maxTokens) {
+        return input.substr(0, maxTokens) + "... [Truncated]";
+    }
+    return input;
+}
+
+std::string ModelRouter::dispatchTask(const std::string& agentName, const std::string& input) {
+    int estimatedTokens = input.length() / 4; // naive token estimation
+    ModelInstance* model = selectModel(agentName, estimatedTokens);
+    
+    if (model) {
+        return model->runTask(input);
+    }
+    
+    // Auto-escalation fallback or split
+    return "[Error] No model could process the task. Max context exceeded.";
 }
 
 ModelConfig ModelRouter::getModelForAgent(const std::string& agentName, const std::string& role) {
