@@ -1,4 +1,4 @@
-﻿#include "UI/SidebarComponent.h"
+#include "UI/SidebarComponent.h"
 #include "UI/UI.h"
 
 namespace AgentOS {
@@ -50,40 +50,77 @@ void SidebarItemComponent::paint(juce::Graphics& g) {
     } else {
         g.setColour(juce::Colour(0xFF8a91a8));
     }
-        juce::Path p;
+    juce::Path p;
+    float cx = iconArea.getCentreX();
+    float cy = iconArea.getCentreY();
     float ix = iconArea.getX();
     float iy = iconArea.getY();
-    float iw = iconArea.getWidth();
-    float ih = iconArea.getHeight();
     
     if (name_ == "Home") {
-        p.addTriangle(ix + iw/2, iy + 2, ix + 2, iy + ih/2, ix + iw - 2, iy + ih/2);
-        p.addRectangle(ix + 4, iy + ih/2, iw - 8, ih/2 - 2);
+        // Modern Home
+        p.startNewSubPath(ix + 3, iy + 9);
+        p.lineTo(ix + 10, iy + 3);
+        p.lineTo(ix + 17, iy + 9);
+        p.lineTo(ix + 17, iy + 17);
+        p.lineTo(ix + 3, iy + 17);
+        p.closeSubPath();
+        p.startNewSubPath(ix + 8, iy + 17);
+        p.lineTo(ix + 8, iy + 12);
+        p.lineTo(ix + 12, iy + 12);
+        p.lineTo(ix + 12, iy + 17);
     } else if (name_ == "Organizacoes") {
-        p.addRectangle(ix + 3, iy + 4, iw - 6, ih - 6);
-        p.addRectangle(ix + 6, iy + 8, 3, 3);
-        p.addRectangle(ix + 11, iy + 8, 3, 3);
-        p.addRectangle(ix + 6, iy + 13, 3, 3);
-        p.addRectangle(ix + 11, iy + 13, 3, 3);
+        // Office Building
+        p.addRoundedRectangle(ix + 4, iy + 2, 12, 18, 1.5f);
+        p.startNewSubPath(ix + 2, iy + 20);
+        p.lineTo(ix + 18, iy + 20);
+        for (int r = 0; r < 3; ++r) {
+            float wy = iy + 6 + r * 4;
+            p.startNewSubPath(ix + 8, wy);  p.lineTo(ix + 8.1f, wy);
+            p.startNewSubPath(ix + 12, wy); p.lineTo(ix + 12.1f, wy);
+        }
     } else if (name_ == "Projetos") {
-        p.addRoundedRectangle(ix + 2, iy + 4, iw - 4, ih - 6, 2.0f);
-        p.addLineSegment(juce::Line<float>(ix + 2, iy + 8, ix + iw - 2, iy + 8), 1.5f);
+        // Folder
+        p.startNewSubPath(ix + 2, iy + 7);
+        p.lineTo(ix + 2, iy + 4);
+        p.quadraticTo(ix + 2, iy + 3, ix + 3, iy + 3);
+        p.lineTo(ix + 7, iy + 3);
+        p.lineTo(ix + 9, iy + 6);
+        p.lineTo(ix + 17, iy + 6);
+        p.quadraticTo(ix + 18, iy + 6, ix + 18, iy + 7);
+        p.lineTo(ix + 18, iy + 17);
+        p.quadraticTo(ix + 18, iy + 18, ix + 17, iy + 18);
+        p.lineTo(ix + 3, iy + 18);
+        p.quadraticTo(ix + 2, iy + 18, ix + 2, iy + 17);
+        p.closeSubPath();
     } else if (name_ == "Equipe") {
-        p.addEllipse(ix + iw/2 - 4, iy + 2, 8, 8);
-        p.addArc(ix + 2, iy + 12, iw - 4, ih - 2, -1.57f, 1.57f, true);
+        // User Profile
+        p.addEllipse(cx - 3.5f, iy + 3, 7, 7);
+        p.startNewSubPath(ix + 3, iy + 19);
+        p.quadraticTo(ix + 3, iy + 13, cx, iy + 13);
+        p.quadraticTo(ix + 17, iy + 13, ix + 17, iy + 19);
     } else if (name_ == "Chat") {
-        p.addRoundedRectangle(ix + 2, iy + 2, iw - 4, ih - 6, 3.0f);
-        p.addTriangle(ix + 6, iy + ih - 4, ix + 10, iy + ih - 4, ix + 6, iy + ih);
+        // Message Bubble
+        p.addRoundedRectangle(ix + 2, iy + 3, 16, 12, 3.0f);
+        p.startNewSubPath(ix + 6, iy + 15);
+        p.lineTo(ix + 4, iy + 19);
+        p.lineTo(ix + 9, iy + 15);
     } else if (name_ == "Configuracoes") {
-        p.addEllipse(ix + 4, iy + 4, iw - 8, ih - 8);
-        p.addEllipse(ix + iw/2 - 2, iy + ih/2 - 2, 4, 4);
-        p.addLineSegment(juce::Line<float>(ix + iw/2, iy, ix + iw/2, iy + ih), 2.0f);
-        p.addLineSegment(juce::Line<float>(ix, iy + ih/2, ix + iw, iy + ih/2), 2.0f);
+        // Gear
+        p.addEllipse(cx - 2.5f, cy - 2.5f, 5, 5);
+        for (int i = 0; i < 8; ++i) {
+            float a = juce::MathConstants<float>::twoPi * (i / 8.0f);
+            float r1 = 6.0f, r2 = 8.5f;
+            p.startNewSubPath(cx + std::cos(a - 0.15f) * r1, cy + std::sin(a - 0.15f) * r1);
+            p.lineTo(cx + std::cos(a - 0.1f) * r2, cy + std::sin(a - 0.1f) * r2);
+            p.lineTo(cx + std::cos(a + 0.1f) * r2, cy + std::sin(a + 0.1f) * r2);
+            p.lineTo(cx + std::cos(a + 0.15f) * r1, cy + std::sin(a + 0.15f) * r1);
+        }
+        p.addEllipse(cx - 6, cy - 6, 12, 12);
     } else {
         p.addRoundedRectangle(iconArea.toFloat(), 4.0f);
     }
     
-    g.strokePath(p, juce::PathStrokeType(1.5f, juce::PathStrokeType::mitered, juce::PathStrokeType::rounded));
+    g.strokePath(p, juce::PathStrokeType(1.5f, juce::PathStrokeType::curved, juce::PathStrokeType::rounded));
 
     // Text
     if (isSelected_) {
