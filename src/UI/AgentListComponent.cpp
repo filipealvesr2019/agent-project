@@ -71,10 +71,10 @@ void AgentListComponent::paintCell(juce::Graphics& g, int rowNumber, int columnI
         case ColCompliance: {
             auto ts = GovernanceEngine::getInstance().getTrustScore(agent->getName());
             if (ts.nonCompliantActions > 0 || ts.drifts > 0) {
-                text = "⚠ NON-COMPLIANT";
+                text = juce::String::fromUTF8("[!] NON-COMPLIANT");
                 textColour = juce::Colour(0xFFdc143c);
             } else {
-                text = "✅ COMPLIANT";
+                text = juce::String::fromUTF8("[OK] COMPLIANT");
                 textColour = juce::Colour(0xFF32cd32);
             }
             break;
@@ -152,7 +152,7 @@ void AgentListComponent::cellClicked(int rowNumber, int, const juce::MouseEvent&
     auto& agents = UI::getInstance().getAgents();
     if (rowNumber >= 0 && rowNumber < (int)agents.size()) {
         auto& agent = agents[rowNumber];
-        UI::getInstance().logMessage("Selecionado: " + agent->getName());
+        UI::getInstance().logMessage(juce::String::fromUTF8("Selecionado: ") + agent->getName());
     }
 }
 
