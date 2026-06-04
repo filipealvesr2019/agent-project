@@ -480,6 +480,8 @@ private:
 
 
 DashboardComponent::DashboardComponent() {
+    auto t0 = juce::Time::getHighResolutionTicks();
+
     sidebar_ = std::make_unique<SidebarComponent>();
     addAndMakeVisible(sidebar_.get());
 
@@ -511,12 +513,20 @@ DashboardComponent::DashboardComponent() {
     sidebar_->onItemSelected = [this](const juce::String& name) {
         addLogMessage("Menu selecionado: " + name);
         
+        auto t1 = juce::Time::getHighResolutionTicks();
+        
         if (name == "Home") mainTabs_->setCurrentTabIndex(0);
         else if (name == "Organizacoes") mainTabs_->setCurrentTabIndex(1);
         else if (name == "Projetos") mainTabs_->setCurrentTabIndex(2);
         else if (name == "Equipe") mainTabs_->setCurrentTabIndex(3);
         else if (name == "Chat") mainTabs_->setCurrentTabIndex(4);
         else if (name == "Configuracoes") mainTabs_->setCurrentTabIndex(5);
+        
+        auto t2 = juce::Time::getHighResolutionTicks();
+        auto ms = juce::Time::highResolutionTicksToSeconds(t2 - t1) * 1000.0;
+        
+        juce::File logFile(juce::File::getSpecialLocation(juce::File::userDesktopDirectory).getChildFile("AgentOS_PerfLog.txt"));
+        logFile.appendText("DashboardComponent::setCurrentTabIndex [" + name + "] Latency: " + juce::String(ms) + " ms\n");
     };
 
     UI::getInstance().onAgentsChanged = [this] {
@@ -541,6 +551,11 @@ DashboardComponent::DashboardComponent() {
 startTimerHz(1); // Refresh every 1 second
     setSize(1200, 800);
     statusText_ = "AgentOS Phase 17: Studio UI Ativo";
+    
+    auto t1 = juce::Time::getHighResolutionTicks();
+    auto ms = juce::Time::highResolutionTicksToSeconds(t1 - t0) * 1000.0;
+    juce::File logFile(juce::File::getSpecialLocation(juce::File::userDesktopDirectory).getChildFile("AgentOS_PerfLog.txt"));
+    logFile.appendText("DashboardComponent Constructor Latency: " + juce::String(ms) + " ms\n");
 }
 
 DashboardComponent::~DashboardComponent() {
@@ -671,9 +686,19 @@ void DashboardComponent::handleMenuClick(int itemId) {
 }
 
 void DashboardComponent::timerCallback() {
+    auto start = std::chrono::high_resolution_clock::now();
+    
+    // Only refresh once per tick instead of twice!
     agentList_->refresh();
-
-    agentList_->refresh();
+    
+    auto end = std::chrono::high_resolution_clock::now();
+    auto duration = std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
+    
+    DBG("TimerCallback duration: " << duration << " us");
+    
+    // Write to a log file on Desktop so the user can see it easily
+    juce::File logFile(juce::File::getSpecialLocation(juce::File::userDesktopDirectory).getChildFile("AgentOS_PerfLog.txt"));
+    logFile.appendText("TimerCallback duration: " + juce::String(duration) + " us\n");
 }
 
 void DashboardComponent::addLogMessage(const juce::String& message) {

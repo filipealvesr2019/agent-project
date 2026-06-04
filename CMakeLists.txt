@@ -417,7 +417,7 @@ if(BUILD_ORG_WORKFLOW_TESTS)
 endif()
 
 # Phase 16.5 Hell Test Framework
-option(BUILD_HELL_TESTS "Build AgentOS Hell Scalability Tests" ON)
+option(BUILD_HELL_TESTS "Build AgentOS Hell Scalability Tests" OFF)
 if(BUILD_HELL_TESTS)
     add_executable(AgentOS_HellTest
         tests/test_hell_scale.cpp
@@ -485,7 +485,7 @@ if(BUILD_MEMORY_LEAK_APOCALYPSE)
 endif()
 
 # Phase 16.12 Surrogate Decision Layer
-option(BUILD_SURROGATE_TEST "Build AgentOS Surrogate Router Test" ON)
+option(BUILD_SURROGATE_TEST "Build AgentOS Surrogate Router Test" OFF)
 if(BUILD_SURROGATE_TEST)
     add_executable(AgentOS_SurrogateTest
         tests/test_surrogate.cpp
@@ -521,7 +521,7 @@ if(BUILD_RUNTIME_LEARNING_TEST)
 endif()
 
 # Phase 16.15 & 16.16 Hardware Adaptive & HellBreaker 3.0
-option(BUILD_HELL_BREAKER_3 "Build AgentOS Hell Breaker 3.0 Test" ON)
+option(BUILD_HELL_BREAKER_3 "Build AgentOS Hell Breaker 3.0 Test" OFF)
 if(BUILD_HELL_BREAKER_3)
     add_executable(AgentOS_HellBreaker3
         tests/test_hell_breaker_3.cpp

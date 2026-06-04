@@ -1,4 +1,4 @@
-﻿#include "UI/SidebarComponent.h"
+#include "UI/SidebarComponent.h"
 #include "UI/UI.h"
 #include <BinaryData.h>
 
@@ -98,7 +98,16 @@ void SidebarItemComponent::mouseExit(const juce::MouseEvent&) {
 }
 
 void SidebarItemComponent::mouseUp(const juce::MouseEvent&) {
+    auto start = juce::Time::getHighResolutionTicks();
+    
     if (onClick) onClick();
+    
+    auto end = juce::Time::getHighResolutionTicks();
+    auto ms = juce::Time::highResolutionTicksToSeconds(end - start) * 1000.0;
+    
+    juce::File logFile(juce::File::getSpecialLocation(juce::File::userDesktopDirectory).getChildFile("AgentOS_PerfLog.txt"));
+    logFile.appendText("Tab Switch [" + getName() + "] Latency: " + juce::String(ms) + " ms\n");
+    DBG("Tab Switch Latency: " << ms << " ms");
 }
 
 // --- SidebarComponent ---

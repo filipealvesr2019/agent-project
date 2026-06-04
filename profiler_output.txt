@@ -1,0 +1,42 @@
+﻿[AgentEngine] Agente Atlas mudou de estado para: Planning
+========== UI PROFILER ==========
+FPS: 3
+Avg Paint: 1.3844 ms
+Max Paint: 3.1917 ms
+=================================
+========== UI PROFILER ==========
+FPS: 3
+Avg Paint: 0.0126667 ms
+Max Paint: 0.0185 ms
+=================================
+TimerCallback duration: 1187 us
+TimerCallback duration: 1212 us
+========== UI PROFILER ==========
+FPS: 3
+Avg Paint: 0.362 ms
+Max Paint: 0.4992 ms
+=================================
+========== UI PROFILER ==========
+FPS: 3
+Avg Paint: 0.0112333 ms
+Max Paint: 0.0133 ms
+=================================
+TimerCallback duration: 1254 us
+TimerCallback duration: 1182 us
+TimerCallback duration: 1208 us
+TimerCallback duration: 1181 us
+TimerCallback duration: 1193 us
+TimerCallback duration: 1196 us
+TimerCallback duration: 1183 us
+TimerCallback duration: 1245 us
+TimerCallback duration: 1257 us
+TimerCallback duration: 1218 us
+TimerCallback duration: 1235 us
+TimerCallback duration: 1220 us
+TimerCallback duration: 1235 us
+TimerCallback duration: 1172 us
+TimerCallback duration: 1181 us
+TimerCallback duration: 1177 us
+TimerCallback duration: 1207 us
+TimerCallback duration: 1184 us
+TimerCallback duration: 1165 us

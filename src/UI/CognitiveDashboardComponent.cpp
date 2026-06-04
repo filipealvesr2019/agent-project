@@ -168,6 +168,11 @@ void CognitiveDashboardComponent::paint(juce::Graphics& g) {
 void CognitiveDashboardComponent::updateCachedBackground() {
     if (getWidth() <= 0 || getHeight() <= 0) return;
     
+    // CRITICAL: Prevent redundant rasterization on tab switch (which fires resized() with same dimensions)
+    if (cachedBackground_.isValid() && cachedBackground_.getWidth() == getWidth() && cachedBackground_.getHeight() == getHeight()) {
+        return;
+    }
+    
     cachedBackground_ = juce::Image(juce::Image::ARGB, getWidth(), getHeight(), true);
     juce::Graphics g(cachedBackground_);
     juce::ColourGradient bg(
