@@ -29,4 +29,5 @@ target_link_libraries(UI PUBLIC
     ProjectManager
     OrganizationEngine
     ReasoningTimelineEngine
+    Cognitive
 )

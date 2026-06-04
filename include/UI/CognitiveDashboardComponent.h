@@ -4,7 +4,7 @@
 #include <memory>
 
 #include "Cognitive/ModelRegistry.h"
-#include "MemoryEngine/MemoryEngine.h"
+#include "Cognitive/MemoryEngine.h"
 #include "Cognitive/KnowledgeBase.h"
 #include "Cognitive/VectorSearch.h"
 #include "Cognitive/LlamaEmbeddingEngine.h"

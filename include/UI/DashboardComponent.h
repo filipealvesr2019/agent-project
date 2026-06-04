@@ -10,7 +10,6 @@ class LogViewerComponent;
 class ProjectPanelComponent;
 class WorkflowEditorComponent;
 class MemoryVisualizationComponent;
-class CognitiveDashboardComponent;
 
 class DashboardComponent : public juce::Component, public juce::Timer {
 public:
@@ -38,7 +37,7 @@ private:
     std::unique_ptr<LogViewerComponent> logViewer_;
     std::unique_ptr<WorkflowEditorComponent> workflowEditor_;
     std::unique_ptr<MemoryVisualizationComponent> memoryVisualization_;
-    std::unique_ptr<CognitiveDashboardComponent> cognitiveDashboard_;
+    std::unique_ptr<juce::Component> cognitiveDashboard_;
     juce::String statusText_;
 
     // Phase 17 Metrics

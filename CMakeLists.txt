@@ -11,15 +11,17 @@ endif()
 include_directories(include)
 
 # Configuração do JUCE
-# include(FetchContent)
-# FetchContent_Declare(
-#     juce
-#     URL "https://github.com/juce-framework/JUCE/archive/refs/tags/8.0.0.zip"
-# )
-# FetchContent_MakeAvailable(juce)
+include(FetchContent)
+set(JUCE_BUILD_EXTRAS OFF CACHE BOOL "Disable Extras" FORCE)
+set(JUCE_BUILD_EXAMPLES OFF CACHE BOOL "Disable Examples" FORCE)
+FetchContent_Declare(
+    juce
+    URL "https://github.com/juce-framework/JUCE/archive/refs/tags/8.0.0.zip"
+)
+FetchContent_MakeAvailable(juce)
 
 # Define as subpastas (módulos)
-# add_subdirectory(src/UI)
+add_subdirectory(src/UI)
 add_subdirectory(src/AgentEngine)
 add_subdirectory(src/WorkflowEngine)
 add_subdirectory(src/MemoryEngine)
@@ -59,46 +61,47 @@ add_subdirectory(src/ReasoningTimelineEngine)
 add_subdirectory(src/Cognitive)
 
 # Executável Principal JUCE
-# juce_add_gui_app(AgentOS
-#     PRODUCT_NAME "AgentOS"
-#     VERSION 1.0.0
-# )
-# 
-# target_sources(AgentOS PRIVATE src/main.cpp src/ChangeManagement/ChangeManagement.cpp)
+juce_add_gui_app(AgentOS
+    PRODUCT_NAME "AgentOS"
+    VERSION 1.0.0
+)
 
-# target_link_libraries(AgentOS PRIVATE 
-#     UI
-#     AgentEngine 
-#     WorkflowEngine
-#     EventBus 
-#     MemoryEngine 
-#     GovernanceEngine
-#     Sandbox
-#     ChangeManagement
-#     AgentProfiles
-#     PlannerEngine
-#     ModelRouter
-#     ReasoningEngine
-#     ContextEngine
-#     CapabilityEngine
-#     MemoryAPI
-#     MonitoringEngine
-#     KnowledgeGraphEngine
-#     MultiAgentCollaboration
-#     PluginManager
-#     PromptEngine
-#     ObjectiveEngine
-#     CostMonitor
-#     ModelManager
-#     WindowsBuildManager
-#     VisionEngine
-#     LocalRuntime
-#     ProjectManager
-#     OrganizationEngine
-#     ReasoningTimelineEngine
-#     ToolEngine
-#     sqlite
-# )
+target_sources(AgentOS PRIVATE src/main.cpp src/ChangeManagement/ChangeManagement.cpp)
+
+target_link_libraries(AgentOS PRIVATE 
+    UI
+    AgentEngine 
+    WorkflowEngine
+    EventBus 
+    MemoryEngine 
+    GovernanceEngine
+    Sandbox
+    ChangeManagement
+    AgentProfiles
+    PlannerEngine
+    ModelRouter
+    ReasoningEngine
+    ContextEngine
+    CapabilityEngine
+    MemoryAPI
+    MonitoringEngine
+    KnowledgeGraphEngine
+    MultiAgentCollaboration
+    PluginManager
+    PromptEngine
+    ObjectiveEngine
+    CostMonitor
+    ModelManager
+    WindowsBuildManager
+    VisionEngine
+    LocalRuntime
+    ProjectManager
+    OrganizationEngine
+    ReasoningTimelineEngine
+    ToolEngine
+    Cognitive
+    sqlite
+)
 
 add_library(sqlite STATIC libs/sqlite/sqlite3.c)
 target_include_directories(sqlite PUBLIC libs/sqlite)

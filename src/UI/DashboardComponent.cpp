@@ -7,7 +7,7 @@
 #include "UI/ProjectPanelComponent.h"
 #include "UI/WorkflowEditor/WorkflowEditorComponent.h"
 #include "UI/MemoryVisualization/MemoryVisualizationComponent.h"
-#include "UI/CognitiveDashboardComponent.h"
+#include "UI/CognitiveDashboardFactory.h"
 #include "UI/UI.h"
 #include "VisionEngine/VisionEngine.h"
 #include "ChangeManagement/ChangeManagement.h"
@@ -36,7 +36,7 @@ DashboardComponent::DashboardComponent() {
     workflowEditor_ = std::make_unique<WorkflowEditorComponent>();
     memoryVisualization_ = std::make_unique<MemoryVisualizationComponent>();
 
-    cognitiveDashboard_ = std::make_unique<CognitiveDashboardComponent>();
+    cognitiveDashboard_.reset(createCognitiveDashboard());
     
     mainTabs_->addTab("Cognitive Dashboard", juce::Colour(0xFF161b22), cognitiveDashboard_.get(), false);
     mainTabs_->addTab("Agents", juce::Colour(0xFF161b22), agentList_.get(), false);

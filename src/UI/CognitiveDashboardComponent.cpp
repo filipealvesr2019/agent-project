@@ -1,6 +1,8 @@
 #include "UI/CognitiveDashboardComponent.h"
 #include "UI/LogViewerComponent.h"
 
+#include "Cognitive/MockEmbeddingEngine.h"
+
 namespace AgentOS {
 
 // Helper model class for the ListBox
@@ -20,12 +22,10 @@ public:
 
 static SemanticModel s_semanticModel;
 
-#include "Cognitive/MockEmbeddingEngine.h"
-
 CognitiveDashboardComponent::CognitiveDashboardComponent()
 {
     // Init core engines
-    memory_.initDatabase("ui_memory.db");
+    memory_.load("ui_memory.jsonl");
     
     // Fallback to Mock if BGE is not found just to keep UI safe
     try {
@@ -34,8 +34,12 @@ CognitiveDashboardComponent::CognitiveDashboardComponent()
         embeddingEngine_ = std::make_shared<MockEmbeddingEngine>();
     }
 
-    vectorSearch_ = std::make_unique<VectorSearch>(embeddingEngine_, "ui_vectors.jsonl");
-    kb_ = std::make_unique<KnowledgeBase>(*vectorSearch_, "ui_kb.json");
+    vectorSearch_ = std::make_unique<VectorSearch>(embeddingEngine_);
+    vectorSearch_->load("ui_vectors.jsonl");
+
+    kb_ = std::make_unique<KnowledgeBase>();
+    kb_->loadFromDirectory("ui_kb");
+
     orchestrator_ = std::make_unique<Orchestrator>(registry_, memory_, *kb_, *vectorSearch_);
 
     // Context
@@ -169,7 +173,7 @@ void CognitiveDashboardComponent::timerCallback() {
     progress_ = (double)current / (double)max;
     
     // Update User Profile
-    auto profile = orchestrator_->getUserProfile();
+    auto profile = orchestrator_->getUserProfile().getProfile();
     juce::String profileText;
     for (const auto& [k, v] : profile.learnedFacts) {
         profileText << "- " << k << ": " << v << "\n";
@@ -191,6 +195,10 @@ void CognitiveDashboardComponent::timerCallback() {
 
 void CognitiveDashboardComponent::appendLog(const juce::String& message) {
     logViewer_->addMessage(message);
+}
+
+juce::Component* createCognitiveDashboard() {
+    return new CognitiveDashboardComponent();
 }
 
 } // namespace AgentOS
