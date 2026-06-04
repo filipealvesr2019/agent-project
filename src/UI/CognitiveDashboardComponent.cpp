@@ -1,207 +1,313 @@
-﻿#include "UI/CognitiveDashboardComponent.h"
-#include "UI/LogViewerComponent.h"
-
-#include "Cognitive/MockEmbeddingEngine.h"
+#include "UI/CognitiveDashboardComponent.h"
+#include <BinaryData.h>
 
 namespace AgentOS {
 
-// Helper model class for the ListBox
-class SemanticModel : public juce::ListBoxModel {
-public:
-    juce::StringArray* docs = nullptr;
-    int getNumRows() override { return docs ? docs->size() : 0; }
-    void paintListBoxItem(int rowNumber, juce::Graphics& g, int width, int height, bool rowIsSelected) override {
-        if (rowIsSelected) g.fillAll(juce::Colours::lightblue.withAlpha(0.2f));
-        if (docs && rowNumber < docs->size()) {
-            g.setColour(juce::Colours::white);
-            g.setFont(14.0f);
-            g.drawText((*docs)[rowNumber], 5, 0, width - 10, height, juce::Justification::centredLeft, true);
-        }
-    }
-};
-
-static SemanticModel s_semanticModel;
-
-CognitiveDashboardComponent::CognitiveDashboardComponent()
-{
-    // Init core engines
-    memory_.load("ui_memory.jsonl");
-    
-    // Fallback to Mock if BGE is not found just to keep UI safe
-    try {
-        embeddingEngine_ = std::make_shared<LlamaEmbeddingEngine>("models/embeddings/bge-small-en-v1.5.gguf");
-    } catch (...) {
-        embeddingEngine_ = std::make_shared<MockEmbeddingEngine>();
-    }
-
-    vectorSearch_ = std::make_unique<VectorSearch>(embeddingEngine_);
-    vectorSearch_->load("ui_vectors.jsonl");
-
-    kb_ = std::make_unique<KnowledgeBase>();
-    kb_->loadFromDirectory("ui_kb");
-
-    orchestrator_ = std::make_unique<Orchestrator>(registry_, memory_, *kb_, *vectorSearch_);
-
-    // Context
-    addAndMakeVisible(contextLabel_);
-    contextLabel_.setColour(juce::Label::textColourId, juce::Colour(0xFFE0E0E0));
-    contextLabel_.setFont(juce::Font(16.0f, juce::Font::bold));
-    addAndMakeVisible(contextProgressBar_);
-    contextProgressBar_.setColour(juce::ProgressBar::foregroundColourId, juce::Colour(0xFF665CFF));
-    contextProgressBar_.setColour(juce::ProgressBar::backgroundColourId, juce::Colour(0xFF2A2E44));
-
-    // User Profile
-    addAndMakeVisible(userProfileBox_);
-    userProfileBox_.setMultiLine(true);
-    userProfileBox_.setReadOnly(true);
-    userProfileBox_.setColour(juce::TextEditor::backgroundColourId, juce::Colour(0xFF1F2236));
-    userProfileBox_.setColour(juce::TextEditor::textColourId, juce::Colour(0xFFE0E0E0));
-    userProfileBox_.setColour(juce::TextEditor::outlineColourId, juce::Colour(0xFF2A2E44));
-
-    // Semantic Memory
-    addAndMakeVisible(semanticListBox_);
-    semanticListBox_.setColour(juce::ListBox::backgroundColourId, juce::Colour(0xFF1F2236));
-    semanticListBox_.setColour(juce::ListBox::outlineColourId, juce::Colour(0xFF2A2E44));
-    s_semanticModel.docs = &semanticDocs_;
-    semanticListBox_.setModel(&s_semanticModel);
-
-    // RAG
-    addAndMakeVisible(ragInput_);
-    ragInput_.setTextToShowWhenEmpty("Digite sua mensagem para o AgentOS...", juce::Colour(0xFFA0A0A0));
-    ragInput_.setColour(juce::TextEditor::backgroundColourId, juce::Colour(0xFF1F2236));
-    ragInput_.setColour(juce::TextEditor::textColourId, juce::Colour(0xFFE0E0E0));
-    ragInput_.setColour(juce::TextEditor::outlineColourId, juce::Colour(0xFF2A2E44));
-    
-    addAndMakeVisible(ragButton_);
-    ragButton_.setColour(juce::TextButton::buttonColourId, juce::Colour(0xFF665CFF));
-    ragButton_.setColour(juce::TextButton::textColourOffId, juce::Colours::white);
-    ragButton_.onClick = [this]() {
-        if (!orchestrator_) return;
-        juce::String query = ragInput_.getText();
-        if (query.isEmpty()) return;
-        appendLog("[User] " + query);
-        // Simulate background execution
-        std::thread([this, query]() {
-            std::string res = orchestrator_->processRequest(query.toStdString());
-            juce::MessageManager::callAsync([this, res]() {
-                appendLog("[AgentOS] " + juce::String(res));
-                ragInput_.clear();
-            });
-        }).detach();
+CognitiveDashboardComponent::CognitiveDashboardComponent() {
+    // Style buttons
+    auto styleButton = [](juce::TextButton& btn, bool isPrimary) {
+        btn.setColour(juce::TextButton::buttonColourId, isPrimary ? juce::Colour(0xFF665CFF) : juce::Colour(0xFF161923));
+        btn.setColour(juce::TextButton::textColourOffId, juce::Colours::white);
+        btn.setColour(juce::TextButton::buttonOnColourId, isPrimary ? juce::Colour(0xFF5348FF) : juce::Colour(0xFF1A1D27));
     };
 
-    // Logs
-    logViewer_ = std::make_unique<LogViewerComponent>();
-    addAndMakeVisible(logViewer_.get());
+    styleButton(btnTask_, false);
+    styleButton(btnQuestion_, false);
+    styleButton(btnAnalyze_, false);
+    styleButton(btnSubmit_, true);
+    styleButton(btnChat_, true);
+    styleButton(btnMoreInfo_, false);
 
-    // Controls
-    addAndMakeVisible(btnForceCompression_);
-    btnForceCompression_.onClick = [this]() {
-        appendLog(juce::String::fromUTF8("[System] ForÃ§ando compressÃ£o de contexto..."));
-    };
-    
-    addAndMakeVisible(btnEnableDSP_);
-    btnEnableDSP_.onClick = [this]() {
-        appendLog("[System] DSP Agent ativado.");
-    };
+    addAndMakeVisible(btnTask_);
+    addAndMakeVisible(btnQuestion_);
+    addAndMakeVisible(btnAnalyze_);
+    addAndMakeVisible(btnSubmit_);
+    addAndMakeVisible(btnChat_);
+    addAndMakeVisible(btnMoreInfo_);
 
-    startTimerHz(1); // 1 FPS refresh
+    promptInput_.setMultiLine(true);
+    promptInput_.setReturnKeyStartsNewLine(true);
+    promptInput_.setColour(juce::TextEditor::backgroundColourId, juce::Colours::transparentBlack);
+    promptInput_.setColour(juce::TextEditor::outlineColourId, juce::Colours::transparentBlack);
+    promptInput_.setColour(juce::TextEditor::focusedOutlineColourId, juce::Colours::transparentBlack);
+    promptInput_.setColour(juce::TextEditor::textColourId, juce::Colours::white);
+    promptInput_.setTextToShowWhenEmpty("Descreva o que voce quer que o CEO planeje e execute...", juce::Colour(0xFF8A91A8));
+    addAndMakeVisible(promptInput_);
 }
 
-CognitiveDashboardComponent::~CognitiveDashboardComponent() {
-    stopTimer();
-    semanticListBox_.setModel(nullptr);
+CognitiveDashboardComponent::~CognitiveDashboardComponent() {}
+
+void CognitiveDashboardComponent::paintCard(juce::Graphics& g, juce::Rectangle<int> bounds, bool hasBorder) {
+    g.setColour(juce::Colour(0xFF111319));
+    g.fillRoundedRectangle(bounds.toFloat(), 12.0f);
+    if (hasBorder) {
+        g.setColour(juce::Colour(0xFF1A1D27));
+        g.drawRoundedRectangle(bounds.toFloat(), 12.0f, 1.0f);
+    }
+}
+
+void CognitiveDashboardComponent::paintSuggestion(juce::Graphics& g, juce::Rectangle<int> bounds, const juce::String& icon, const juce::String& title, const juce::String& desc) {
+    paintCard(g, bounds);
+    auto area = bounds.reduced(16);
+    
+    // Fake icon placeholder
+    g.setColour(juce::Colour(0xFF2A2D37));
+    g.fillRoundedRectangle(area.removeFromLeft(32).withHeight(32).toFloat(), 8.0f);
+    
+    area.removeFromLeft(12);
+    
+    g.setColour(juce::Colours::white);
+    g.setFont(juce::Font(14.0f, juce::Font::bold));
+    g.drawText(title, area.removeFromTop(20), juce::Justification::topLeft);
+    
+    g.setColour(juce::Colour(0xFF8A91A8));
+    g.setFont(juce::Font(12.0f));
+    g.drawText(desc, area, juce::Justification::topLeft);
+}
+
+void CognitiveDashboardComponent::paintActivityItem(juce::Graphics& g, juce::Rectangle<int>& bounds, const juce::String& icon, const juce::String& title, const juce::String& time, const juce::String& status, juce::Colour statusColor) {
+    auto area = bounds.removeFromTop(60);
+    area.reduce(0, 10);
+    
+    g.setColour(juce::Colour(0xFF1A1D27));
+    g.fillRoundedRectangle(area.removeFromLeft(36).withHeight(36).toFloat(), 8.0f);
+    
+    area.removeFromLeft(12);
+    
+    auto rightSide = area.removeFromRight(80);
+    g.setColour(statusColor);
+    g.setFont(juce::Font(11.0f));
+    g.drawText(status, rightSide, juce::Justification::centredRight);
+    
+    g.setColour(juce::Colours::white);
+    g.setFont(juce::Font(13.0f, juce::Font::bold));
+    g.drawText(title, area.removeFromTop(18), juce::Justification::topLeft);
+    
+    g.setColour(juce::Colour(0xFF8A91A8));
+    g.setFont(juce::Font(11.0f));
+    g.drawText(time, area, juce::Justification::topLeft);
+}
+
+void CognitiveDashboardComponent::paintFileItem(juce::Graphics& g, juce::Rectangle<int>& bounds, const juce::String& ext, const juce::String& filename, const juce::String& size) {
+    auto area = bounds.removeFromTop(60);
+    area.reduce(0, 10);
+    
+    g.setColour(juce::Colour(0xFF665CFF).withAlpha(0.2f));
+    g.fillRoundedRectangle(area.removeFromLeft(36).withHeight(36).toFloat(), 8.0f);
+    
+    area.removeFromLeft(12);
+    
+    g.setColour(juce::Colours::white);
+    g.setFont(juce::Font(13.0f, juce::Font::bold));
+    g.drawText(filename, area.removeFromTop(18), juce::Justification::topLeft);
+    
+    g.setColour(juce::Colour(0xFF8A91A8));
+    g.setFont(juce::Font(11.0f));
+    g.drawText(size, area, juce::Justification::topLeft);
 }
 
 void CognitiveDashboardComponent::paint(juce::Graphics& g) {
-    g.fillAll(juce::Colour(0xFF10121A)); // Background geral
-}
+    g.fillAll(juce::Colour(0xFF0B0D13)); // Main background
 
-void CognitiveDashboardComponent::paintPanel(juce::Graphics& g, juce::Rectangle<int> bounds, const juce::String& title) {
-    g.setColour(juce::Colour(0xFF161b22));
-    g.fillRoundedRectangle(bounds.toFloat(), 6.0f);
-    g.setColour(juce::Colour(0xFF30363d));
-    g.drawRoundedRectangle(bounds.toFloat(), 6.0f, 1.0f);
+    auto area = getLocalBounds();
+    auto rightSidebar = area.removeFromRight(340);
+    area.removeFromRight(20); // gap
     
-    auto header = bounds.removeFromTop(30);
+    // --- LEFT MAIN AREA ---
+    auto mainArea = area.reduced(40);
+    
+    // Header
+    g.setColour(juce::Colour(0xFF8A91A8));
+    g.setFont(juce::Font(14.0f));
+    g.drawText("Home", mainArea.removeFromTop(20), juce::Justification::topLeft);
+    
+    g.setColour(juce::Colours::white);
+    g.setFont(juce::Font(32.0f, juce::Font::bold));
+    g.drawText(juce::String::fromUTF8("Ola, Matheus! \\xF0\\x9F\\x91\\x8B"), mainArea.removeFromTop(45), juce::Justification::topLeft);
+    
+    g.setColour(juce::Colour(0xFF8A91A8));
+    g.setFont(juce::Font(16.0f));
+    g.drawText("Como posso ajudar voce hoje?", mainArea.removeFromTop(40), juce::Justification::topLeft);
+    
+    mainArea.removeFromTop(20); // space
+    
+    // Button row bounds are handled in resized()
+    auto btnRow = mainArea.removeFromTop(40);
+    
+    mainArea.removeFromTop(20);
+    
+    // Drag & Drop Area
+    auto dropArea = mainArea.removeFromTop(180);
+    g.setColour(juce::Colour(0xFF111319));
+    g.fillRoundedRectangle(dropArea.toFloat(), 12.0f);
+    g.setColour(juce::Colour(0xFF1A1D27));
+    // Dotted border simulation
+    g.drawRoundedRectangle(dropArea.toFloat(), 12.0f, 1.5f); 
+    
+    // Drop area content
+    auto dropContent = dropArea.withSizeKeepingCentre(300, 80);
+    g.setColour(juce::Colour(0xFF665CFF));
+    g.setFont(juce::Font(16.0f, juce::Font::bold));
+    g.drawText("Arraste arquivos aqui ou clique para enviar", dropContent.removeFromTop(25), juce::Justification::centred);
+    g.setColour(juce::Colour(0xFF8A91A8));
+    g.setFont(juce::Font(13.0f));
+    g.drawText("Documentos, imagens, planilhas, codigo, etc.", dropContent.removeFromTop(20), juce::Justification::centred);
+    
+    mainArea.removeFromTop(20);
+    
+    // Input Area Background
+    auto inputBounds = mainArea.removeFromTop(140);
+    paintCard(g, inputBounds);
+    
+    mainArea.removeFromTop(30);
+    
+    // Suggestions
+    g.setColour(juce::Colours::white);
+    g.setFont(juce::Font(14.0f, juce::Font::bold));
+    g.drawText(juce::String::fromUTF8("Sugestoes de tarefas"), mainArea.removeFromTop(25), juce::Justification::topLeft);
+    
+    auto suggestionsArea = mainArea.removeFromTop(150);
+    int cardW = suggestionsArea.getWidth() / 2 - 10;
+    
+    auto row1 = suggestionsArea.removeFromTop(70);
+    paintSuggestion(g, row1.removeFromLeft(cardW), "", "Criar um novo projeto", "Peca para o CEO criar um projeto do zero");
+    row1.removeFromLeft(20);
+    paintSuggestion(g, row1.removeFromLeft(cardW), "", "Planejar funcionalidade", "Descreva uma funcionalidade e receba um plano");
+    
+    suggestionsArea.removeFromTop(10);
+    
+    auto row2 = suggestionsArea.removeFromTop(70);
+    paintSuggestion(g, row2.removeFromLeft(cardW), "", "Analisar codigo ou arquitetura", "Envie seu codigo para analise completa");
+    row2.removeFromLeft(20);
+    paintSuggestion(g, row2.removeFromLeft(cardW), "", "Corrigir bugs ou problemas", "Envie logs ou descreva o problema");
+    
+    mainArea.removeFromTop(10);
+    g.setColour(juce::Colour(0xFF8A91A8));
+    g.setFont(juce::Font(12.0f));
+    g.drawText("Quanto mais contexto voce fornecer, melhor o resultado.", mainArea.removeFromTop(30), juce::Justification::centred);
+    
+    // Bottom Tip
+    auto tipArea = mainArea.removeFromTop(100);
+    // Gradient for tip area
+    juce::ColourGradient grad(juce::Colour(0xFF191B2E), tipArea.getX(), tipArea.getY(), juce::Colour(0xFF111319), tipArea.getRight(), tipArea.getBottom(), false);
+    g.setGradientFill(grad);
+    g.fillRoundedRectangle(tipArea.toFloat(), 12.0f);
+    
+    auto tipContent = tipArea.reduced(24);
+    g.setColour(juce::Colours::white);
+    g.setFont(juce::Font(16.0f, juce::Font::bold));
+    g.drawText("Dica", tipContent.removeFromTop(25), juce::Justification::topLeft);
+    g.setColour(juce::Colour(0xFF8A91A8));
+    g.setFont(juce::Font(14.0f));
+    g.drawText("Voce pode enviar arquivos, abrir pastas ou apenas descrever sua ideia.", tipContent.removeFromTop(20), juce::Justification::topLeft);
+    g.drawText("O CEO cuidara do planejamento e execucao para voce.", tipContent.removeFromTop(20), juce::Justification::topLeft);
+
+
+    // --- RIGHT SIDEBAR ---
+    g.setColour(juce::Colour(0xFF111319)); // or slightly different bg if needed
+    // The mockup right sidebar has the same dark bg, just floating cards
+    auto rightMargin = rightSidebar.reduced(20, 40);
+    
+    // CEO Agent Card
+    auto ceoCard = rightMargin.removeFromTop(220);
+    paintCard(g, ceoCard);
+    
+    auto ceoContent = ceoCard.reduced(20);
+    auto ceoHeader = ceoContent.removeFromTop(50);
+    g.setColour(juce::Colour(0xFF202330));
+    g.fillRoundedRectangle(ceoHeader.removeFromLeft(40).withHeight(40).toFloat(), 20.0f); // Avatar
+    ceoHeader.removeFromLeft(12);
     g.setColour(juce::Colours::white);
     g.setFont(juce::Font(15.0f, juce::Font::bold));
-    g.drawText(title, header.withTrimmedLeft(10), juce::Justification::centredLeft);
-    g.setColour(juce::Colour(0xFF30363d));
-    g.drawLine(bounds.getX(), header.getBottom(), bounds.getRight(), header.getBottom());
+    g.drawText("CEO Agent", ceoHeader.removeFromTop(20), juce::Justification::topLeft);
+    g.setColour(juce::Colour(0xFF00C853)); // Online green
+    g.setFont(juce::Font(12.0f));
+    g.drawText("Online", ceoHeader.removeFromTop(20), juce::Justification::topLeft);
+    
+    ceoContent.removeFromTop(15);
+    g.setColour(juce::Colour(0xFF8A91A8));
+    g.setFont(juce::Font(13.0f));
+    g.drawText("Estou online e pronto para ajudar a", ceoContent.removeFromTop(20), juce::Justification::topLeft);
+    g.drawText("planejar e executar qualquer tarefa.", ceoContent.removeFromTop(20), juce::Justification::topLeft);
+    g.drawText("Basta enviar sua solicitacao!", ceoContent.removeFromTop(20), juce::Justification::topLeft);
+    
+    rightMargin.removeFromTop(20);
+    
+    // Recent Activity
+    auto activityCard = rightMargin.removeFromTop(280);
+    paintCard(g, activityCard);
+    auto actContent = activityCard.reduced(20);
+    
+    auto actHeader = actContent.removeFromTop(30);
+    g.setColour(juce::Colours::white);
+    g.setFont(juce::Font(14.0f, juce::Font::bold));
+    g.drawText("Atividade recente", actHeader.removeFromLeft(150), juce::Justification::topLeft);
+    g.setColour(juce::Colour(0xFF665CFF));
+    g.setFont(juce::Font(12.0f));
+    g.drawText("Ver todas", actHeader, juce::Justification::topRight);
+    
+    paintActivityItem(g, actContent, "", "Analise de arquitetura", "5 min atras", "Concluido", juce::Colour(0xFF00C853));
+    paintActivityItem(g, actContent, "", "Plano de funcionalidade", "1 hora atras", "Em andamento", juce::Colour(0xFF4A90E2));
+    paintActivityItem(g, actContent, "", "Relatorio de mercado", "3 horas atras", "Concluido", juce::Colour(0xFF00C853));
+
+    rightMargin.removeFromTop(20);
+    
+    // Recent Files
+    auto filesCard = rightMargin.removeFromTop(280);
+    paintCard(g, filesCard);
+    auto filesContent = filesCard.reduced(20);
+    
+    auto filesHeader = filesContent.removeFromTop(30);
+    g.setColour(juce::Colours::white);
+    g.setFont(juce::Font(14.0f, juce::Font::bold));
+    g.drawText("Arquivos recentes", filesHeader.removeFromLeft(150), juce::Justification::topLeft);
+    g.setColour(juce::Colour(0xFF665CFF));
+    g.setFont(juce::Font(12.0f));
+    g.drawText("Ver todos", filesHeader, juce::Justification::topRight);
+    
+    paintFileItem(g, filesContent, "PDF", "documento_requisitos.pdf", "2.4 MB * PDF");
+    paintFileItem(g, filesContent, "MD", "api_documentation.md", "45 KB * MD");
+    paintFileItem(g, filesContent, "PNG", "screenshot_01.png", "1.2 MB * PNG");
 }
 
 void CognitiveDashboardComponent::resized() {
-    auto area = getLocalBounds().reduced(10);
+    auto area = getLocalBounds();
+    auto rightSidebar = area.removeFromRight(340);
+    area.removeFromRight(20); // gap
     
-    // Top Row: Context & Profile
-    auto topRow = area.removeFromTop(200);
+    // Left area layout
+    auto mainArea = area.reduced(40);
+    mainArea.removeFromTop(20 + 45 + 40 + 20); // skip header text
     
-    auto contextArea = topRow.removeFromLeft(topRow.getWidth() / 2).reduced(5);
-    auto profileArea = topRow.reduced(5);
+    auto btnRow = mainArea.removeFromTop(36);
+    btnTask_.setBounds(btnRow.removeFromLeft(140));
+    btnRow.removeFromLeft(10);
+    btnQuestion_.setBounds(btnRow.removeFromLeft(160));
+    btnRow.removeFromLeft(10);
+    btnAnalyze_.setBounds(btnRow.removeFromLeft(160));
     
-    contextLabel_.setBounds(contextArea.removeFromTop(40).withTrimmedTop(30).withTrimmedLeft(10));
-    contextProgressBar_.setBounds(contextArea.removeFromTop(20).reduced(10, 0));
+    mainArea.removeFromTop(20 + 180 + 20); // skip drop area
     
-    auto controlsArea = contextArea.removeFromBottom(40).reduced(10, 5);
-    btnForceCompression_.setBounds(controlsArea.removeFromLeft(150));
-    btnEnableDSP_.setBounds(controlsArea.removeFromRight(150));
-
-    userProfileBox_.setBounds(profileArea.withTrimmedTop(35).reduced(5));
-
-    // Middle Row: Semantic Memory & RAG Chat
-    auto middleRow = area.removeFromTop(300);
-    auto semanticArea = middleRow.removeFromLeft(middleRow.getWidth() / 3).reduced(5);
-    auto ragArea = middleRow.reduced(5);
+    auto inputBounds = mainArea.removeFromTop(140);
+    promptInput_.setBounds(inputBounds.reduced(20).removeFromTop(60));
     
-    semanticListBox_.setBounds(semanticArea.withTrimmedTop(35).reduced(5));
+    auto inputFooter = inputBounds.reduced(20);
+    inputFooter.removeFromTop(60);
+    btnSubmit_.setBounds(inputFooter.removeFromRight(160).withSizeKeepingCentre(160, 36));
     
-    auto ragBottom = ragArea.removeFromBottom(50);
-    ragButton_.setBounds(ragBottom.removeFromRight(150).reduced(5));
-    ragInput_.setBounds(ragBottom.reduced(5));
+    // Skip to Tip
+    mainArea.removeFromTop(30 + 25 + 150 + 10 + 30);
+    auto tipArea = mainArea.removeFromTop(100);
+    btnMoreInfo_.setBounds(tipArea.removeFromRight(120).reduced(0, 32).withTrimmedRight(24));
     
-    logViewer_->setBounds(area.reduced(5).withTrimmedTop(35));
+    // Right sidebar layout
+    auto rightMargin = rightSidebar.reduced(20, 40);
+    auto ceoCard = rightMargin.removeFromTop(220);
+    
+    btnChat_.setBounds(ceoCard.reduced(20).removeFromBottom(36));
 }
 
-void CognitiveDashboardComponent::timerCallback() {
-    if (!orchestrator_) return;
-
-    // Update Context Tokens
-    auto ctx = orchestrator_->getSessionContext();
-    int current = ctx.totalTokens();
-    int max = ctx.getBudget().safeContext;
-    if (max <= 0) max = 3200;
-    
-    contextLabel_.setText("Contexto Atual: " + juce::String(current) + " tokens / " + juce::String(max), juce::dontSendNotification);
-    progress_ = (double)current / (double)max;
-    
-    // Update User Profile
-    auto profile = orchestrator_->getUserProfile().getProfile();
-    juce::String profileText;
-    for (const auto& [k, v] : profile.learnedFacts) {
-        profileText << "- " << k << ": " << v << "\n";
-    }
-    if (profileText.isEmpty()) profileText = juce::String::fromUTF8("Aguardando interaÃ§Ãµes para aprender...");
-    userProfileBox_.setText(profileText);
-    
-    // Update Semantic Memory
-    auto ragDocs = orchestrator_->getLatestRAGResults();
-    semanticDocs_.clear();
-    for (const auto& doc : ragDocs) {
-        semanticDocs_.add(juce::String(doc));
-    }
-    if (semanticDocs_.isEmpty()) semanticDocs_.add(juce::String::fromUTF8("Nenhuma memÃ³ria semÃ¢ntica recuperada recentemente."));
-    semanticListBox_.updateContent();
-
-    repaint();
-}
-
-void CognitiveDashboardComponent::appendLog(const juce::String& message) {
-    logViewer_->addMessage(message);
-}
-
-juce::Component* createCognitiveDashboard() {
-    return new CognitiveDashboardComponent();
-}
+juce::Component* createCognitiveDashboard() { return new CognitiveDashboardComponent(); }
 
 } // namespace AgentOS
+
