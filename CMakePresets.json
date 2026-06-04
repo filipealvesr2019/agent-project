@@ -4,7 +4,8 @@
     {
       "name": "x64-Debug",
       "displayName": "x64 Debug",
-      "generator": "Visual Studio 17 2022",
+      "generator": "Visual Studio 18 2026",
+      "cmakeExecutable": "C:/Program Files/CMake/bin/cmake.exe",
       "binaryDir": "${sourceDir}/build",
       "architecture": {
         "value": "x64",
@@ -22,7 +23,8 @@
     {
       "name": "x64-Release",
       "displayName": "x64 Release",
-      "generator": "Visual Studio 17 2022",
+      "generator": "Visual Studio 18 2026",
+      "cmakeExecutable": "C:/Program Files/CMake/bin/cmake.exe",
       "binaryDir": "${sourceDir}/build",
       "architecture": {
         "value": "x64",

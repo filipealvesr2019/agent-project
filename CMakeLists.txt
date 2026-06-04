@@ -5,7 +5,7 @@ set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 if(MSVC)
-    add_compile_options(/Zc:char8_t-)
+    add_compile_options(/Zc:char8_t- /FS /MP)
 endif()
 # Includes
 include_directories(include)
@@ -491,6 +491,7 @@ if(BUILD_EXPERIENCE_REPLAY_TEST)
         tests/test_experience_replay.cpp
         src/SurrogateDecisionLayer/SurrogateRouter.cpp
         src/ExperienceReplayEngine/ExperienceReplayEngine.cpp
+        src/RuntimeLearningLayer/RuntimeLearningLayer.cpp
     )
     target_include_directories(AgentOS_ExperienceReplayTest PRIVATE include)
     target_compile_features(AgentOS_ExperienceReplayTest PRIVATE cxx_std_20)
