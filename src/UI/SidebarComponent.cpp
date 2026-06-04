@@ -87,11 +87,11 @@ void SidebarItemComponent::mouseUp(const juce::MouseEvent&) {
 SidebarComponent::SidebarComponent() {
     juce::StringArray mainItems = {
         "Home",
-        juce::String::fromUTF8("Organizações"),
+        juce::String::fromUTF8(u8"Organizações"),
         "Projetos",
         "Equipe",
         "Chat",
-        juce::String::fromUTF8("Configurações")
+        juce::String::fromUTF8(u8"Configurações")
     };
 
     for (const auto& itemName : mainItems) {
