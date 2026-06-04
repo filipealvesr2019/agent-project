@@ -1,4 +1,4 @@
-#include "UI/CognitiveDashboardComponent.h"
+﻿#include "UI/CognitiveDashboardComponent.h"
 #include "UI/LogViewerComponent.h"
 
 #include "Cognitive/MockEmbeddingEngine.h"
@@ -44,34 +44,37 @@ CognitiveDashboardComponent::CognitiveDashboardComponent()
 
     // Context
     addAndMakeVisible(contextLabel_);
-    contextLabel_.setColour(juce::Label::textColourId, juce::Colours::white);
+    contextLabel_.setColour(juce::Label::textColourId, juce::Colour(0xFFE0E0E0));
     contextLabel_.setFont(juce::Font(16.0f, juce::Font::bold));
     addAndMakeVisible(contextProgressBar_);
-    contextProgressBar_.setColour(juce::ProgressBar::foregroundColourId, juce::Colour(0xFF1f6feb));
-    contextProgressBar_.setColour(juce::ProgressBar::backgroundColourId, juce::Colour(0xFF222222));
+    contextProgressBar_.setColour(juce::ProgressBar::foregroundColourId, juce::Colour(0xFF665CFF));
+    contextProgressBar_.setColour(juce::ProgressBar::backgroundColourId, juce::Colour(0xFF2A2E44));
 
     // User Profile
     addAndMakeVisible(userProfileBox_);
     userProfileBox_.setMultiLine(true);
     userProfileBox_.setReadOnly(true);
-    userProfileBox_.setColour(juce::TextEditor::backgroundColourId, juce::Colour(0xFF161b22));
-    userProfileBox_.setColour(juce::TextEditor::textColourId, juce::Colour(0xFFc9d1d9));
-    userProfileBox_.setColour(juce::TextEditor::outlineColourId, juce::Colours::transparentBlack);
+    userProfileBox_.setColour(juce::TextEditor::backgroundColourId, juce::Colour(0xFF1F2236));
+    userProfileBox_.setColour(juce::TextEditor::textColourId, juce::Colour(0xFFE0E0E0));
+    userProfileBox_.setColour(juce::TextEditor::outlineColourId, juce::Colour(0xFF2A2E44));
 
     // Semantic Memory
     addAndMakeVisible(semanticListBox_);
-    semanticListBox_.setColour(juce::ListBox::backgroundColourId, juce::Colour(0xFF161b22));
+    semanticListBox_.setColour(juce::ListBox::backgroundColourId, juce::Colour(0xFF1F2236));
+    semanticListBox_.setColour(juce::ListBox::outlineColourId, juce::Colour(0xFF2A2E44));
     s_semanticModel.docs = &semanticDocs_;
     semanticListBox_.setModel(&s_semanticModel);
 
     // RAG
     addAndMakeVisible(ragInput_);
-    ragInput_.setTextToShowWhenEmpty("Digite sua mensagem para o AgentOS...", juce::Colours::grey);
-    ragInput_.setColour(juce::TextEditor::backgroundColourId, juce::Colour(0xFF161b22));
-    ragInput_.setColour(juce::TextEditor::textColourId, juce::Colours::white);
+    ragInput_.setTextToShowWhenEmpty("Digite sua mensagem para o AgentOS...", juce::Colour(0xFFA0A0A0));
+    ragInput_.setColour(juce::TextEditor::backgroundColourId, juce::Colour(0xFF1F2236));
+    ragInput_.setColour(juce::TextEditor::textColourId, juce::Colour(0xFFE0E0E0));
+    ragInput_.setColour(juce::TextEditor::outlineColourId, juce::Colour(0xFF2A2E44));
     
     addAndMakeVisible(ragButton_);
-    ragButton_.setColour(juce::TextButton::buttonColourId, juce::Colour(0xFF1f6feb));
+    ragButton_.setColour(juce::TextButton::buttonColourId, juce::Colour(0xFF665CFF));
+    ragButton_.setColour(juce::TextButton::textColourOffId, juce::Colours::white);
     ragButton_.onClick = [this]() {
         if (!orchestrator_) return;
         juce::String query = ragInput_.getText();
@@ -94,7 +97,7 @@ CognitiveDashboardComponent::CognitiveDashboardComponent()
     // Controls
     addAndMakeVisible(btnForceCompression_);
     btnForceCompression_.onClick = [this]() {
-        appendLog(juce::String::fromUTF8("[System] Forçando compressão de contexto..."));
+        appendLog(juce::String::fromUTF8("[System] ForÃ§ando compressÃ£o de contexto..."));
     };
     
     addAndMakeVisible(btnEnableDSP_);
@@ -111,7 +114,7 @@ CognitiveDashboardComponent::~CognitiveDashboardComponent() {
 }
 
 void CognitiveDashboardComponent::paint(juce::Graphics& g) {
-    g.fillAll(juce::Colour(0xFF0d1117));
+    g.fillAll(juce::Colour(0xFF10121A)); // Background geral
 }
 
 void CognitiveDashboardComponent::paintPanel(juce::Graphics& g, juce::Rectangle<int> bounds, const juce::String& title) {
@@ -178,7 +181,7 @@ void CognitiveDashboardComponent::timerCallback() {
     for (const auto& [k, v] : profile.learnedFacts) {
         profileText << "- " << k << ": " << v << "\n";
     }
-    if (profileText.isEmpty()) profileText = juce::String::fromUTF8("Aguardando interações para aprender...");
+    if (profileText.isEmpty()) profileText = juce::String::fromUTF8("Aguardando interaÃ§Ãµes para aprender...");
     userProfileBox_.setText(profileText);
     
     // Update Semantic Memory
@@ -187,7 +190,7 @@ void CognitiveDashboardComponent::timerCallback() {
     for (const auto& doc : ragDocs) {
         semanticDocs_.add(juce::String(doc));
     }
-    if (semanticDocs_.isEmpty()) semanticDocs_.add(juce::String::fromUTF8("Nenhuma memória semântica recuperada recentemente."));
+    if (semanticDocs_.isEmpty()) semanticDocs_.add(juce::String::fromUTF8("Nenhuma memÃ³ria semÃ¢ntica recuperada recentemente."));
     semanticListBox_.updateContent();
 
     repaint();

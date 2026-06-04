@@ -1,4 +1,4 @@
-#include "UI/DashboardComponent.h"
+﻿#include "UI/DashboardComponent.h"
 #include "UI/SidebarComponent.h"
 #include "UI/AgentListComponent.h"
 #include "UI/LogViewerComponent.h"
@@ -586,7 +586,7 @@ void DashboardComponent::paint(juce::Graphics& g) {
     auto area = getLocalBounds();
     
     // Main Background
-    g.fillAll(juce::Colour(0xFF0b0d13));
+    g.fillAll(juce::Colour(0xFF10121A));
 
     int sidebarW = 260;
     area.removeFromLeft(sidebarW);

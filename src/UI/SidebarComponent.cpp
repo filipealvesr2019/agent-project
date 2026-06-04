@@ -1,4 +1,4 @@
-#include "UI/SidebarComponent.h"
+﻿#include "UI/SidebarComponent.h"
 #include "UI/UI.h"
 
 namespace AgentOS {
@@ -50,7 +50,40 @@ void SidebarItemComponent::paint(juce::Graphics& g) {
     } else {
         g.setColour(juce::Colour(0xFF8a91a8));
     }
-    g.drawRoundedRectangle(iconArea.toFloat(), 4.0f, 1.5f);
+        juce::Path p;
+    float ix = iconArea.getX();
+    float iy = iconArea.getY();
+    float iw = iconArea.getWidth();
+    float ih = iconArea.getHeight();
+    
+    if (name_ == "Home") {
+        p.addTriangle(ix + iw/2, iy + 2, ix + 2, iy + ih/2, ix + iw - 2, iy + ih/2);
+        p.addRectangle(ix + 4, iy + ih/2, iw - 8, ih/2 - 2);
+    } else if (name_ == "Organizacoes") {
+        p.addRectangle(ix + 3, iy + 4, iw - 6, ih - 6);
+        p.addRectangle(ix + 6, iy + 8, 3, 3);
+        p.addRectangle(ix + 11, iy + 8, 3, 3);
+        p.addRectangle(ix + 6, iy + 13, 3, 3);
+        p.addRectangle(ix + 11, iy + 13, 3, 3);
+    } else if (name_ == "Projetos") {
+        p.addRoundedRectangle(ix + 2, iy + 4, iw - 4, ih - 6, 2.0f);
+        p.addLineSegment(juce::Line<float>(ix + 2, iy + 8, ix + iw - 2, iy + 8), 1.5f);
+    } else if (name_ == "Equipe") {
+        p.addEllipse(ix + iw/2 - 4, iy + 2, 8, 8);
+        p.addArc(ix + 2, iy + 12, iw - 4, ih - 2, -1.57f, 1.57f, true);
+    } else if (name_ == "Chat") {
+        p.addRoundedRectangle(ix + 2, iy + 2, iw - 4, ih - 6, 3.0f);
+        p.addTriangle(ix + 6, iy + ih - 4, ix + 10, iy + ih - 4, ix + 6, iy + ih);
+    } else if (name_ == "Configuracoes") {
+        p.addEllipse(ix + 4, iy + 4, iw - 8, ih - 8);
+        p.addEllipse(ix + iw/2 - 2, iy + ih/2 - 2, 4, 4);
+        p.addLineSegment(juce::Line<float>(ix + iw/2, iy, ix + iw/2, iy + ih), 2.0f);
+        p.addLineSegment(juce::Line<float>(ix, iy + ih/2, ix + iw, iy + ih/2), 2.0f);
+    } else {
+        p.addRoundedRectangle(iconArea.toFloat(), 4.0f);
+    }
+    
+    g.strokePath(p, juce::PathStrokeType(1.5f, juce::PathStrokeType::mitered, juce::PathStrokeType::rounded));
 
     // Text
     if (isSelected_) {
