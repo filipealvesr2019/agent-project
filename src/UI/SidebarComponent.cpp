@@ -1,4 +1,4 @@
-#include "UI/SidebarComponent.h"
+﻿#include "UI/SidebarComponent.h"
 #include "UI/UI.h"
 #include <BinaryData.h>
 

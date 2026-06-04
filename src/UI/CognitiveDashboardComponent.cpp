@@ -1,4 +1,4 @@
-#include "UI/CognitiveDashboardComponent.h"
+﻿#include "UI/CognitiveDashboardComponent.h"
 #include <BinaryData.h>
 
 namespace AgentOS {
@@ -6,9 +6,9 @@ namespace AgentOS {
 CognitiveDashboardComponent::CognitiveDashboardComponent() {
     // Style buttons
     auto styleButton = [](juce::TextButton& btn, bool isPrimary) {
-        btn.setColour(juce::TextButton::buttonColourId, isPrimary ? juce::Colour(0xFF665CFF) : juce::Colour(0xFF161923));
+        btn.setColour(juce::TextButton::buttonColourId, isPrimary ? juce::Colour(0xFF6D5DFE) : juce::Colour(0xFF1A1F2B));
         btn.setColour(juce::TextButton::textColourOffId, juce::Colours::white);
-        btn.setColour(juce::TextButton::buttonOnColourId, isPrimary ? juce::Colour(0xFF5348FF) : juce::Colour(0xFF1A1D27));
+        btn.setColour(juce::TextButton::buttonOnColourId, isPrimary ? juce::Colour(0xFF5750C9) : juce::Colour(0xFF131C2F));
     };
 
     styleButton(btnTask_, false);
@@ -38,10 +38,13 @@ CognitiveDashboardComponent::CognitiveDashboardComponent() {
 CognitiveDashboardComponent::~CognitiveDashboardComponent() {}
 
 void CognitiveDashboardComponent::paintCard(juce::Graphics& g, juce::Rectangle<int> bounds, bool hasBorder) {
-    g.setColour(juce::Colour(0xFF111319));
+    juce::DropShadow shadow(juce::Colour::fromFloatRGBA(0.0f, 0.0f, 0.0f, 0.2f), 8, juce::Point<int>(0, 4));
+    shadow.drawForRectangle(g, bounds);
+
+    g.setColour(juce::Colour(0xFF1A1F2B));
     g.fillRoundedRectangle(bounds.toFloat(), 12.0f);
     if (hasBorder) {
-        g.setColour(juce::Colour(0xFF1A1D27));
+        g.setColour(juce::Colour(0x1AFFFFFF));
         g.drawRoundedRectangle(bounds.toFloat(), 12.0f, 1.0f);
     }
 }
@@ -69,7 +72,7 @@ void CognitiveDashboardComponent::paintActivityItem(juce::Graphics& g, juce::Rec
     auto area = bounds.removeFromTop(60);
     area.reduce(0, 10);
     
-    g.setColour(juce::Colour(0xFF1A1D27));
+    g.setColour(juce::Colour(0x0DFFFFFF));
     g.fillRoundedRectangle(area.removeFromLeft(36).withHeight(36).toFloat(), 8.0f);
     
     area.removeFromLeft(12);
@@ -92,7 +95,7 @@ void CognitiveDashboardComponent::paintFileItem(juce::Graphics& g, juce::Rectang
     auto area = bounds.removeFromTop(60);
     area.reduce(0, 10);
     
-    g.setColour(juce::Colour(0xFF665CFF).withAlpha(0.2f));
+    g.setColour(juce::Colour(0xFF6D5DFE).withAlpha(0.2f));
     g.fillRoundedRectangle(area.removeFromLeft(36).withHeight(36).toFloat(), 8.0f);
     
     area.removeFromLeft(12);
@@ -107,7 +110,7 @@ void CognitiveDashboardComponent::paintFileItem(juce::Graphics& g, juce::Rectang
 }
 
 void CognitiveDashboardComponent::paint(juce::Graphics& g) {
-    g.fillAll(juce::Colour(0xFF0B0D13)); // Main background
+    g.fillAll(juce::Colour(0xFF0D111F)); // Main background
 
     auto area = getLocalBounds();
     auto rightSidebar = area.removeFromRight(340);
@@ -138,15 +141,15 @@ void CognitiveDashboardComponent::paint(juce::Graphics& g) {
     
     // Drag & Drop Area
     auto dropArea = mainArea.removeFromTop(180);
-    g.setColour(juce::Colour(0xFF111319));
+    g.setColour(juce::Colour(0xFF1A1F2B));
     g.fillRoundedRectangle(dropArea.toFloat(), 12.0f);
-    g.setColour(juce::Colour(0xFF1A1D27));
+    g.setColour(juce::Colour(0x0DFFFFFF));
     // Dotted border simulation
     g.drawRoundedRectangle(dropArea.toFloat(), 12.0f, 1.5f); 
     
     // Drop area content
     auto dropContent = dropArea.withSizeKeepingCentre(300, 80);
-    g.setColour(juce::Colour(0xFF665CFF));
+    g.setColour(juce::Colour(0xFF6D5DFE));
     g.setFont(juce::Font(16.0f, juce::Font::bold));
     g.drawText("Arraste arquivos aqui ou clique para enviar", dropContent.removeFromTop(25), juce::Justification::centred);
     g.setColour(juce::Colour(0xFF8A91A8));
@@ -189,7 +192,7 @@ void CognitiveDashboardComponent::paint(juce::Graphics& g) {
     // Bottom Tip
     auto tipArea = mainArea.removeFromTop(100);
     // Gradient for tip area
-    juce::ColourGradient grad(juce::Colour(0xFF191B2E), tipArea.getX(), tipArea.getY(), juce::Colour(0xFF111319), tipArea.getRight(), tipArea.getBottom(), false);
+    juce::ColourGradient grad(juce::Colour(0xFF191B2E), tipArea.getX(), tipArea.getY(), juce::Colour(0xFF1A1F2B), tipArea.getRight(), tipArea.getBottom(), false);
     g.setGradientFill(grad);
     g.fillRoundedRectangle(tipArea.toFloat(), 12.0f);
     
@@ -204,7 +207,7 @@ void CognitiveDashboardComponent::paint(juce::Graphics& g) {
 
 
     // --- RIGHT SIDEBAR ---
-    g.setColour(juce::Colour(0xFF111319)); // or slightly different bg if needed
+    g.setColour(juce::Colour(0xFF1A1F2B)); // or slightly different bg if needed
     // The mockup right sidebar has the same dark bg, just floating cards
     auto rightMargin = rightSidebar.reduced(20, 40);
     
@@ -242,7 +245,7 @@ void CognitiveDashboardComponent::paint(juce::Graphics& g) {
     g.setColour(juce::Colours::white);
     g.setFont(juce::Font(14.0f, juce::Font::bold));
     g.drawText("Atividade recente", actHeader.removeFromLeft(150), juce::Justification::topLeft);
-    g.setColour(juce::Colour(0xFF665CFF));
+    g.setColour(juce::Colour(0xFF6D5DFE));
     g.setFont(juce::Font(12.0f));
     g.drawText("Ver todas", actHeader, juce::Justification::topRight);
     
@@ -261,7 +264,7 @@ void CognitiveDashboardComponent::paint(juce::Graphics& g) {
     g.setColour(juce::Colours::white);
     g.setFont(juce::Font(14.0f, juce::Font::bold));
     g.drawText("Arquivos recentes", filesHeader.removeFromLeft(150), juce::Justification::topLeft);
-    g.setColour(juce::Colour(0xFF665CFF));
+    g.setColour(juce::Colour(0xFF6D5DFE));
     g.setFont(juce::Font(12.0f));
     g.drawText("Ver todos", filesHeader, juce::Justification::topRight);
     
