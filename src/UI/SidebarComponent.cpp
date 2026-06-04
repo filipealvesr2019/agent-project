@@ -28,10 +28,10 @@ void SidebarItemComponent::paint(juce::Graphics& g) {
     auto bounds = getLocalBounds().reduced(16, 2);
 
     if (isSelected_) {
-        g.setColour(juce::Colour(0xFF1c2130)); // Dark blue/purple selected background
+        g.setColour(juce::Colour(0xFF131C2F)); // Hover/Active background
         g.fillRoundedRectangle(bounds.toFloat(), 6.0f);
     } else if (isHovered_) {
-        g.setColour(juce::Colour(0xFF1a1e2a));
+        g.setColour(juce::Colour(0xFF131C2F).withAlpha(0.5f));
         g.fillRoundedRectangle(bounds.toFloat(), 6.0f);
     }
 
@@ -43,10 +43,10 @@ void SidebarItemComponent::paint(juce::Graphics& g) {
     }
 
     // A placeholder for the icon on the left
-    juce::Rectangle<int> iconArea(bounds.getX() + 12, bounds.getY() + (bounds.getHeight() - 16) / 2, 16, 16);
+    juce::Rectangle<int> iconArea(bounds.getX() + 12, bounds.getY() + (bounds.getHeight() - 20) / 2, 20, 20);
     // Draw simple icon placeholder based on selection
     if (isSelected_) {
-        g.setColour(juce::Colour(0xFF6644ff)); // Accent color for icon
+        g.setColour(juce::Colour(0xFF6D5DFE)); // Accent color for icon
     } else {
         g.setColour(juce::Colour(0xFF8a91a8));
     }
@@ -58,13 +58,13 @@ void SidebarItemComponent::paint(juce::Graphics& g) {
     } else {
         g.setColour(juce::Colour(0xFF8a91a8));
     }
-    juce::Rectangle<int> textArea(iconArea.getRight() + 12, bounds.getY(), bounds.getWidth() - 40, bounds.getHeight());
+    juce::Rectangle<int> textArea(iconArea.getRight() + 12, bounds.getY(), bounds.getWidth() - 44, bounds.getHeight());
     g.drawText(name_, textArea, juce::Justification::centredLeft, true);
     
     // Selection indicator line on the left if selected
     if (isSelected_) {
-        g.setColour(juce::Colour(0xFF6644ff));
-        g.fillRoundedRectangle(0, bounds.getY() + 4, 3, bounds.getHeight() - 8, 1.5f);
+        g.setColour(juce::Colour(0xFF6D5DFE));
+        g.fillRoundedRectangle(bounds.getX(), bounds.getY() + 4, 3, bounds.getHeight() - 8, 1.5f);
     }
 }
 
@@ -100,60 +100,40 @@ SidebarComponent::SidebarComponent() {
         addAndMakeVisible(item.get());
         items_.push_back(std::move(item));
     }
-
-    auto header = std::make_unique<SidebarItemComponent>(juce::String::fromUTF8("ACESSO RÁPIDO"), false, true);
-    addAndMakeVisible(header.get());
-    items_.push_back(std::move(header));
-
-    juce::StringArray quickItems = {
-        "Editor de Circuitos",
-        "Plugin VST",
-        "Plataforma SaaS",
-        "Marketplace IA",
-        "Infraestrutura"
-    };
-
-    for (const auto& itemName : quickItems) {
-        auto item = std::make_unique<SidebarItemComponent>(itemName, false);
-        item->onClick = [this, name = itemName]() { selectItem(name); };
-        addAndMakeVisible(item.get());
-        items_.push_back(std::move(item));
-    }
 }
 
 SidebarComponent::~SidebarComponent() {}
 
 void SidebarComponent::paint(juce::Graphics& g) {
     // Dark background
-    g.fillAll(juce::Colour(0xFF0f1219));
+    g.fillAll(juce::Colour(0xFF070B17));
 
     // Logo Area
-    // g.setColour(juce::Colour(0xFF6644ff)); // Purple icon color placeholder
-    // g.fillRoundedRectangle(20, 20, 32, 32, 8.0f);
+    g.setColour(juce::Colour(0xFF6D5DFE)); 
+    g.fillRoundedRectangle(24, 20, 32, 32, 8.0f);
     
     g.setColour(juce::Colours::white);
-    g.setFont(juce::Font(juce::Font::getDefaultSansSerifFontName(), 20.0f, juce::Font::bold));
-    g.drawText("AGENTOS", 24, 20, getWidth() - 48, 32, juce::Justification::centredLeft, true);
+    g.setFont(juce::Font("Inter", 20.0f, juce::Font::bold));
+    g.drawText("AGENTOS", 68, 20, getWidth() - 70, 32, juce::Justification::centredLeft, true);
 
     // Profile Area (Bottom)
     int profileY = getHeight() - 80;
-    g.setColour(juce::Colour(0xFF1a1e2a));
+    g.setColour(juce::Colour(0xFF070B17));
     g.fillRect(0, profileY, getWidth(), 80);
+    g.setColour(juce::Colour(0xFFFFFFFF).withAlpha(0.05f));
+    g.fillRect(0, profileY, getWidth(), 1);
 
-    g.setColour(juce::Colour(0xFF4b7bec));
-    g.fillEllipse(16, profileY + 20, 32, 32);
+    // Draw user avatar
+    g.setColour(juce::Colour(0xFF6D5DFE));
+    g.fillEllipse(24, profileY + 22, 36, 36);
 
     g.setColour(juce::Colours::white);
-    g.setFont(juce::Font(14.0f, juce::Font::bold));
-    g.drawText("Matheus", 60, profileY + 16, getWidth() - 70, 20, juce::Justification::centredLeft, true);
+    g.setFont(juce::Font("Inter", 14.0f, juce::Font::bold));
+    g.drawText("Matheus", 72, profileY + 22, getWidth() - 80, 20, juce::Justification::bottomLeft, true);
 
-    g.setColour(juce::Colour(0xFF8a91a8));
-    g.setFont(juce::Font(12.0f));
-    g.drawText("Administrador", 60, profileY + 36, getWidth() - 70, 20, juce::Justification::centredLeft, true);
-    
-    // Green dot
-    g.setColour(juce::Colour(0xFF26de81));
-    g.fillEllipse(125, profileY + 42, 6, 6);
+    g.setColour(juce::Colours::white.withAlpha(0.7f));
+    g.setFont(juce::Font("Inter", 13.0f, juce::Font::plain));
+    g.drawText("Administrador", 72, profileY + 42, getWidth() - 80, 20, juce::Justification::topLeft, true);
 }
 
 void SidebarComponent::resized() {

@@ -26,11 +26,191 @@ namespace AgentOS {
 
 MockPageComponent::MockPageComponent(const juce::String& name) : pageName(name) {}
 void MockPageComponent::paint(juce::Graphics& g) {
-    g.fillAll(juce::Colour(0xFF0b0d13));
-    g.setColour(juce::Colours::white);
-    g.setFont(32.0f);
-    g.drawText(pageName, getLocalBounds(), juce::Justification::centred);
+    g.fillAll(juce::Colour(0xFF050816));
 }
+
+// --- Mock Organizations Page ---
+class MockOrganizationsPage : public MockPageComponent {
+public:
+    MockOrganizationsPage() : MockPageComponent(juce::String::fromUTF8("Organizações")) {}
+    
+    void paint(juce::Graphics& g) override {
+        MockPageComponent::paint(g);
+        
+        auto bounds = getLocalBounds().reduced(40);
+        
+        // Header
+        g.setColour(juce::Colour(0xFFFFFFFF));
+        g.setFont(juce::Font("Inter", 32.0f, juce::Font::bold));
+        g.drawText(juce::String::fromUTF8("Organizações e Agentes"), bounds.removeFromTop(50), juce::Justification::centredLeft);
+        
+        bounds.removeFromTop(20);
+        
+        // Stats Row
+        auto statsArea = bounds.removeFromTop(100);
+        drawStatCard(g, statsArea.removeFromLeft(200), "Agentes Ativos", "14", juce::Colour(0xFF4CAF50));
+        statsArea.removeFromLeft(20);
+        drawStatCard(g, statsArea.removeFromLeft(200), juce::String::fromUTF8("Requisições Hoje"), "8,432", juce::Colour(0xFF2196F3));
+        statsArea.removeFromLeft(20);
+        drawStatCard(g, statsArea.removeFromLeft(200), "Custo Estimado", "$ 42.50", juce::Colour(0xFFFFC107));
+        
+        bounds.removeFromTop(40);
+        
+        // Organization Cards
+        auto cardsArea = bounds.removeFromTop(200);
+        drawOrgCard(g, cardsArea.removeFromLeft(280), "TechCorp AI", "5 Agentes", "Online", juce::Colour(0xFF2C3E50));
+        cardsArea.removeFromLeft(30);
+        drawOrgCard(g, cardsArea.removeFromLeft(280), "HealthBot Sync", "2 Agentes", "Processando", juce::Colour(0xFF8E44AD));
+        cardsArea.removeFromLeft(30);
+        drawOrgCard(g, cardsArea.removeFromLeft(280), "Finance Wizard", "8 Agentes", "Ocioso", juce::Colour(0xFFD35400));
+    }
+
+private:
+    void drawStatCard(juce::Graphics& g, juce::Rectangle<int> area, const juce::String& title, const juce::String& value, juce::Colour accent) {
+        g.setColour(juce::Colour(0xFF0B1220));
+        g.fillRoundedRectangle(area.toFloat(), 16.0f);
+        g.setColour(juce::Colour(0xFFFFFFFF).withAlpha(0.05f));
+        g.drawRoundedRectangle(area.toFloat(), 16.0f, 1.0f);
+        
+        g.setColour(juce::Colours::grey);
+        g.setFont(juce::Font("Inter", 14.0f, juce::Font::plain));
+        g.drawText(title, area.withTrimmedTop(15).withTrimmedLeft(20), juce::Justification::topLeft);
+        
+        g.setColour(accent);
+        g.setFont(juce::Font("Inter", 36.0f, juce::Font::bold));
+        g.drawText(value, area.withTrimmedBottom(15).withTrimmedLeft(20), juce::Justification::bottomLeft);
+    }
+    
+    void drawOrgCard(juce::Graphics& g, juce::Rectangle<int> area, const juce::String& name, const juce::String& subtitle, const juce::String& status, juce::Colour bgColor) {
+        g.setColour(juce::Colour(0xFF0B1220));
+        g.fillRoundedRectangle(area.toFloat(), 20.0f);
+        
+        juce::ColourGradient grad(juce::Colour(0x05FFFFFF), area.getX(), area.getY(), juce::Colour(0x02FFFFFF), area.getX(), area.getBottom(), false);
+        g.setGradientFill(grad);
+        g.fillRoundedRectangle(area.toFloat(), 20.0f);
+        
+        g.setColour(juce::Colour(0xFFFFFFFF).withAlpha(0.05f));
+        g.drawRoundedRectangle(area.toFloat(), 20.0f, 1.0f);
+        
+        g.setColour(juce::Colours::white);
+        g.setFont(juce::Font("Inter", 20.0f, juce::Font::bold));
+        g.drawText(name, area.withTrimmedTop(25).withTrimmedLeft(25), juce::Justification::topLeft);
+        
+        g.setColour(juce::Colours::white.withAlpha(0.7f));
+        g.setFont(juce::Font("Inter", 13.0f, juce::Font::plain));
+        g.drawText(subtitle, area.withTrimmedTop(60).withTrimmedLeft(25), juce::Justification::topLeft);
+        
+        g.setColour(status == "Online" ? juce::Colour(0xFF22C55E) : (status == "Ocioso" ? juce::Colour(0xFFF59E0B) : juce::Colour(0xFF3B82F6)));
+        g.setFont(juce::Font("Inter", 14.0f, juce::Font::bold));
+        g.drawText(juce::String::fromUTF8("● ") + status, area.withTrimmedBottom(25).withTrimmedLeft(25), juce::Justification::bottomLeft);
+    }
+};
+
+// --- Mock Chat Page ---
+class MockChatPage : public MockPageComponent {
+public:
+    MockChatPage() : MockPageComponent("Chat") {}
+    
+    void paint(juce::Graphics& g) override {
+        MockPageComponent::paint(g);
+        
+        auto bounds = getLocalBounds().reduced(40);
+        
+        // Chat Header
+        g.setColour(juce::Colour(0xFF0B1220));
+        g.fillRoundedRectangle(bounds.removeFromTop(70).toFloat(), 16.0f);
+        g.setColour(juce::Colour(0xFFFFFFFF).withAlpha(0.05f));
+        g.drawRoundedRectangle(bounds.withHeight(70).withY(bounds.getY()-70).toFloat(), 16.0f, 1.0f);
+        g.setColour(juce::Colours::white);
+        g.setFont(juce::Font("Inter", 20.0f, juce::Font::bold));
+        g.drawText("AgentOS Assistant", getLocalBounds().reduced(60, 55), juce::Justification::topLeft);
+        
+        bounds.removeFromTop(20);
+        
+        // Chat History Area
+        auto inputArea = bounds.removeFromBottom(60);
+        auto historyArea = bounds.withTrimmedBottom(20);
+        
+        // Draw Mock Messages
+        drawMessage(g, historyArea.removeFromTop(80), "Como posso ajudar com a sua infraestrutura hoje?", true);
+        historyArea.removeFromTop(10);
+        drawMessage(g, historyArea.removeFromTop(80), juce::String::fromUTF8("Gere um relatório de uso da TechCorp AI."), false);
+        historyArea.removeFromTop(10);
+        drawMessage(g, historyArea.removeFromTop(120), juce::String::fromUTF8("Gerando relatório...\n- Consumo Llama 3: 450K tokens\n- Custos: $0.45\n- Tempo ocioso: 12%"), true);
+        
+        // Input Box
+        g.setColour(juce::Colour(0xFF0B1220));
+        g.fillRoundedRectangle(inputArea.toFloat(), 14.0f);
+        g.setColour(juce::Colour(0xFFFFFFFF).withAlpha(0.05f));
+        g.drawRoundedRectangle(inputArea.toFloat(), 14.0f, 1.0f);
+        
+        g.setColour(juce::Colours::white.withAlpha(0.7f));
+        g.setFont(juce::Font("Inter", 14.0f, juce::Font::plain));
+        g.drawText("Digite sua mensagem para o agente...", inputArea.withTrimmedLeft(20), juce::Justification::centredLeft);
+        
+        // Send Button
+        auto btnArea = inputArea.removeFromRight(60).reduced(10);
+        g.setColour(juce::Colour(0xFF6D5DFE));
+        g.fillRoundedRectangle(btnArea.toFloat(), 12.0f);
+    }
+    
+private:
+    void drawMessage(juce::Graphics& g, juce::Rectangle<int> area, const juce::String& text, bool isBot) {
+        int width = juce::jmin(600, area.getWidth() - 100);
+        auto bubbleArea = isBot ? area.withWidth(width) : area.withTrimmedLeft(area.getWidth() - width);
+        
+        g.setColour(isBot ? juce::Colour(0xFF0B1220) : juce::Colour(0xFF6D5DFE));
+        g.fillRoundedRectangle(bubbleArea.toFloat(), 16.0f);
+        if (isBot) {
+            g.setColour(juce::Colour(0xFFFFFFFF).withAlpha(0.05f));
+            g.drawRoundedRectangle(bubbleArea.toFloat(), 16.0f, 1.0f);
+        }
+        
+        g.setColour(juce::Colours::white);
+        g.setFont(juce::Font("Inter", 14.0f, juce::Font::plain));
+        g.drawMultiLineText(text, bubbleArea.getX() + 20, bubbleArea.getY() + 30, bubbleArea.getWidth() - 40);
+    }
+};
+
+// --- Mock Config Page ---
+class MockConfigPage : public MockPageComponent {
+public:
+    MockConfigPage() : MockPageComponent(juce::String::fromUTF8("Configurações")) {}
+    
+    void paint(juce::Graphics& g) override {
+        MockPageComponent::paint(g);
+        
+        auto bounds = getLocalBounds().reduced(40);
+        
+        g.setColour(juce::Colours::white);
+        g.setFont(juce::Font("Inter", 32.0f, juce::Font::bold));
+        g.drawText(juce::String::fromUTF8("Configurações do Sistema"), bounds.removeFromTop(50), juce::Justification::centredLeft);
+        
+        bounds.removeFromTop(20);
+        
+        drawSettingRow(g, bounds.removeFromTop(60), "Modelo Padrão", "Llama 3 8B Instruct (GGUF)");
+        drawSettingRow(g, bounds.removeFromTop(60), "Alocação de VRAM", "12 GB");
+        drawSettingRow(g, bounds.removeFromTop(60), "Tema da Interface", "Dark Mode (AgentOS V2)");
+        drawSettingRow(g, bounds.removeFromTop(60), "Autonomia do Agente CEO", "Nível 4 (Aprovação Tácita)");
+    }
+    
+private:
+    void drawSettingRow(juce::Graphics& g, juce::Rectangle<int> area, const juce::String& label, const juce::String& value) {
+        g.setColour(juce::Colour(0xFF0B1220));
+        g.fillRoundedRectangle(area.reduced(2).toFloat(), 16.0f);
+        g.setColour(juce::Colour(0xFFFFFFFF).withAlpha(0.05f));
+        g.drawRoundedRectangle(area.reduced(2).toFloat(), 16.0f, 1.0f);
+        
+        g.setColour(juce::Colours::white.withAlpha(0.7f));
+        g.setFont(juce::Font("Inter", 14.0f, juce::Font::plain));
+        g.drawText(label, area.withTrimmedLeft(20), juce::Justification::centredLeft);
+        
+        g.setColour(juce::Colours::white);
+        g.setFont(juce::Font("Inter", 14.0f, juce::Font::bold));
+        g.drawText(value, area.withTrimmedRight(20), juce::Justification::centredRight);
+    }
+};
+
 
 DashboardComponent::DashboardComponent() {
     sidebar_ = std::make_unique<SidebarComponent>();
@@ -46,18 +226,16 @@ DashboardComponent::DashboardComponent() {
     memoryVisualization_ = std::make_unique<MemoryVisualizationComponent>();
     cognitiveDashboard_.reset(createCognitiveDashboard());
     
-    mockOrganizacoes_ = std::make_unique<MockPageComponent>(juce::String::fromUTF8("Organizações Mock"));
-    mockChat_ = std::make_unique<MockPageComponent>("Chat Mock");
-    mockConfig_ = std::make_unique<MockPageComponent>(juce::String::fromUTF8("Configurações Mock"));
-    mockAcessoRapido_ = std::make_unique<MockPageComponent>(juce::String::fromUTF8("Acesso Rápido Mock"));
+    mockOrganizacoes_ = std::make_unique<MockOrganizationsPage>();
+    mockChat_ = std::make_unique<MockChatPage>();
+    mockConfig_ = std::make_unique<MockConfigPage>();
 
-    mainTabs_->addTab("Home", juce::Colour(0xFF0b0d13), cognitiveDashboard_.get(), false);
-    mainTabs_->addTab(juce::String::fromUTF8("Organizações"), juce::Colour(0xFF0b0d13), mockOrganizacoes_.get(), false);
-    mainTabs_->addTab("Projetos", juce::Colour(0xFF0b0d13), projectPanel_.get(), false);
-    mainTabs_->addTab("Equipe", juce::Colour(0xFF0b0d13), agentList_.get(), false);
-    mainTabs_->addTab("Chat", juce::Colour(0xFF0b0d13), mockChat_.get(), false);
-    mainTabs_->addTab(juce::String::fromUTF8("Configurações"), juce::Colour(0xFF0b0d13), mockConfig_.get(), false);
-    mainTabs_->addTab(juce::String::fromUTF8("Acesso Rápido"), juce::Colour(0xFF0b0d13), mockAcessoRapido_.get(), false);
+    mainTabs_->addTab("Home", juce::Colour(0xFF050816), cognitiveDashboard_.get(), false);
+    mainTabs_->addTab(juce::String::fromUTF8("Organizações"), juce::Colour(0xFF050816), mockOrganizacoes_.get(), false);
+    mainTabs_->addTab("Projetos", juce::Colour(0xFF050816), projectPanel_.get(), false);
+    mainTabs_->addTab("Equipe", juce::Colour(0xFF050816), agentList_.get(), false);
+    mainTabs_->addTab("Chat", juce::Colour(0xFF050816), mockChat_.get(), false);
+    mainTabs_->addTab(juce::String::fromUTF8("Configurações"), juce::Colour(0xFF050816), mockConfig_.get(), false);
     
     mainTabs_->setCurrentTabIndex(0);
 
@@ -73,11 +251,6 @@ DashboardComponent::DashboardComponent() {
         else if (name == "Equipe") mainTabs_->setCurrentTabIndex(3);
         else if (name == "Chat") mainTabs_->setCurrentTabIndex(4);
         else if (name == juce::String::fromUTF8("Configurações")) mainTabs_->setCurrentTabIndex(5);
-        else {
-            // Some quick access item
-            mockAcessoRapido_->setPageName(name); // just so we can see it
-            mainTabs_->setCurrentTabIndex(6);
-        }
     };
 
     UI::getInstance().onAgentsChanged = [this] {
