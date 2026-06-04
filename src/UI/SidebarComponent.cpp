@@ -1,5 +1,6 @@
 #include "UI/SidebarComponent.h"
 #include "UI/UI.h"
+#include <BinaryData.h>
 
 namespace AgentOS {
 
@@ -7,6 +8,24 @@ namespace AgentOS {
 
 SidebarItemComponent::SidebarItemComponent(const juce::String& name, bool isSelected, bool isHeader)
     : name_(name), isSelected_(isSelected), isHeader_(isHeader) {
+    if (!isHeader_) {
+        const char* svgData = nullptr;
+        int svgSize = 0;
+
+        if (name == "Home") { svgData = BinaryData::house_svg; svgSize = BinaryData::house_svgSize; }
+        else if (name == "Organizacoes") { svgData = BinaryData::building2_svg; svgSize = BinaryData::building2_svgSize; }
+        else if (name == "Projetos") { svgData = BinaryData::folderkanban_svg; svgSize = BinaryData::folderkanban_svgSize; }
+        else if (name == "Equipe") { svgData = BinaryData::users_svg; svgSize = BinaryData::users_svgSize; }
+        else if (name == "Chat") { svgData = BinaryData::messagesquare_svg; svgSize = BinaryData::messagesquare_svgSize; }
+        else if (name == "Configuracoes") { svgData = BinaryData::settings_svg; svgSize = BinaryData::settings_svgSize; }
+        else { svgData = BinaryData::house_svg; svgSize = BinaryData::house_svgSize; }
+
+        if (svgData != nullptr) {
+            if (auto xml = juce::XmlDocument::parse(juce::String::createStringFromData(svgData, svgSize))) {
+                iconDrawable_ = juce::Drawable::createFromSVG(*xml);
+            }
+        }
+    }
 }
 
 void SidebarItemComponent::setSelected(bool s) {
@@ -42,85 +61,15 @@ void SidebarItemComponent::paint(juce::Graphics& g) {
         g.setColour(juce::Colour(0xFF8a91a8));
     }
 
-    // A placeholder for the icon on the left
     juce::Rectangle<int> iconArea(bounds.getX() + 12, bounds.getY() + (bounds.getHeight() - 20) / 2, 20, 20);
-    // Draw simple icon placeholder based on selection
-    if (isSelected_) {
-        g.setColour(juce::Colour(0xFF6D5DFE)); // Accent color for icon
-    } else {
-        g.setColour(juce::Colour(0xFF8a91a8));
-    }
-    juce::Path p;
-    float cx = iconArea.getCentreX();
-    float cy = iconArea.getCentreY();
-    float ix = iconArea.getX();
-    float iy = iconArea.getY();
     
-    if (name_ == "Home") {
-        // Modern Home
-        p.startNewSubPath(ix + 3, iy + 9);
-        p.lineTo(ix + 10, iy + 3);
-        p.lineTo(ix + 17, iy + 9);
-        p.lineTo(ix + 17, iy + 17);
-        p.lineTo(ix + 3, iy + 17);
-        p.closeSubPath();
-        p.startNewSubPath(ix + 8, iy + 17);
-        p.lineTo(ix + 8, iy + 12);
-        p.lineTo(ix + 12, iy + 12);
-        p.lineTo(ix + 12, iy + 17);
-    } else if (name_ == "Organizacoes") {
-        // Office Building
-        p.addRoundedRectangle(ix + 4, iy + 2, 12, 18, 1.5f);
-        p.startNewSubPath(ix + 2, iy + 20);
-        p.lineTo(ix + 18, iy + 20);
-        for (int r = 0; r < 3; ++r) {
-            float wy = iy + 6 + r * 4;
-            p.startNewSubPath(ix + 8, wy);  p.lineTo(ix + 8.1f, wy);
-            p.startNewSubPath(ix + 12, wy); p.lineTo(ix + 12.1f, wy);
-        }
-    } else if (name_ == "Projetos") {
-        // Folder
-        p.startNewSubPath(ix + 2, iy + 7);
-        p.lineTo(ix + 2, iy + 4);
-        p.quadraticTo(ix + 2, iy + 3, ix + 3, iy + 3);
-        p.lineTo(ix + 7, iy + 3);
-        p.lineTo(ix + 9, iy + 6);
-        p.lineTo(ix + 17, iy + 6);
-        p.quadraticTo(ix + 18, iy + 6, ix + 18, iy + 7);
-        p.lineTo(ix + 18, iy + 17);
-        p.quadraticTo(ix + 18, iy + 18, ix + 17, iy + 18);
-        p.lineTo(ix + 3, iy + 18);
-        p.quadraticTo(ix + 2, iy + 18, ix + 2, iy + 17);
-        p.closeSubPath();
-    } else if (name_ == "Equipe") {
-        // User Profile
-        p.addEllipse(cx - 3.5f, iy + 3, 7, 7);
-        p.startNewSubPath(ix + 3, iy + 19);
-        p.quadraticTo(ix + 3, iy + 13, cx, iy + 13);
-        p.quadraticTo(ix + 17, iy + 13, ix + 17, iy + 19);
-    } else if (name_ == "Chat") {
-        // Message Bubble
-        p.addRoundedRectangle(ix + 2, iy + 3, 16, 12, 3.0f);
-        p.startNewSubPath(ix + 6, iy + 15);
-        p.lineTo(ix + 4, iy + 19);
-        p.lineTo(ix + 9, iy + 15);
-    } else if (name_ == "Configuracoes") {
-        // Gear
-        p.addEllipse(cx - 2.5f, cy - 2.5f, 5, 5);
-        for (int i = 0; i < 8; ++i) {
-            float a = juce::MathConstants<float>::twoPi * (i / 8.0f);
-            float r1 = 6.0f, r2 = 8.5f;
-            p.startNewSubPath(cx + std::cos(a - 0.15f) * r1, cy + std::sin(a - 0.15f) * r1);
-            p.lineTo(cx + std::cos(a - 0.1f) * r2, cy + std::sin(a - 0.1f) * r2);
-            p.lineTo(cx + std::cos(a + 0.1f) * r2, cy + std::sin(a + 0.1f) * r2);
-            p.lineTo(cx + std::cos(a + 0.15f) * r1, cy + std::sin(a + 0.15f) * r1);
-        }
-        p.addEllipse(cx - 6, cy - 6, 12, 12);
-    } else {
-        p.addRoundedRectangle(iconArea.toFloat(), 4.0f);
+    if (iconDrawable_) {
+        juce::Colour iconColour = isSelected_ ? juce::Colour(0xFF6D5DFE) : juce::Colour(0xFF8A91A8);
+        if (isHovered_ && !isSelected_) iconColour = juce::Colour(0xFFFFFFFF);
+        
+        iconDrawable_->replaceColour(juce::Colours::black, iconColour);
+        iconDrawable_->drawWithin(g, iconArea.toFloat().reduced(2.0f), juce::RectanglePlacement::centred, 1.0f);
     }
-    
-    g.strokePath(p, juce::PathStrokeType(1.5f, juce::PathStrokeType::curved, juce::PathStrokeType::rounded));
 
     // Text
     if (isSelected_) {

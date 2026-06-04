@@ -61,6 +61,16 @@ add_subdirectory(src/ReasoningTimelineEngine)
 add_subdirectory(src/Cognitive)
 
 # Executável Principal JUCE
+juce_add_binary_data(AgentOS_Icons
+    SOURCES
+        Assets/Icons/house.svg
+        Assets/Icons/building-2.svg
+        Assets/Icons/folder-kanban.svg
+        Assets/Icons/users.svg
+        Assets/Icons/message-square.svg
+        Assets/Icons/settings.svg
+)
+
 juce_add_gui_app(AgentOS
     PRODUCT_NAME "AgentOS"
     VERSION 1.0.0
@@ -69,6 +79,7 @@ juce_add_gui_app(AgentOS
 target_sources(AgentOS PRIVATE src/main.cpp src/ChangeManagement/ChangeManagement.cpp)
 
 target_link_libraries(AgentOS PRIVATE 
+    AgentOS_Icons
     UI
     AgentEngine 
     WorkflowEngine

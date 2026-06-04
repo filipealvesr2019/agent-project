@@ -27,6 +27,7 @@ private:
     bool isSelected_;
     bool isHeader_;
     bool isHovered_ = false;
+    std::unique_ptr<juce::Drawable> iconDrawable_;
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(SidebarItemComponent)
 };
 

@@ -1,4 +1,4 @@
-# CMakeLists for UI
+﻿# CMakeLists for UI
 add_library(UI STATIC
     UI.cpp
     DashboardComponent.cpp
@@ -13,7 +13,7 @@ add_library(UI STATIC
     MemoryVisualization/MemoryVisualizationComponent.cpp
 )
 target_include_directories(UI PUBLIC ${CMAKE_SOURCE_DIR}/include)
-target_link_libraries(UI PUBLIC
+target_link_libraries(UI PUBLIC AgentOS_Icons
     juce::juce_gui_extra
     juce::juce_gui_basics
     juce::juce_graphics
