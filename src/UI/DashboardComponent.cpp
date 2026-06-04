@@ -188,10 +188,10 @@ public:
         
         bounds.removeFromTop(20);
         
-        drawSettingRow(g, bounds.removeFromTop(60), "Modelo Padrão", "Llama 3 8B Instruct (GGUF)");
-        drawSettingRow(g, bounds.removeFromTop(60), "Alocação de VRAM", "12 GB");
+        drawSettingRow(g, bounds.removeFromTop(60), juce::String::fromUTF8("Modelo Padrão"), "Llama 3 8B Instruct (GGUF)");
+        drawSettingRow(g, bounds.removeFromTop(60), juce::String::fromUTF8("Alocação de VRAM"), "12 GB");
         drawSettingRow(g, bounds.removeFromTop(60), "Tema da Interface", "Dark Mode (AgentOS V2)");
-        drawSettingRow(g, bounds.removeFromTop(60), "Autonomia do Agente CEO", "Nível 4 (Aprovação Tácita)");
+        drawSettingRow(g, bounds.removeFromTop(60), "Autonomia do Agente CEO", juce::String::fromUTF8("Nível 4 (Aprovação Tácita)"));
     }
     
 private:
