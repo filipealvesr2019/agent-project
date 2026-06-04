@@ -24,32 +24,60 @@
 
 namespace AgentOS {
 
+MockPageComponent::MockPageComponent(const juce::String& name) : pageName(name) {}
+void MockPageComponent::paint(juce::Graphics& g) {
+    g.fillAll(juce::Colour(0xFF0b0d13));
+    g.setColour(juce::Colours::white);
+    g.setFont(32.0f);
+    g.drawText(pageName, getLocalBounds(), juce::Justification::centred);
+}
+
 DashboardComponent::DashboardComponent() {
     sidebar_ = std::make_unique<SidebarComponent>();
     addAndMakeVisible(sidebar_.get());
 
     mainTabs_ = std::make_unique<juce::TabbedComponent>(juce::TabbedButtonBar::TabsAtTop);
+    mainTabs_->setTabBarDepth(0); // Hide tabs
     addAndMakeVisible(mainTabs_.get());
 
     agentList_ = std::make_unique<AgentListComponent>();
     projectPanel_ = std::make_unique<ProjectPanelComponent>();
     workflowEditor_ = std::make_unique<WorkflowEditorComponent>();
     memoryVisualization_ = std::make_unique<MemoryVisualizationComponent>();
-
     cognitiveDashboard_.reset(createCognitiveDashboard());
     
-    mainTabs_->addTab("Cognitive Dashboard", juce::Colour(0xFF161b22), cognitiveDashboard_.get(), false);
-    mainTabs_->addTab("Agents", juce::Colour(0xFF161b22), agentList_.get(), false);
-    mainTabs_->addTab("Projects", juce::Colour(0xFF161b22), projectPanel_.get(), false);
-    mainTabs_->addTab("Workflow Editor", juce::Colour(0xFF161b22), workflowEditor_.get(), false);
-    mainTabs_->addTab("Memory Viz", juce::Colour(0xFF161b22), memoryVisualization_.get(), false);
-    mainTabs_->setCurrentTabIndex(0); // Go to cognitive dashboard initially
+    mockOrganizacoes_ = std::make_unique<MockPageComponent>("Organizações Mock");
+    mockChat_ = std::make_unique<MockPageComponent>("Chat Mock");
+    mockConfig_ = std::make_unique<MockPageComponent>("Configurações Mock");
+    mockAcessoRapido_ = std::make_unique<MockPageComponent>("Acesso Rápido Mock");
+
+    mainTabs_->addTab("Home", juce::Colour(0xFF0b0d13), cognitiveDashboard_.get(), false);
+    mainTabs_->addTab("Organizações", juce::Colour(0xFF0b0d13), mockOrganizacoes_.get(), false);
+    mainTabs_->addTab("Projetos", juce::Colour(0xFF0b0d13), projectPanel_.get(), false);
+    mainTabs_->addTab("Equipe", juce::Colour(0xFF0b0d13), agentList_.get(), false);
+    mainTabs_->addTab("Chat", juce::Colour(0xFF0b0d13), mockChat_.get(), false);
+    mainTabs_->addTab("Configurações", juce::Colour(0xFF0b0d13), mockConfig_.get(), false);
+    mainTabs_->addTab("Acesso Rapido", juce::Colour(0xFF0b0d13), mockAcessoRapido_.get(), false);
+    
+    mainTabs_->setCurrentTabIndex(0);
 
     logViewer_ = std::make_unique<LogViewerComponent>();
     addAndMakeVisible(logViewer_.get());
 
     sidebar_->onItemSelected = [this](const juce::String& name) {
         addLogMessage(juce::String::fromUTF8("Menu selecionado: ") + name);
+        
+        if (name == "Home") mainTabs_->setCurrentTabIndex(0);
+        else if (name == "Organizações") mainTabs_->setCurrentTabIndex(1);
+        else if (name == "Projetos") mainTabs_->setCurrentTabIndex(2);
+        else if (name == "Equipe") mainTabs_->setCurrentTabIndex(3);
+        else if (name == "Chat") mainTabs_->setCurrentTabIndex(4);
+        else if (name == "Configurações") mainTabs_->setCurrentTabIndex(5);
+        else {
+            // Some quick access item
+            mockAcessoRapido_->setPageName(name); // just so we can see it
+            mainTabs_->setCurrentTabIndex(6);
+        }
     };
 
     UI::getInstance().onAgentsChanged = [this] {
@@ -129,9 +157,12 @@ void DashboardComponent::paint(juce::Graphics& g) {
     g.setColour(juce::Colour(0xFF111319));
     g.fillRect(topBarArea);
     
+    // Instead of hardcoding "Home", maybe fetch the active tab name
     g.setColour(juce::Colour(0xFFffffff));
     g.setFont(juce::Font(18.0f, juce::Font::bold));
-    g.drawText("Home", topBarArea.reduced(20, 0), juce::Justification::centredLeft);
+    juce::String activeTitle = mainTabs_->getTabNames()[mainTabs_->getCurrentTabIndex()];
+    if (activeTitle == "Acesso Rapido") activeTitle = mockAcessoRapido_->getPageName();
+    g.drawText(activeTitle, topBarArea.reduced(20, 0), juce::Justification::centredLeft);
 
     int statusH = 22;
     auto statusArea = area.removeFromBottom(statusH);

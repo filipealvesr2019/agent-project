@@ -11,6 +11,16 @@ class ProjectPanelComponent;
 class WorkflowEditorComponent;
 class MemoryVisualizationComponent;
 
+class MockPageComponent : public juce::Component {
+public:
+    MockPageComponent(const juce::String& name);
+    void paint(juce::Graphics& g) override;
+    void setPageName(const juce::String& name) { pageName = name; repaint(); }
+    juce::String getPageName() const { return pageName; }
+private:
+    juce::String pageName;
+};
+
 class DashboardComponent : public juce::Component, public juce::Timer {
 public:
     DashboardComponent();
@@ -38,6 +48,12 @@ private:
     std::unique_ptr<WorkflowEditorComponent> workflowEditor_;
     std::unique_ptr<MemoryVisualizationComponent> memoryVisualization_;
     std::unique_ptr<juce::Component> cognitiveDashboard_;
+    
+    std::unique_ptr<MockPageComponent> mockOrganizacoes_;
+    std::unique_ptr<MockPageComponent> mockChat_;
+    std::unique_ptr<MockPageComponent> mockConfig_;
+    std::unique_ptr<MockPageComponent> mockAcessoRapido_;
+
     juce::String statusText_;
 
     // Phase 17 Metrics

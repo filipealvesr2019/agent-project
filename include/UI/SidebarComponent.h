@@ -7,7 +7,7 @@ namespace AgentOS {
 
 class SidebarItemComponent : public juce::Component {
 public:
-    SidebarItemComponent(const juce::String& name, bool isSelected = false);
+    SidebarItemComponent(const juce::String& name, bool isSelected = false, bool isHeader = false);
     ~SidebarItemComponent() override = default;
 
     void paint(juce::Graphics& g) override;
@@ -17,6 +17,7 @@ public:
 
     void setSelected(bool s);
     bool isSelected() const { return isSelected_; }
+    bool isHeader() const { return isHeader_; }
     juce::String getName() const { return name_; }
 
     std::function<void()> onClick;
@@ -24,6 +25,7 @@ public:
 private:
     juce::String name_;
     bool isSelected_;
+    bool isHeader_;
     bool isHovered_ = false;
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(SidebarItemComponent)
 };
