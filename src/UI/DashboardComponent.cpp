@@ -1,4 +1,4 @@
-﻿#include "UI/DashboardComponent.h"
+#include "UI/DashboardComponent.h"
 #include "UI/SidebarComponent.h"
 #include "UI/AgentListComponent.h"
 #include "UI/SystemMonitorComponent.h"
@@ -570,6 +570,8 @@ void DashboardComponent::resized() {
 }
 
 void DashboardComponent::paint(juce::Graphics& g) {
+    profiler_.beginPaint();
+
     auto area = getLocalBounds();
     
     // Main Background
@@ -599,7 +601,13 @@ void DashboardComponent::paint(juce::Graphics& g) {
     g.fillRect(statusArea);
     g.setColour(juce::Colour(0xFF8a91a8));
     g.setFont(juce::Font(12.0f));
-    g.drawText(statusText_, statusArea.reduced(16, 0), juce::Justification::centredLeft);
+    g.drawText(statusText_, statusArea.withTrimmedLeft(10), juce::Justification::centredLeft);
+
+    // Separator line
+    g.setColour(juce::Colour(0xFF202330));
+    g.fillRect(area.getX(), area.getBottom() - 1, area.getWidth(), 1);
+
+    profiler_.endPaint();
 }
 
 void DashboardComponent::handleMenuClick(int itemId) {

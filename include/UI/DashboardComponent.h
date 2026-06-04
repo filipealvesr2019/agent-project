@@ -1,6 +1,7 @@
 #pragma once
 #include <juce_gui_extra/juce_gui_extra.h>
 #include <string>
+#include "UI/DashboardProfiler.h"
 
 namespace AgentOS {
 
@@ -48,6 +49,8 @@ private:
     std::unique_ptr<WorkflowEditorComponent> workflowEditor_;
     std::unique_ptr<MemoryVisualizationComponent> memoryVisualization_;
     std::unique_ptr<juce::Component> cognitiveDashboard_;
+
+    DashboardProfiler profiler_;
     
     std::unique_ptr<MockPageComponent> mockOrganizacoes_;
     std::unique_ptr<MockPageComponent> mockChat_;

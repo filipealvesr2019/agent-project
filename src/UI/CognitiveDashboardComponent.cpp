@@ -1,4 +1,4 @@
-﻿#include "UI/CognitiveDashboardComponent.h"
+#include "UI/CognitiveDashboardComponent.h"
 #include <BinaryData.h>
 
 namespace AgentOS {
@@ -156,9 +156,13 @@ void CognitiveDashboardComponent::paintFileItem(juce::Graphics& g, juce::Rectang
 }
 
 void CognitiveDashboardComponent::paint(juce::Graphics& g) {
+    profiler_.beginPaint();
+
     if (cachedBackground_.isValid()) {
         g.drawImageAt(cachedBackground_, 0, 0);
     }
+
+    profiler_.endPaint();
 }
 
 void CognitiveDashboardComponent::updateCachedBackground() {

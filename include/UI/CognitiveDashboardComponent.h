@@ -1,5 +1,6 @@
 #pragma once
 #include <juce_gui_extra/juce_gui_extra.h>
+#include "UI/DashboardProfiler.h"
 
 namespace AgentOS {
 
@@ -12,6 +13,7 @@ public:
     void resized() override;
 
 private:
+    DashboardProfiler profiler_;
     void updateCachedBackground();
     juce::Image cachedBackground_;
 
