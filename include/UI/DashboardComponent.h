@@ -7,6 +7,7 @@ namespace AgentOS {
 class SidebarComponent;
 class AgentListComponent;
 class LogViewerComponent;
+class SystemMonitorComponent;
 class ProjectPanelComponent;
 class WorkflowEditorComponent;
 class MemoryVisualizationComponent;
@@ -27,7 +28,6 @@ public:
     ~DashboardComponent() override;
     void resized() override;
     void paint(juce::Graphics& g) override;
-    void mouseDown(const juce::MouseEvent& event) override;
     void timerCallback() override;
     void refreshAgentList();
     void addLogMessage(const juce::String& message);
@@ -37,30 +37,27 @@ public:
 private:
     void handleMenuClick(int itemId);
     void showSnapshotTimeline();
-    void paintMetricsPanel(juce::Graphics& g, juce::Rectangle<int> area);
+    
 
     // juce::Rectangle<int> menuFile_, menuTools_, menuSecurity_, menuPhase6_, menuHelp_;
     std::unique_ptr<SidebarComponent> sidebar_;
     std::unique_ptr<juce::TabbedComponent> mainTabs_;
     std::unique_ptr<AgentListComponent> agentList_;
     std::unique_ptr<ProjectPanelComponent> projectPanel_;
-    std::unique_ptr<LogViewerComponent> logViewer_;
+    std::unique_ptr<SystemMonitorComponent> systemMonitor_;
     std::unique_ptr<WorkflowEditorComponent> workflowEditor_;
     std::unique_ptr<MemoryVisualizationComponent> memoryVisualization_;
     std::unique_ptr<juce::Component> cognitiveDashboard_;
     
     std::unique_ptr<MockPageComponent> mockOrganizacoes_;
     std::unique_ptr<MockPageComponent> mockChat_;
-    std::unique_ptr<MockPageComponent> mockConfig_;
+    
     std::unique_ptr<MockPageComponent> mockAcessoRapido_;
 
     juce::String statusText_;
 
     // Phase 17 Metrics
-    juce::String cpuText_;
-    juce::String ramText_;
-    juce::String vramText_;
-    juce::String systemStatsText_;
+    
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(DashboardComponent)
 };

@@ -1,7 +1,7 @@
 ﻿#include "UI/DashboardComponent.h"
 #include "UI/SidebarComponent.h"
 #include "UI/AgentListComponent.h"
-#include "UI/LogViewerComponent.h"
+#include "UI/SystemMonitorComponent.h"
 #include "UI/CreateAgentDialog.h"
 #include "UI/ModelManagerDialog.h"
 #include "UI/ProjectPanelComponent.h"
@@ -495,19 +495,18 @@ DashboardComponent::DashboardComponent() {
     
     mockOrganizacoes_ = std::make_unique<MockOrganizationsPage>();
     mockChat_ = std::make_unique<MockChatPage>();
-    mockConfig_ = std::make_unique<MockConfigPage>();
+    
 
     mainTabs_->addTab("Home", juce::Colour(0xFF050816), cognitiveDashboard_.get(), false);
     mainTabs_->addTab("Organizacoes", juce::Colour(0xFF050816), mockOrganizacoes_.get(), false);
     mainTabs_->addTab("Projetos", juce::Colour(0xFF050816), projectPanel_.get(), false);
     mainTabs_->addTab("Equipe", juce::Colour(0xFF050816), agentList_.get(), false);
     mainTabs_->addTab("Chat", juce::Colour(0xFF050816), mockChat_.get(), false);
-    mainTabs_->addTab("Configuracoes", juce::Colour(0xFF050816), mockConfig_.get(), false);
+    mainTabs_->addTab("Configuracoes", juce::Colour(0xFF050816), systemMonitor_.get(), false);
     
     mainTabs_->setCurrentTabIndex(0);
 
-    logViewer_ = std::make_unique<LogViewerComponent>();
-    addAndMakeVisible(logViewer_.get());
+    systemMonitor_ = std::make_unique<SystemMonitorComponent>();
 
     sidebar_->onItemSelected = [this](const juce::String& name) {
         addLogMessage("Menu selecionado: " + name);
@@ -539,13 +538,7 @@ DashboardComponent::DashboardComponent() {
     // Init Phase 6 engines
     ProfileRegistry::getInstance().loadDefaults();
     ModelRouter::getInstance().loadDefaults();
-
-    cpuText_ = "CPU: 0%";
-    ramText_ = "RAM: 0%";
-    vramText_ = "VRAM: 0%";
-    systemStatsText_ = "Carregando mtricas...";
-
-    startTimerHz(1); // Refresh every 1 second
+startTimerHz(1); // Refresh every 1 second
     setSize(1200, 800);
     statusText_ = "AgentOS Phase 17: Studio UI Ativo";
 }
@@ -569,12 +562,6 @@ void DashboardComponent::resized() {
     int statusH = 22;
     auto statusArea = area.removeFromBottom(statusH);
 
-    // Logs Area
-    logViewer_->setBounds(area.removeFromBottom(150));
-
-    // Metrics panel
-    int metricsH = 110;
-    auto metricsArea = area.removeFromBottom(metricsH);
 
     // Main content area
     mainTabs_->setBounds(area);
@@ -606,50 +593,13 @@ void DashboardComponent::paint(juce::Graphics& g) {
 
     int statusH = 22;
     auto statusArea = area.removeFromBottom(statusH);
-    area.removeFromBottom(150); // logs
-    auto metricsArea = area.removeFromBottom(110);
 
-    paintMetricsPanel(g, metricsArea);
 
     g.setColour(juce::Colour(0xFF111319));
     g.fillRect(statusArea);
     g.setColour(juce::Colour(0xFF8a91a8));
     g.setFont(juce::Font(12.0f));
     g.drawText(statusText_, statusArea.reduced(16, 0), juce::Justification::centredLeft);
-}
-
-void DashboardComponent::paintMetricsPanel(juce::Graphics& g, juce::Rectangle<int> area) {
-    g.setColour(juce::Colour(0xFF0b0d13));
-    g.fillRect(area);
-
-    int panelW = area.getWidth() / 4;
-    auto panels = area.removeFromLeft(panelW * 4);
-
-    auto drawPanel = [&](juce::Rectangle<int> bounds, const juce::String& title,
-                          const juce::String& content, juce::Colour accent) {
-        g.setColour(juce::Colour(0xFF161923));
-        g.fillRoundedRectangle(bounds.reduced(6).toFloat(), 8.0f);
-
-        // Title
-        auto header = bounds.reduced(16).removeFromTop(20);
-        g.setColour(juce::Colours::white);
-        g.setFont(juce::Font(14.0f, juce::Font::bold));
-        g.drawText(title, header, juce::Justification::centredLeft);
-
-        // Content
-        g.setColour(juce::Colour(0xFF8a91a8));
-        g.setFont(juce::Font(24.0f, juce::Font::bold));
-        g.drawText(content, bounds.reduced(16).withTrimmedTop(30), juce::Justification::topLeft);
-    };
-
-    drawPanel(panels.removeFromLeft(panelW), "CPU", cpuText_, juce::Colour(0xFFda3633));
-    drawPanel(panels.removeFromLeft(panelW), "RAM", ramText_, juce::Colour(0xFF238636));
-    drawPanel(panels.removeFromLeft(panelW), "VRAM", vramText_, juce::Colour(0xFF1f6feb));
-    drawPanel(panels.removeFromLeft(panelW), "Status", systemStatsText_, juce::Colour(0xFF8957e5));
-}
-
-void DashboardComponent::mouseDown(const juce::MouseEvent& event) {
-    // Top bar interactions can go here in the future
 }
 
 void DashboardComponent::handleMenuClick(int itemId) {
@@ -715,27 +665,13 @@ void DashboardComponent::handleMenuClick(int itemId) {
 void DashboardComponent::timerCallback() {
     agentList_->refresh();
 
-    // Pull from MonitoringEngine
-    auto metrics = MonitoringEngine::getInstance().getCurrentSystemMetrics();
-    
-    cpuText_ = juce::String(metrics.cpuUsagePercent, 1) + "%";
-    ramText_ = juce::String(metrics.ramUsagePercent, 1) + "%";
-    vramText_ = juce::String(metrics.vramUsagePercent, 1) + "%";
-
-    int numPlugins = PluginManager::getInstance().getInstalledPlugins().size();
-    systemStatsText_ = "Threads: " + juce::String(metrics.activeThreads) + "\n"
-                     + "Plugins: " + juce::String(numPlugins) + "\n"
-                     + "Models: 1";
-    
-    repaint();
-}
-
-void DashboardComponent::refreshAgentList() {
     agentList_->refresh();
 }
 
 void DashboardComponent::addLogMessage(const juce::String& message) {
-    logViewer_->addMessage(message);
+    if (systemMonitor_ && systemMonitor_->getLogViewer()) {
+        systemMonitor_->getLogViewer()->addMessage(message);
+    }
 }
 
 void DashboardComponent::showCreateAgentDialog() {
@@ -763,6 +699,10 @@ void DashboardComponent::showSnapshotTimeline() {
         addLogMessage("  #" + juce::String(s.id) + " | " + s.agentName +
                       " | " + s.filePath + " | " + s.reason);
     }
+}
+
+void DashboardComponent::refreshAgentList() {
+    if (agentList_) agentList_->refresh();
 }
 
 } // namespace AgentOS

@@ -2,6 +2,7 @@
 add_library(UI STATIC
     UI.cpp
     DashboardComponent.cpp
+    SystemMonitorComponent.cpp
     AgentListComponent.cpp
     SidebarComponent.cpp
     LogViewerComponent.cpp
@@ -9,6 +10,7 @@ add_library(UI STATIC
     ModelManagerDialog.cpp
     ProjectPanelComponent.cpp
     CognitiveDashboardComponent.cpp
+    SystemMonitorComponent.cpp
     WorkflowEditor/WorkflowEditorComponent.cpp
     MemoryVisualization/MemoryVisualizationComponent.cpp
 )
