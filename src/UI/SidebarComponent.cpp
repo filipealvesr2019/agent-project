@@ -1,4 +1,4 @@
-﻿#include "UI/SidebarComponent.h"
+#include "UI/SidebarComponent.h"
 #include "UI/UI.h"
 
 namespace AgentOS {
@@ -87,11 +87,11 @@ void SidebarItemComponent::mouseUp(const juce::MouseEvent&) {
 SidebarComponent::SidebarComponent() {
     juce::StringArray mainItems = {
         "Home",
-        juce::String::fromUTF8(u8"Organizações"),
+        "Organizacoes",
         "Projetos",
         "Equipe",
         "Chat",
-        juce::String::fromUTF8(u8"Configurações")
+        "Configuracoes"
     };
 
     for (const auto& itemName : mainItems) {

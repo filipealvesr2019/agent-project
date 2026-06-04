@@ -32,7 +32,7 @@ void MockPageComponent::paint(juce::Graphics& g) {
 // --- Mock Organizations Page ---
 class MockOrganizationsPage : public MockPageComponent {
 public:
-    MockOrganizationsPage() : MockPageComponent(juce::String::fromUTF8(u8"Organizações")) {}
+    MockOrganizationsPage() : MockPageComponent("Organizacoes") {}
     
     void paint(juce::Graphics& g) override {
         MockPageComponent::paint(g);
@@ -42,7 +42,7 @@ public:
         // Header
         g.setColour(juce::Colour(0xFFFFFFFF));
         g.setFont(juce::Font(32.0f, juce::Font::bold));
-        g.drawText(juce::String::fromUTF8(u8"Organizações e Agentes"), bounds.removeFromTop(50), juce::Justification::centredLeft);
+        g.drawText("Organizacoes e Agentes", bounds.removeFromTop(50), juce::Justification::centredLeft);
         
         bounds.removeFromTop(20);
         
@@ -50,7 +50,7 @@ public:
         auto statsArea = bounds.removeFromTop(100);
         drawStatCard(g, statsArea.removeFromLeft(200), "Agentes Ativos", "14", juce::Colour(0xFF4CAF50));
         statsArea.removeFromLeft(20);
-        drawStatCard(g, statsArea.removeFromLeft(200), juce::String::fromUTF8(u8"Requisições Hoje"), "8,432", juce::Colour(0xFF2196F3));
+        drawStatCard(g, statsArea.removeFromLeft(200), "Requisicoes Hoje", "8,432", juce::Colour(0xFF2196F3));
         statsArea.removeFromLeft(20);
         drawStatCard(g, statsArea.removeFromLeft(200), "Custo Estimado", "$ 42.50", juce::Colour(0xFFFFC107));
         
@@ -102,7 +102,7 @@ private:
         
         g.setColour(status == "Online" ? juce::Colour(0xFF22C55E) : (status == "Ocioso" ? juce::Colour(0xFFF59E0B) : juce::Colour(0xFF3B82F6)));
         g.setFont(juce::Font(14.0f, juce::Font::bold));
-        g.drawText(juce::String::fromUTF8(u8"● ") + status, area.withTrimmedBottom(25).withTrimmedLeft(25), juce::Justification::bottomLeft);
+        g.drawText("- " + status, area.withTrimmedBottom(25).withTrimmedLeft(25), juce::Justification::bottomLeft);
     }
 };
 
@@ -140,7 +140,7 @@ public:
         
         g.setColour(juce::Colours::white.withAlpha(0.5f));
         g.setFont(juce::Font(12.0f, juce::Font::plain));
-        g.drawText(juce::String::fromUTF8(u8"Organização"), leftContent.removeFromTop(20), juce::Justification::centredLeft);
+        g.drawText("Organizacao", leftContent.removeFromTop(20), juce::Justification::centredLeft);
         
         leftContent.removeFromTop(20);
         
@@ -155,7 +155,7 @@ public:
         g.fillEllipse(ceoArea.getX() + 10, ceoArea.getY() + 24, 6, 6);
         g.setColour(juce::Colours::white.withAlpha(0.5f));
         g.setFont(juce::Font(11.0f, juce::Font::plain));
-        g.drawText(juce::String::fromUTF8(u8"CEO da organização"), ceoArea.withTrimmedLeft(20).withY(ceoArea.getY() + 18).withHeight(20), juce::Justification::centredLeft);
+        g.drawText("CEO da organizao", ceoArea.withTrimmedLeft(20).withY(ceoArea.getY() + 18).withHeight(20), juce::Justification::centredLeft);
         
         leftContent.removeFromTop(20);
         
@@ -196,9 +196,9 @@ public:
         g.setFont(juce::Font(11.0f, juce::Font::bold));
         g.drawText("CANAIS GERAIS", leftContent.removeFromTop(20), juce::Justification::centredLeft);
         
-        drawChannel(g, leftContent.removeFromTop(32), juce::String::fromUTF8(u8"Anúncios"));
+        drawChannel(g, leftContent.removeFromTop(32), "Anuncios");
         drawChannel(g, leftContent.removeFromTop(32), "Suporte");
-        drawChannel(g, leftContent.removeFromTop(32), juce::String::fromUTF8(u8"Reuniões"));
+        drawChannel(g, leftContent.removeFromTop(32), "Reunioes");
         drawChannel(g, leftContent.removeFromTop(32), "Recursos Humanos");
 
         // ==========================================
@@ -240,7 +240,7 @@ public:
         drawTab(g, tabX, tabsArea, "Arquivos", false);
         drawTab(g, tabX, tabsArea, "Tarefas", false);
         drawTab(g, tabX, tabsArea, "Planejamento", false);
-        drawTab(g, tabX, tabsArea, juce::String::fromUTF8(u8"Configurações"), false);
+        drawTab(g, tabX, tabsArea, "Configuracoes", false);
         
         centerContent.removeFromTop(20);
         
@@ -249,16 +249,16 @@ public:
         centerContent.removeFromBottom(20);
         
         drawChatMessage(g, centerContent.removeFromTop(100), "CEO Agent", "CEO", "14:31", 
-            juce::String::fromUTF8(u8"Pessoal, o projeto Editor de Circuitos está oficialmente iniciado! \nNosso objetivo é entregar um MVP funcional em 45 dias.\nConto com todos para fazermos algo incrível."));
+            "Pessoal, o projeto Editor de Circuitos esta oficialmente iniciado! \nNosso objetivo e entregar um MVP funcional em 45 dias.\nConto com todos para fazermos algo incrivel.");
             
         drawChatMessage(g, centerContent.removeFromTop(80), "Beatriz Souza", "Frontend Manager", "14:32", 
-            juce::String::fromUTF8(u8"Perfeito! Já estamos organizando as tarefas de UI/UX.\nEm breve compartilhamos o protótipo."));
+            "Perfeito! Ja estamos organizando as tarefas de UI/UX.\nEm breve compartilhamos o prototipo.");
             
         drawChatMessage(g, centerContent.removeFromTop(80), "Rafael Costa", "Backend Manager", "14:33", 
-            juce::String::fromUTF8(u8"A API de simulação será nossa prioridade inicial.\nAtualizo o progresso ainda hoje."));
+            "A API de simulacao sera nossa prioridade inicial.\nAtualizo o progresso ainda hoje.");
             
         drawChatMessage(g, centerContent.removeFromTop(80), "Lucas Martins", "DSP Manager", "14:34", 
-            juce::String::fromUTF8(u8"Modelagem do pré-amplificador já está 60% concluída.\nAté amanhã entrego a primeira versão."));
+            "Modelagem do pre-amplificador j esta 60% concluida.\nAte amanha entrego a primeira versao.");
             
         // Input Box
         g.setColour(juce::Colour(0xFF070B17));
@@ -274,7 +274,7 @@ public:
         g.fillRoundedRectangle(inputArea.removeFromRight(50).reduced(5).toFloat(), 10.0f);
 
         // ==========================================
-        // RIGHT PANEL - VISÃO OPERACIONAL
+        // RIGHT PANEL - VISO OPERACIONAL
         // ==========================================
         g.setColour(juce::Colour(0xFF050816));
         g.fillRect(rightPanel);
@@ -294,7 +294,7 @@ public:
         g.drawRoundedRectangle(statsCard.toFloat(), 16.0f, 1.0f);
         
         g.setColour(juce::Colour(0xFF3B82F6));
-        g.drawPath(createCirclePath(statsCard.getCentreX(), statsCard.getY() + 80, 40), 6.0f);
+        g.strokePath(createCirclePath(statsCard.getCentreX(), statsCard.getY() + 80, 40), juce::PathStrokeType(6.0f));
         g.setColour(juce::Colours::white);
         g.setFont(juce::Font(24.0f, juce::Font::bold));
         g.drawText("64%", statsCard.withY(statsCard.getY() + 10), juce::Justification::centred);
@@ -317,11 +317,11 @@ public:
         
         g.setColour(juce::Colours::white);
         g.setFont(juce::Font(16.0f, juce::Font::bold));
-        g.drawText(juce::String::fromUTF8(u8"Próximas Entregas"), rightContent.removeFromTop(30), juce::Justification::centredLeft);
+        g.drawText("Proximas Entregas", rightContent.removeFromTop(30), juce::Justification::centredLeft);
         
-        drawDelivery(g, rightContent.removeFromTop(25), juce::String::fromUTF8(u8"Protótipo de UI"), "25/05");
-        drawDelivery(g, rightContent.removeFromTop(25), juce::String::fromUTF8(u8"Motor de Simulação DSP"), "28/05");
-        drawDelivery(g, rightContent.removeFromTop(25), juce::String::fromUTF8(u8"Integração da API"), "05/06");
+        drawDelivery(g, rightContent.removeFromTop(25), "Prototipo de UI", "25/05");
+        drawDelivery(g, rightContent.removeFromTop(25), "Motor de Simulao DSP", "28/05");
+        drawDelivery(g, rightContent.removeFromTop(25), "Integracao da API", "05/06");
     }
     
 private:
@@ -442,7 +442,7 @@ private:
 // --- Mock Config Page ---
 class MockConfigPage : public MockPageComponent {
 public:
-    MockConfigPage() : MockPageComponent(juce::String::fromUTF8(u8"Configurações")) {}
+    MockConfigPage() : MockPageComponent("Configuracoes") {}
     
     void paint(juce::Graphics& g) override {
         MockPageComponent::paint(g);
@@ -451,14 +451,14 @@ public:
         
         g.setColour(juce::Colours::white);
         g.setFont(juce::Font(32.0f, juce::Font::bold));
-        g.drawText(juce::String::fromUTF8(u8"Configurações do Sistema"), bounds.removeFromTop(50), juce::Justification::centredLeft);
+        g.drawText("Configuracoes do Sistema", bounds.removeFromTop(50), juce::Justification::centredLeft);
         
         bounds.removeFromTop(20);
         
-        drawSettingRow(g, bounds.removeFromTop(60), juce::String::fromUTF8(u8"Modelo Padrão"), "Llama 3 8B Instruct (GGUF)");
-        drawSettingRow(g, bounds.removeFromTop(60), juce::String::fromUTF8(u8"Alocação de VRAM"), "12 GB");
+        drawSettingRow(g, bounds.removeFromTop(60), "Modelo Padrao", "Llama 3 8B Instruct (GGUF)");
+        drawSettingRow(g, bounds.removeFromTop(60), "Alocacao de VRAM", "12 GB");
         drawSettingRow(g, bounds.removeFromTop(60), "Tema da Interface", "Dark Mode (AgentOS V2)");
-        drawSettingRow(g, bounds.removeFromTop(60), "Autonomia do Agente CEO", juce::String::fromUTF8(u8"Nível 4 (Aprovação Tácita)"));
+        drawSettingRow(g, bounds.removeFromTop(60), "Autonomia do Agente CEO", "Nivel 4 (Aprovacao Tacita)");
     }
     
 private:
@@ -498,11 +498,11 @@ DashboardComponent::DashboardComponent() {
     mockConfig_ = std::make_unique<MockConfigPage>();
 
     mainTabs_->addTab("Home", juce::Colour(0xFF050816), cognitiveDashboard_.get(), false);
-    mainTabs_->addTab(juce::String::fromUTF8(u8"Organizações"), juce::Colour(0xFF050816), mockOrganizacoes_.get(), false);
+    mainTabs_->addTab("Organizacoes", juce::Colour(0xFF050816), mockOrganizacoes_.get(), false);
     mainTabs_->addTab("Projetos", juce::Colour(0xFF050816), projectPanel_.get(), false);
     mainTabs_->addTab("Equipe", juce::Colour(0xFF050816), agentList_.get(), false);
     mainTabs_->addTab("Chat", juce::Colour(0xFF050816), mockChat_.get(), false);
-    mainTabs_->addTab(juce::String::fromUTF8(u8"Configurações"), juce::Colour(0xFF050816), mockConfig_.get(), false);
+    mainTabs_->addTab("Configuracoes", juce::Colour(0xFF050816), mockConfig_.get(), false);
     
     mainTabs_->setCurrentTabIndex(0);
 
@@ -510,14 +510,14 @@ DashboardComponent::DashboardComponent() {
     addAndMakeVisible(logViewer_.get());
 
     sidebar_->onItemSelected = [this](const juce::String& name) {
-        addLogMessage(juce::String::fromUTF8(u8"Menu selecionado: ") + name);
+        addLogMessage("Menu selecionado: " + name);
         
         if (name == "Home") mainTabs_->setCurrentTabIndex(0);
-        else if (name == juce::String::fromUTF8(u8"Organizações")) mainTabs_->setCurrentTabIndex(1);
+        else if (name == "Organizacoes") mainTabs_->setCurrentTabIndex(1);
         else if (name == "Projetos") mainTabs_->setCurrentTabIndex(2);
         else if (name == "Equipe") mainTabs_->setCurrentTabIndex(3);
         else if (name == "Chat") mainTabs_->setCurrentTabIndex(4);
-        else if (name == juce::String::fromUTF8(u8"Configurações")) mainTabs_->setCurrentTabIndex(5);
+        else if (name == "Configuracoes") mainTabs_->setCurrentTabIndex(5);
     };
 
     UI::getInstance().onAgentsChanged = [this] {
@@ -543,11 +543,11 @@ DashboardComponent::DashboardComponent() {
     cpuText_ = "CPU: 0%";
     ramText_ = "RAM: 0%";
     vramText_ = "VRAM: 0%";
-    systemStatsText_ = juce::String::fromUTF8(u8"Carregando métricas...");
+    systemStatsText_ = "Carregando mtricas...";
 
     startTimerHz(1); // Refresh every 1 second
     setSize(1200, 800);
-    statusText_ = juce::String::fromUTF8(u8"AgentOS Phase 17: Studio UI Ativo");
+    statusText_ = "AgentOS Phase 17: Studio UI Ativo";
 }
 
 DashboardComponent::~DashboardComponent() {
@@ -601,7 +601,7 @@ void DashboardComponent::paint(juce::Graphics& g) {
     g.setColour(juce::Colour(0xFFffffff));
     g.setFont(juce::Font(18.0f, juce::Font::bold));
     juce::String activeTitle = mainTabs_->getTabNames()[mainTabs_->getCurrentTabIndex()];
-    if (activeTitle == juce::String::fromUTF8(u8"Acesso Rápido")) activeTitle = mockAcessoRapido_->getPageName();
+    if (activeTitle == "Acesso Rapido") activeTitle = mockAcessoRapido_->getPageName();
     g.drawText(activeTitle, topBarArea.reduced(20, 0), juce::Justification::centredLeft);
 
     int statusH = 22;
