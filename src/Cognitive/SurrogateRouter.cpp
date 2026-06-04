@@ -48,12 +48,12 @@ std::string SurrogateRouter::chooseModel(TaskType task, const SystemMetrics& met
 
     // --- Bottleneck Guard ---
     if (metrics.ramUsagePct > 90.0) {
-        std::cout << "[SurrogateRouter] \u26a0 RAM critica (" << metrics.ramUsagePct
+        std::cout << "[SurrogateRouter] [WARN] RAM critica (" << metrics.ramUsagePct
                   << "%). Forcando modelo mais leve.\n";
         return fastestModel();
     }
     if (metrics.currentTPS > 0.0 && metrics.currentTPS < 1.5) {
-        std::cout << "[SurrogateRouter] \u26a0 TPS baixo (" << metrics.currentTPS
+        std::cout << "[SurrogateRouter] [WARN] TPS baixo (" << metrics.currentTPS
                   << "). Forcando modelo mais rapido.\n";
         return fastestModel();
     }

@@ -94,7 +94,7 @@ CognitiveDashboardComponent::CognitiveDashboardComponent()
     // Controls
     addAndMakeVisible(btnForceCompression_);
     btnForceCompression_.onClick = [this]() {
-        appendLog("[System] Forçando compressão de contexto...");
+        appendLog(juce::String::fromUTF8("[System] Forçando compressão de contexto..."));
     };
     
     addAndMakeVisible(btnEnableDSP_);
@@ -178,7 +178,7 @@ void CognitiveDashboardComponent::timerCallback() {
     for (const auto& [k, v] : profile.learnedFacts) {
         profileText << "- " << k << ": " << v << "\n";
     }
-    if (profileText.isEmpty()) profileText = "Aguardando interações para aprender...";
+    if (profileText.isEmpty()) profileText = juce::String::fromUTF8("Aguardando interações para aprender...");
     userProfileBox_.setText(profileText);
     
     // Update Semantic Memory
@@ -187,7 +187,7 @@ void CognitiveDashboardComponent::timerCallback() {
     for (const auto& doc : ragDocs) {
         semanticDocs_.add(juce::String(doc));
     }
-    if (semanticDocs_.isEmpty()) semanticDocs_.add("Nenhuma memória semântica recuperada recentemente.");
+    if (semanticDocs_.isEmpty()) semanticDocs_.add(juce::String::fromUTF8("Nenhuma memória semântica recuperada recentemente."));
     semanticListBox_.updateContent();
 
     repaint();

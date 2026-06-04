@@ -12,7 +12,7 @@ CreateAgentDialog::CreateAgentDialog() {
         editor.setColour(juce::TextEditor::textColourId, juce::Colours::white);
         editor.setColour(juce::TextEditor::outlineColourId, juce::Colour(0xFF30363d));
         editor.setFont(juce::Font(14.0f));
-    };
+    };0
 
     setupField(nameField_, "Nome do agente");
     setupField(roleField_, "Ex: Backend Dev, QA Tester");
@@ -127,7 +127,7 @@ void CreateAgentDialog::paint(juce::Graphics& g) {
     };
 
     drawLabel(20, 16, "Nome:");
-    drawLabel(20, 56, "Cargo / Função:");
+    drawLabel(20, 56, juce::String::fromUTF8("Cargo / Função:"));
     drawLabel(20, 96, "Departamento:");
     drawLabel(20, 136, "Reporta a:");
     drawLabel(240, 136, "Autonomia:");
@@ -135,7 +135,7 @@ void CreateAgentDialog::paint(juce::Graphics& g) {
 
     g.setColour(juce::Colour(0xFF8b949e));
     g.setFont(juce::Font(11.0f));
-    g.drawText("Permissões:", 20, 310, 200, 12, juce::Justification::centredLeft);
+    g.drawText(juce::String::fromUTF8("Permissões:"), 20, 310, 200, 12, juce::Justification::centredLeft);
 }
 
 void CreateAgentDialog::onCreateClicked() {
@@ -145,13 +145,13 @@ void CreateAgentDialog::onCreateClicked() {
 
     if (name.isEmpty() || role.isEmpty() || dept.isEmpty()) {
         juce::AlertWindow::showMessageBoxAsync(juce::AlertWindow::WarningIcon,
-            "Campos obrigatórios", "Nome, Cargo e Departamento são obrigatórios.");
+            "Campos obrigatórios", juce::String::fromUTF8("Nome, Cargo e Departamento são obrigatórios."));
         return;
     }
 
     if (UI::getInstance().findAgent(name.toStdString())) {
         juce::AlertWindow::showMessageBoxAsync(juce::AlertWindow::WarningIcon,
-            "Agente já existe", "Já existe um agente com o nome '" + name + "'.");
+            juce::String::fromUTF8("Agente já existe"), juce::String::fromUTF8("Já existe um agente com o nome '") + name + "'.");
         return;
     }
 

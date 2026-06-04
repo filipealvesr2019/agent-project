@@ -103,6 +103,17 @@ target_link_libraries(AgentOS PRIVATE
     sqlite
 )
 
+# Copiar DLLs do Llama/GGML para a pasta do executável após a compilação
+add_custom_command(TARGET AgentOS POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different
+    "$<TARGET_FILE:llama>"
+    "$<TARGET_FILE:ggml>"
+    "$<TARGET_FILE:ggml-base>"
+    "$<TARGET_FILE:ggml-cpu>"
+    "$<TARGET_FILE_DIR:AgentOS>"
+    COMMAND_EXPAND_LISTS
+)
+
 add_library(sqlite STATIC libs/sqlite/sqlite3.c)
 target_include_directories(sqlite PUBLIC libs/sqlite)
 # target_link_libraries(AgentOS PRIVATE MemoryEngine sqlite)

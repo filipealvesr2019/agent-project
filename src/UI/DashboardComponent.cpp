@@ -75,7 +75,7 @@ DashboardComponent::DashboardComponent() {
     cpuText_ = "CPU: 0%";
     ramText_ = "RAM: 0%";
     vramText_ = "VRAM: 0%";
-    systemStatsText_ = "Carregando métricas...";
+    systemStatsText_ = juce::String::fromUTF8("Carregando métricas...");
 
     startTimerHz(1); // Refresh every 1 second
     setSize(1200, 800);

@@ -11,7 +11,7 @@ AgentListComponent::AgentListComponent() {
     table_.getHeader().addColumn("Trust", ColTrust, 70);
     table_.getHeader().addColumn("Compliance", ColCompliance, 90);
     table_.getHeader().addColumn("Reporta a", ColReportsTo, 110);
-    table_.getHeader().addColumn("Ações", ColActions, 180);
+    table_.getHeader().addColumn(juce::String::fromUTF8("Ações"), ColActions, 180);
     table_.setModel(this);
     table_.setColour(juce::ListBox::backgroundColourId, juce::Colour(0xFF16213e));
     addAndMakeVisible(table_);

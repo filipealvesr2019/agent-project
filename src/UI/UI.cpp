@@ -21,15 +21,15 @@ void UI::init(DashboardComponent* dashboard) {
         logMessage("[CM] " + msg);
     };
     cm.getChangeManager().onChangeCreated = [this](const ChangeProposal& prop) {
-        logMessage("[CM] Mudança proposta por " + prop.agentName + ": " + prop.filePath);
+        logMessage(juce::String::fromUTF8("[CM] Mudança proposta por ") + prop.agentName + ": " + prop.filePath);
         if (onPendingChangesChanged) onPendingChangesChanged();
     };
     cm.getChangeManager().onChangeApproved = [this](const ChangeProposal& prop) {
-        logMessage("[CM] Mudança #" + std::to_string(prop.id) + " APROVADA por " + prop.approvedBy);
+        logMessage(juce::String::fromUTF8("[CM] Mudança #") + juce::String(prop.id) + juce::String::fromUTF8(" APROVADA por ") + prop.approvedBy);
         if (onPendingChangesChanged) onPendingChangesChanged();
     };
     cm.getChangeManager().onChangeRejected = [this](const ChangeProposal& prop) {
-        logMessage("[CM] Mudança #" + std::to_string(prop.id) + " REJEITADA");
+        logMessage(juce::String::fromUTF8("[CM] Mudança #") + juce::String(prop.id) + juce::String::fromUTF8(" REJEITADA"));
         if (onPendingChangesChanged) onPendingChangesChanged();
     };
     cm.getRecoveryEngine().onEmergencyStop = [this](const std::string& reason) {
@@ -37,7 +37,7 @@ void UI::init(DashboardComponent* dashboard) {
         if (onEmergencyStatusChanged) onEmergencyStatusChanged();
     };
     cm.getRecoveryEngine().onRecoveryComplete = [this]() {
-        logMessage("[CM] Recuperação concluída");
+        logMessage(juce::String::fromUTF8("[CM] Recuperação concluída"));
         if (onEmergencyStatusChanged) onEmergencyStatusChanged();
     };
 
@@ -172,8 +172,7 @@ int UI::getPendingChangesCount() const {
 }
 
 void UI::triggerEmergencyStop() {
-    ChangeManagementEngine::getInstance().getRecoveryEngine().triggerEmergencyStop(
-        "Emergency Stop acionado pelo usuário");
+    ChangeManagementEngine::getInstance().getRecoveryEngine().triggerEmergencyStop(juce::String::fromUTF8("Emergency Stop acionado pelo usuário").toStdString());
 }
 
 void UI::recoverFromEmergency() {

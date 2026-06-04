@@ -75,7 +75,7 @@ int main()
 
     std::cout << "[4] Simulando gargalo de TPS (0.8 tok/s)\n";
     SystemMetrics lowTPS;
-    lowTPS.tps = 0.8;
+    lowTPS.currentTPS = 0.8;
 
     model = router.chooseModel(type, lowTPS);
     std::cout << "  -> Modelo após fallback por TPS baixo: " << model << "\n";

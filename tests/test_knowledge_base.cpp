@@ -45,15 +45,15 @@ int main()
     }
     std::cout << "------------------------------------------------------\n\n";
 
-    std::string kbFile = "knowledge_base.jsonl";
-    std::cout << "[3] Salvando Knowledge Base no disco (" << kbFile << ")...\n";
-    if (kb.save(kbFile)) {
+    std::string kbDir = "knowledge_base_test_dir";
+    std::cout << "[3] Salvando Knowledge Base no disco (" << kbDir << ")...\n";
+    if (kb.saveToDirectory(kbDir)) {
         std::cout << "    [OK] Arquivo salvo.\n\n";
     }
 
     std::cout << "[4] Testando persistencia (Reboot e load)...\n";
     KnowledgeBase kbBoot;
-    if (kbBoot.load(kbFile)) {
+    if (kbBoot.loadFromDirectory(kbDir)) {
         const auto* cppDoc = kbBoot.getTopic("C++20");
         if (cppDoc) {
             std::cout << "    [OK] Documento 'C++20' carregado do disco com sucesso.\n";
