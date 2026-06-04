@@ -72,6 +72,71 @@ CognitiveDashboardComponent::CognitiveDashboardComponent() {
     promptInput_.setColour(juce::TextEditor::textColourId, juce::Colours::white);
     promptInput_.setTextToShowWhenEmpty("Descreva o que voce quer que o CEO planeje e execute...", juce::Colour(0xFF8A91A8));
     addAndMakeVisible(promptInput_);
+    
+    // SVGs for Attach buttons
+    const char* paperclipSvg = R"(<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#8A91A8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"></path></svg>)";
+    const char* folderSvg = R"(<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#8A91A8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>)";
+    
+    if (auto xml = juce::XmlDocument::parse(juce::String(paperclipSvg))) {
+        if (auto drawable = juce::Drawable::createFromSVG(*xml)) {
+            btnAttachFile_.setImages(drawable.get(), nullptr, nullptr);
+        }
+    }
+    
+    if (auto xml = juce::XmlDocument::parse(juce::String(folderSvg))) {
+        if (auto drawable = juce::Drawable::createFromSVG(*xml)) {
+            btnAttachFolder_.setImages(drawable.get(), nullptr, nullptr);
+        }
+    }
+    
+    addAndMakeVisible(btnAttachFile_);
+    addAndMakeVisible(btnAttachFolder_);
+    
+    btnAttachFile_.onClick = [this] {
+        fileChooser_ = std::make_unique<juce::FileChooser>("Selecione arquivos para anexar...", juce::File::getSpecialLocation(juce::File::userDocumentsDirectory), "*");
+        auto flags = juce::FileBrowserComponent::openMode | juce::FileBrowserComponent::canSelectMultipleItems | juce::FileBrowserComponent::canSelectFiles;
+        fileChooser_->launchAsync(flags, [this](const juce::FileChooser& chooser) {
+            auto results = chooser.getResults();
+            for (auto f : results) attachedFiles_.push_back(f.getFullPathName());
+            repaint(dropAreaBounds_);
+            repaint(inputFooterBounds_);
+        });
+    };
+    
+    btnAttachFolder_.onClick = [this] {
+        fileChooser_ = std::make_unique<juce::FileChooser>("Selecione uma pasta para anexar...", juce::File::getSpecialLocation(juce::File::userDocumentsDirectory), "");
+        auto flags = juce::FileBrowserComponent::openMode | juce::FileBrowserComponent::canSelectDirectories;
+        fileChooser_->launchAsync(flags, [this](const juce::FileChooser& chooser) {
+            if (chooser.getResult().exists()) {
+                attachedFiles_.push_back(chooser.getResult().getFullPathName());
+                repaint(dropAreaBounds_);
+                repaint(inputFooterBounds_);
+            }
+        });
+    };
+}
+
+bool CognitiveDashboardComponent::isInterestedInFileDrag(const juce::StringArray&) {
+    return true;
+}
+
+void CognitiveDashboardComponent::fileDragEnter(const juce::StringArray&, int, int) {
+    isDragging_ = true;
+    repaint(dropAreaBounds_);
+}
+
+void CognitiveDashboardComponent::fileDragExit(const juce::StringArray&) {
+    isDragging_ = false;
+    repaint(dropAreaBounds_);
+}
+
+void CognitiveDashboardComponent::filesDropped(const juce::StringArray& files, int, int) {
+    isDragging_ = false;
+    for (const auto& file : files) {
+        attachedFiles_.push_back(file);
+    }
+    repaint(dropAreaBounds_);
+    repaint(inputFooterBounds_);
 }
 
 CognitiveDashboardComponent::~CognitiveDashboardComponent() {
@@ -160,6 +225,38 @@ void CognitiveDashboardComponent::paint(juce::Graphics& g) {
 
     if (cachedBackground_.isValid()) {
         g.drawImageAt(cachedBackground_, 0, 0);
+    }
+    
+    // Draw Drag over effect
+    if (isDragging_) {
+        g.setColour(juce::Colour(0xFF493CF5).withAlpha(0.2f));
+        g.fillRoundedRectangle(dropAreaBounds_.toFloat(), 12.0f);
+        g.setColour(juce::Colour(0xFF493CF5));
+        g.drawRoundedRectangle(dropAreaBounds_.toFloat(), 12.0f, 2.0f);
+    }
+    
+    // Draw attached files text
+    if (!attachedFiles_.empty()) {
+        g.setColour(juce::Colours::white);
+        g.setFont(juce::Font(13.0f));
+        
+        juce::String fileStr;
+        if (attachedFiles_.size() == 1) {
+            fileStr = juce::File(attachedFiles_[0]).getFileName();
+        } else {
+            fileStr = juce::String(attachedFiles_.size()) + " arquivos anexados";
+        }
+        
+        // Draw near the attachment buttons
+        auto textBounds = inputFooterBounds_.withTrimmedLeft(80).withTrimmedRight(180);
+        g.drawText(fileStr, textBounds, juce::Justification::centredLeft);
+        
+        // Also draw in drop area
+        g.setColour(juce::Colour(0xFF00C853)); // Success Green
+        auto dropContent = dropAreaBounds_.withSizeKeepingCentre(300, 80);
+        dropContent.removeFromTop(25);
+        dropContent.removeFromTop(20);
+        g.drawText(fileStr + " adicionado(s)!", dropContent.removeFromTop(20), juce::Justification::centred);
     }
 
     profiler_.endPaint();
@@ -360,14 +457,22 @@ void CognitiveDashboardComponent::resized() {
     btnRow.removeFromLeft(10);
     btnAnalyze_.setBounds(btnRow.removeFromLeft(160));
     
-    mainArea.removeFromTop(20 + 180 + 20); // skip drop area
+    mainArea.removeFromTop(20);
+    dropAreaBounds_ = mainArea.removeFromTop(180);
+    mainArea.removeFromTop(20); // skip gap
     
     auto inputBounds = mainArea.removeFromTop(140);
     promptInput_.setBounds(inputBounds.reduced(20).removeFromTop(60));
     
-    auto inputFooter = inputBounds.reduced(20);
-    inputFooter.removeFromTop(60);
+    inputFooterBounds_ = inputBounds.reduced(20);
+    inputFooterBounds_.removeFromTop(60);
+    
+    auto inputFooter = inputFooterBounds_;
     btnSubmit_.setBounds(inputFooter.removeFromRight(160).withSizeKeepingCentre(160, 36));
+    
+    btnAttachFile_.setBounds(inputFooter.removeFromLeft(28).withSizeKeepingCentre(24, 24));
+    inputFooter.removeFromLeft(10);
+    btnAttachFolder_.setBounds(inputFooter.removeFromLeft(28).withSizeKeepingCentre(24, 24));
     
     // Skip to Tip
     mainArea.removeFromTop(30 + 25 + 150 + 10 + 30);
