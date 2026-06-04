@@ -1,4 +1,4 @@
-#include "UI/CognitiveDashboardComponent.h"
+﻿#include "UI/CognitiveDashboardComponent.h"
 #include <BinaryData.h>
 
 namespace AgentOS {
@@ -10,10 +10,10 @@ public:
         auto bounds = button.getLocalBounds().toFloat();
         float alpha = button.isEnabled() ? 1.0f : 0.5f;
         
-        if (backgroundColour == juce::Colour(0xFF7B61FF)) {
+        if (backgroundColour == juce::Colour(0xFF493CF5)) {
             // Primary button (Gradient)
-            juce::Colour c1 = juce::Colour(0xFF7B61FF);
-            juce::Colour c2 = juce::Colour(0xFF5B46F5);
+            juce::Colour c1 = juce::Colour(0xFF493CF5);
+            juce::Colour c2 = juce::Colour(0xFF3829E6);
             if (shouldDrawButtonAsHighlighted || shouldDrawButtonAsDown) {
                 c1 = c1.brighter(0.1f);
                 c2 = c2.brighter(0.1f);
@@ -46,7 +46,7 @@ CognitiveDashboardComponent::CognitiveDashboardComponent() {
     // Style buttons
     auto styleButton = [](juce::TextButton& btn, bool isPrimary) {
         btn.setLookAndFeel(&gButtonLaf);
-        btn.setColour(juce::TextButton::buttonColourId, isPrimary ? juce::Colour(0xFF7B61FF) : juce::Colour(0xFF1A1F2B));
+        btn.setColour(juce::TextButton::buttonColourId, isPrimary ? juce::Colour(0xFF493CF5) : juce::Colour(0xFF1A1F2B));
         btn.setColour(juce::TextButton::textColourOffId, juce::Colours::white);
     };
 
@@ -141,7 +141,7 @@ void CognitiveDashboardComponent::paintFileItem(juce::Graphics& g, juce::Rectang
     auto area = bounds.removeFromTop(60);
     area.reduce(0, 10);
     
-    g.setColour(juce::Colour(0xFF6D5DFE).withAlpha(0.2f));
+    g.setColour(juce::Colour(0xFF493CF5).withAlpha(0.2f));
     g.fillRoundedRectangle(area.removeFromLeft(36).withHeight(36).toFloat(), 8.0f);
     
     area.removeFromLeft(12);
@@ -156,6 +156,16 @@ void CognitiveDashboardComponent::paintFileItem(juce::Graphics& g, juce::Rectang
 }
 
 void CognitiveDashboardComponent::paint(juce::Graphics& g) {
+    if (cachedBackground_.isValid()) {
+        g.drawImageAt(cachedBackground_, 0, 0);
+    }
+}
+
+void CognitiveDashboardComponent::updateCachedBackground() {
+    if (getWidth() <= 0 || getHeight() <= 0) return;
+    
+    cachedBackground_ = juce::Image(juce::Image::ARGB, getWidth(), getHeight(), true);
+    juce::Graphics g(cachedBackground_);
     juce::ColourGradient bg(
         juce::Colour(0xFF0B1224), getWidth() * 0.35f, getHeight() * 0.2f,
         juce::Colour(0xFF050913), getWidth() * 0.8f, (float)getHeight(), true);
@@ -199,7 +209,7 @@ void CognitiveDashboardComponent::paint(juce::Graphics& g) {
     
     // Drop area content
     auto dropContent = dropArea.withSizeKeepingCentre(300, 80);
-    g.setColour(juce::Colour(0xFF6D5DFE));
+    g.setColour(juce::Colour(0xFF493CF5));
     g.setFont(juce::Font(16.0f, juce::Font::bold));
     g.drawText("Arraste arquivos aqui ou clique para enviar", dropContent.removeFromTop(25), juce::Justification::centred);
     g.setColour(juce::Colour(0xFF8A91A8));
@@ -295,7 +305,7 @@ void CognitiveDashboardComponent::paint(juce::Graphics& g) {
     g.setColour(juce::Colours::white);
     g.setFont(juce::Font(14.0f, juce::Font::bold));
     g.drawText("Atividade recente", actHeader.removeFromLeft(150), juce::Justification::topLeft);
-    g.setColour(juce::Colour(0xFF6D5DFE));
+    g.setColour(juce::Colour(0xFF493CF5));
     g.setFont(juce::Font(12.0f));
     g.drawText("Ver todas", actHeader, juce::Justification::topRight);
     
@@ -314,7 +324,7 @@ void CognitiveDashboardComponent::paint(juce::Graphics& g) {
     g.setColour(juce::Colours::white);
     g.setFont(juce::Font(14.0f, juce::Font::bold));
     g.drawText("Arquivos recentes", filesHeader.removeFromLeft(150), juce::Justification::topLeft);
-    g.setColour(juce::Colour(0xFF6D5DFE));
+    g.setColour(juce::Colour(0xFF493CF5));
     g.setFont(juce::Font(12.0f));
     g.drawText("Ver todos", filesHeader, juce::Justification::topRight);
     
@@ -324,6 +334,8 @@ void CognitiveDashboardComponent::paint(juce::Graphics& g) {
 }
 
 void CognitiveDashboardComponent::resized() {
+    updateCachedBackground();
+    
     auto area = getLocalBounds();
     auto rightSidebar = area.removeFromRight(340);
     area.removeFromRight(20); // gap

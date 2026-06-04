@@ -64,7 +64,7 @@ void SidebarItemComponent::paint(juce::Graphics& g) {
     juce::Rectangle<int> iconArea(bounds.getX() + 12, bounds.getY() + (bounds.getHeight() - 20) / 2, 20, 20);
     
     if (iconDrawable_) {
-        juce::Colour iconColour = isSelected_ ? juce::Colour(0xFF6D5DFE) : juce::Colour(0xFF8A91A8);
+        juce::Colour iconColour = isSelected_ ? juce::Colour(0xFF493CF5) : juce::Colour(0xFF8A91A8);
         if (isHovered_ && !isSelected_) iconColour = juce::Colour(0xFFFFFFFF);
         
         iconDrawable_->replaceColour(juce::Colours::black, iconColour);
@@ -82,7 +82,7 @@ void SidebarItemComponent::paint(juce::Graphics& g) {
     
     // Selection indicator line on the left if selected
     if (isSelected_) {
-        g.setColour(juce::Colour(0xFF6D5DFE));
+        g.setColour(juce::Colour(0xFF493CF5));
         g.fillRoundedRectangle(bounds.getX(), bounds.getY() + 4, 3, bounds.getHeight() - 8, 1.5f);
     }
 }
@@ -128,7 +128,7 @@ void SidebarComponent::paint(juce::Graphics& g) {
     g.fillAll(juce::Colour(0xFF070B17));
 
     // Logo Area
-    g.setColour(juce::Colour(0xFF6D5DFE)); 
+    g.setColour(juce::Colour(0xFF493CF5)); 
     g.fillRoundedRectangle(24, 20, 32, 32, 8.0f);
     
     g.setColour(juce::Colours::white);
@@ -143,7 +143,7 @@ void SidebarComponent::paint(juce::Graphics& g) {
     g.fillRect(0, profileY, getWidth(), 1);
 
     // Draw user avatar
-    g.setColour(juce::Colour(0xFF6D5DFE));
+    g.setColour(juce::Colour(0xFF493CF5));
     g.fillEllipse(24, profileY + 22, 36, 36);
 
     g.setColour(juce::Colours::white);

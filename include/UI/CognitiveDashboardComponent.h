@@ -12,6 +12,9 @@ public:
     void resized() override;
 
 private:
+    void updateCachedBackground();
+    juce::Image cachedBackground_;
+
     void paintCard(juce::Graphics& g, juce::Rectangle<int> bounds, bool hasBorder = true);
     void paintSuggestion(juce::Graphics& g, juce::Rectangle<int> bounds, const juce::String& icon, const juce::String& title, const juce::String& desc);
     void paintActivityItem(juce::Graphics& g, juce::Rectangle<int>& bounds, const juce::String& icon, const juce::String& title, const juce::String& time, const juce::String& status, juce::Colour statusColor);
