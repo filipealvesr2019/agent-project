@@ -48,8 +48,8 @@ DashboardComponent::DashboardComponent() {
     logViewer_ = std::make_unique<LogViewerComponent>();
     addAndMakeVisible(logViewer_.get());
 
-    sidebar_->onAgentSelected = [this](const juce::String& name) {
-        addLogMessage(juce::String::fromUTF8("Agente selecionado: ") + name);
+    sidebar_->onItemSelected = [this](const juce::String& name) {
+        addLogMessage(juce::String::fromUTF8("Menu selecionado: ") + name);
     };
 
     UI::getInstance().onAgentsChanged = [this] {
@@ -88,81 +88,67 @@ DashboardComponent::~DashboardComponent() {
 
 void DashboardComponent::resized() {
     auto area = getLocalBounds();
-    int menuH = 26;
+
+    // Sidebar takes full height on the left
+    int sidebarW = 260;
+    sidebar_->setBounds(area.removeFromLeft(sidebarW));
+
+    // Top bar area (right side)
+    int topBarH = 60;
+    auto topBarArea = area.removeFromTop(topBarH);
+
+    // Status bar at the very bottom
     int statusH = 22;
-    int phase6PanelH = 110;
-
-    auto menuTop = area.removeFromTop(menuH);
-    menuFile_ = menuTop.removeFromLeft(100);
-    menuTools_ = menuTop.removeFromLeft(120);
-    menuSecurity_ = menuTop.removeFromLeft(100);
-    menuPhase6_ = menuTop.removeFromLeft(80);
-    menuHelp_ = menuTop.removeFromLeft(60);
-
-    int sidebarW = 220;
-    auto sidebarArea = area.removeFromLeft(sidebarW);
-    sidebar_->setBounds(sidebarArea);
-
     auto statusArea = area.removeFromBottom(statusH);
-    logViewer_->setBounds(area.removeFromBottom(200)); // Mais espaco pros logs
 
-    // Phase 17 metrics row
-    auto metricsArea = area.removeFromBottom(phase6PanelH);
+    // Logs Area
+    logViewer_->setBounds(area.removeFromBottom(150));
 
+    // Metrics panel
+    int metricsH = 110;
+    auto metricsArea = area.removeFromBottom(metricsH);
+
+    // Main content area
     mainTabs_->setBounds(area);
 
-    // Update status bar
     refreshStatusBar();
 }
 
 void DashboardComponent::paint(juce::Graphics& g) {
     auto area = getLocalBounds();
-    g.fillAll(juce::Colour(0xFF0d1117));
+    
+    // Main Background
+    g.fillAll(juce::Colour(0xFF0b0d13));
 
-    int menuH = 26;
-    int statusH = 22;
-    int phase6PanelH = 110;
-    auto top = area.removeFromTop(menuH);
-    g.setColour(juce::Colour(0xFF161b22));
-    g.fillRect(top);
-
-    g.setFont(juce::Font(13.0f));
-    auto drawMenuItem = [&](const juce::Rectangle<int>& bounds, const juce::String& text) {
-        g.setColour(juce::Colour(0xFFc9d1d9));
-        g.drawText(text, bounds, juce::Justification::centred);
-        g.setColour(juce::Colour(0xFF30363d));
-        g.drawRect(bounds, 1);
-    };
-    drawMenuItem(menuFile_, "Arquivo");
-    drawMenuItem(menuTools_, "Ferramentas");
-    drawMenuItem(menuSecurity_, "Seguranca");
-    drawMenuItem(menuPhase6_, "Config");
-    drawMenuItem(menuHelp_, "Ajuda");
-
-    g.setColour(juce::Colour(0xFF30363d));
-    g.drawLine(0, menuH, getWidth(), menuH, 1);
-
-    int sidebarW = 220;
+    int sidebarW = 260;
     area.removeFromLeft(sidebarW);
 
-    auto statusArea = area.removeFromBottom(statusH);
-    area.removeFromBottom(200); // logs
+    // Top Bar (right side)
+    int topBarH = 60;
+    auto topBarArea = area.removeFromTop(topBarH);
+    g.setColour(juce::Colour(0xFF111319));
+    g.fillRect(topBarArea);
+    
+    g.setColour(juce::Colour(0xFFffffff));
+    g.setFont(juce::Font(18.0f, juce::Font::bold));
+    g.drawText("Home", topBarArea.reduced(20, 0), juce::Justification::centredLeft);
 
-    // Phase 17 Metrics Panel
-    auto metricsArea = area.removeFromBottom(phase6PanelH);
+    int statusH = 22;
+    auto statusArea = area.removeFromBottom(statusH);
+    area.removeFromBottom(150); // logs
+    auto metricsArea = area.removeFromBottom(110);
+
     paintMetricsPanel(g, metricsArea);
 
-    g.setColour(juce::Colour(0xFF161b22));
+    g.setColour(juce::Colour(0xFF111319));
     g.fillRect(statusArea);
-    g.setColour(juce::Colour(0xFF8b949e));
-    g.setFont(juce::Font(11.0f));
-    g.drawText(statusText_, statusArea.reduced(8, 0), juce::Justification::centredLeft);
-    g.setColour(juce::Colour(0xFF30363d));
-    g.drawLine(0, statusArea.getY(), getWidth(), statusArea.getY(), 1);
+    g.setColour(juce::Colour(0xFF8a91a8));
+    g.setFont(juce::Font(12.0f));
+    g.drawText(statusText_, statusArea.reduced(16, 0), juce::Justification::centredLeft);
 }
 
 void DashboardComponent::paintMetricsPanel(juce::Graphics& g, juce::Rectangle<int> area) {
-    g.setColour(juce::Colour(0xFF0d1117));
+    g.setColour(juce::Colour(0xFF0b0d13));
     g.fillRect(area);
 
     int panelW = area.getWidth() / 4;
@@ -170,73 +156,29 @@ void DashboardComponent::paintMetricsPanel(juce::Graphics& g, juce::Rectangle<in
 
     auto drawPanel = [&](juce::Rectangle<int> bounds, const juce::String& title,
                           const juce::String& content, juce::Colour accent) {
-        g.setColour(juce::Colour(0xFF161b22));
-        g.fillRect(bounds.reduced(2));
-        g.setColour(juce::Colour(0xFF30363d));
-        g.drawRect(bounds.reduced(2), 1);
+        g.setColour(juce::Colour(0xFF161923));
+        g.fillRoundedRectangle(bounds.reduced(6).toFloat(), 8.0f);
 
-        // Title bar
-        auto header = bounds.reduced(2).removeFromTop(24);
-        g.setColour(accent);
-        g.fillRect(header);
-        g.setColour(juce::Colour(0xFFffffff));
-        g.setFont(juce::Font(12.0f, juce::Font::bold));
-        g.drawText(title, header, juce::Justification::centred);
+        // Title
+        auto header = bounds.reduced(16).removeFromTop(20);
+        g.setColour(juce::Colours::white);
+        g.setFont(juce::Font(14.0f, juce::Font::bold));
+        g.drawText(title, header, juce::Justification::centredLeft);
 
         // Content
-        g.setColour(juce::Colour(0xFFc9d1d9));
-        g.setFont(juce::Font(14.0f));
-        g.drawText(content, bounds.reduced(10, 30), juce::Justification::topLeft);
+        g.setColour(juce::Colour(0xFF8a91a8));
+        g.setFont(juce::Font(24.0f, juce::Font::bold));
+        g.drawText(content, bounds.reduced(16).withTrimmedTop(30), juce::Justification::topLeft);
     };
 
-    drawPanel(panels.removeFromLeft(panelW), "CPU Load", cpuText_, juce::Colour(0xFFda3633));
-    drawPanel(panels.removeFromLeft(panelW), "RAM Usage", ramText_, juce::Colour(0xFF238636));
-    drawPanel(panels.removeFromLeft(panelW), "VRAM Usage", vramText_, juce::Colour(0xFF1f6feb));
-    drawPanel(panels.removeFromLeft(panelW), "System Status", systemStatsText_, juce::Colour(0xFF8957e5));
+    drawPanel(panels.removeFromLeft(panelW), "CPU", cpuText_, juce::Colour(0xFFda3633));
+    drawPanel(panels.removeFromLeft(panelW), "RAM", ramText_, juce::Colour(0xFF238636));
+    drawPanel(panels.removeFromLeft(panelW), "VRAM", vramText_, juce::Colour(0xFF1f6feb));
+    drawPanel(panels.removeFromLeft(panelW), "Status", systemStatsText_, juce::Colour(0xFF8957e5));
 }
 
 void DashboardComponent::mouseDown(const juce::MouseEvent& event) {
-    auto pos = event.getPosition();
-    if (menuFile_.contains(pos)) {
-        juce::PopupMenu menu;
-        menu.addItem(1, "Criar Agente");
-        menu.addSeparator();
-        menu.addItem(2, "Sair");
-        menu.showMenuAsync(juce::PopupMenu::Options(), [this](int result) { handleMenuClick(result); });
-    } else if (menuTools_.contains(pos)) {
-        juce::PopupMenu menu;
-        menu.addItem(10, "Abrir Dashboard");
-        menu.addItem(11, "Abrir Console");
-        menu.showMenuAsync(juce::PopupMenu::Options(), [this](int result) { handleMenuClick(result); });
-    } else if (menuSecurity_.contains(pos)) {
-        juce::PopupMenu menu;
-        int pending = UI::getInstance().getPendingChangesCount();
-        bool emergency = UI::getInstance().isEmergencyActive();
-
-        menu.addItem(30, "Emergency Stop", !emergency, false);
-        menu.addItem(31, "Recuperar", emergency, false);
-        menu.addSeparator();
-        menu.addItem(32, "Mudancas Pendentes: " + juce::String(pending), false, false);
-        menu.addSeparator();
-        menu.addItem(33, "Snapshot Timeline");
-        menu.showMenuAsync(juce::PopupMenu::Options(), [this](int result) { handleMenuClick(result); });
-    } else if (menuPhase6_.contains(pos)) {
-        juce::PopupMenu menu;
-        menu.addItem(40, "Criar Plano");
-        menu.addItem(41, "Ver Planos");
-        menu.addSeparator();
-        menu.addItem(42, "Ver Objetivos");
-        menu.addItem(43, "Ver Modelos");
-        menu.addSeparator();
-        menu.addItem(45, "Gerenciar Modelos");
-        menu.addSeparator();
-        menu.addItem(44, "Resetar Custos");
-        menu.showMenuAsync(juce::PopupMenu::Options(), [this](int result) { handleMenuClick(result); });
-    } else if (menuHelp_.contains(pos)) {
-        juce::PopupMenu menu;
-        menu.addItem(20, "Sobre AgentOS");
-        menu.showMenuAsync(juce::PopupMenu::Options(), [this](int result) { handleMenuClick(result); });
-    }
+    // Top bar interactions can go here in the future
 }
 
 void DashboardComponent::handleMenuClick(int itemId) {
@@ -300,7 +242,6 @@ void DashboardComponent::handleMenuClick(int itemId) {
 }
 
 void DashboardComponent::timerCallback() {
-    sidebar_->refreshTree();
     agentList_->refresh();
 
     // Pull from MonitoringEngine
@@ -320,7 +261,6 @@ void DashboardComponent::timerCallback() {
 
 void DashboardComponent::refreshAgentList() {
     agentList_->refresh();
-    sidebar_->refreshTree();
 }
 
 void DashboardComponent::addLogMessage(const juce::String& message) {

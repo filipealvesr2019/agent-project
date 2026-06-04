@@ -29,7 +29,7 @@ private:
     void showSnapshotTimeline();
     void paintMetricsPanel(juce::Graphics& g, juce::Rectangle<int> area);
 
-    juce::Rectangle<int> menuFile_, menuTools_, menuSecurity_, menuPhase6_, menuHelp_;
+    // juce::Rectangle<int> menuFile_, menuTools_, menuSecurity_, menuPhase6_, menuHelp_;
     std::unique_ptr<SidebarComponent> sidebar_;
     std::unique_ptr<juce::TabbedComponent> mainTabs_;
     std::unique_ptr<AgentListComponent> agentList_;

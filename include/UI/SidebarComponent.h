@@ -1,35 +1,46 @@
 #pragma once
 #include <juce_gui_extra/juce_gui_extra.h>
-#include <map>
+#include <vector>
+#include <functional>
 
 namespace AgentOS {
 
-class UIAgentTreeItem : public juce::TreeViewItem {
+class SidebarItemComponent : public juce::Component {
 public:
-    UIAgentTreeItem(const juce::String& agentName, const juce::String& role);
-    bool mightContainSubItems() override;
-    void paintItem(juce::Graphics& g, int width, int height) override;
-    void itemOpennessChanged(bool isNowOpen) override;
-    juce::String getAgentName() const { return agentName_; }
-    juce::String getRole() const { return role_; }
-    static std::unique_ptr<UIAgentTreeItem> buildTree();
+    SidebarItemComponent(const juce::String& name, bool isSelected = false);
+    ~SidebarItemComponent() override = default;
+
+    void paint(juce::Graphics& g) override;
+    void mouseEnter(const juce::MouseEvent& e) override;
+    void mouseExit(const juce::MouseEvent& e) override;
+    void mouseUp(const juce::MouseEvent& e) override;
+
+    void setSelected(bool s);
+    bool isSelected() const { return isSelected_; }
+    juce::String getName() const { return name_; }
+
+    std::function<void()> onClick;
 
 private:
-    juce::String agentName_;
-    juce::String role_;
-    JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(UIAgentTreeItem)
+    juce::String name_;
+    bool isSelected_;
+    bool isHovered_ = false;
+    JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(SidebarItemComponent)
 };
 
 class SidebarComponent : public juce::Component {
 public:
     SidebarComponent();
     ~SidebarComponent() override;
+
+    void paint(juce::Graphics& g) override;
     void resized() override;
-    void refreshTree();
-    std::function<void(const juce::String&)> onAgentSelected;
+    void selectItem(const juce::String& name);
+
+    std::function<void(const juce::String&)> onItemSelected;
 
 private:
-    juce::TreeView treeView_;
+    std::vector<std::unique_ptr<SidebarItemComponent>> items_;
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(SidebarComponent)
 };
 
