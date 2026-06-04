@@ -46,18 +46,18 @@ DashboardComponent::DashboardComponent() {
     memoryVisualization_ = std::make_unique<MemoryVisualizationComponent>();
     cognitiveDashboard_.reset(createCognitiveDashboard());
     
-    mockOrganizacoes_ = std::make_unique<MockPageComponent>("Organizações Mock");
+    mockOrganizacoes_ = std::make_unique<MockPageComponent>(juce::String::fromUTF8("Organizações Mock"));
     mockChat_ = std::make_unique<MockPageComponent>("Chat Mock");
-    mockConfig_ = std::make_unique<MockPageComponent>("Configurações Mock");
-    mockAcessoRapido_ = std::make_unique<MockPageComponent>("Acesso Rápido Mock");
+    mockConfig_ = std::make_unique<MockPageComponent>(juce::String::fromUTF8("Configurações Mock"));
+    mockAcessoRapido_ = std::make_unique<MockPageComponent>(juce::String::fromUTF8("Acesso Rápido Mock"));
 
     mainTabs_->addTab("Home", juce::Colour(0xFF0b0d13), cognitiveDashboard_.get(), false);
-    mainTabs_->addTab("Organizações", juce::Colour(0xFF0b0d13), mockOrganizacoes_.get(), false);
+    mainTabs_->addTab(juce::String::fromUTF8("Organizações"), juce::Colour(0xFF0b0d13), mockOrganizacoes_.get(), false);
     mainTabs_->addTab("Projetos", juce::Colour(0xFF0b0d13), projectPanel_.get(), false);
     mainTabs_->addTab("Equipe", juce::Colour(0xFF0b0d13), agentList_.get(), false);
     mainTabs_->addTab("Chat", juce::Colour(0xFF0b0d13), mockChat_.get(), false);
-    mainTabs_->addTab("Configurações", juce::Colour(0xFF0b0d13), mockConfig_.get(), false);
-    mainTabs_->addTab("Acesso Rapido", juce::Colour(0xFF0b0d13), mockAcessoRapido_.get(), false);
+    mainTabs_->addTab(juce::String::fromUTF8("Configurações"), juce::Colour(0xFF0b0d13), mockConfig_.get(), false);
+    mainTabs_->addTab(juce::String::fromUTF8("Acesso Rápido"), juce::Colour(0xFF0b0d13), mockAcessoRapido_.get(), false);
     
     mainTabs_->setCurrentTabIndex(0);
 
@@ -68,11 +68,11 @@ DashboardComponent::DashboardComponent() {
         addLogMessage(juce::String::fromUTF8("Menu selecionado: ") + name);
         
         if (name == "Home") mainTabs_->setCurrentTabIndex(0);
-        else if (name == "Organizações") mainTabs_->setCurrentTabIndex(1);
+        else if (name == juce::String::fromUTF8("Organizações")) mainTabs_->setCurrentTabIndex(1);
         else if (name == "Projetos") mainTabs_->setCurrentTabIndex(2);
         else if (name == "Equipe") mainTabs_->setCurrentTabIndex(3);
         else if (name == "Chat") mainTabs_->setCurrentTabIndex(4);
-        else if (name == "Configurações") mainTabs_->setCurrentTabIndex(5);
+        else if (name == juce::String::fromUTF8("Configurações")) mainTabs_->setCurrentTabIndex(5);
         else {
             // Some quick access item
             mockAcessoRapido_->setPageName(name); // just so we can see it
@@ -161,7 +161,7 @@ void DashboardComponent::paint(juce::Graphics& g) {
     g.setColour(juce::Colour(0xFFffffff));
     g.setFont(juce::Font(18.0f, juce::Font::bold));
     juce::String activeTitle = mainTabs_->getTabNames()[mainTabs_->getCurrentTabIndex()];
-    if (activeTitle == "Acesso Rapido") activeTitle = mockAcessoRapido_->getPageName();
+    if (activeTitle == juce::String::fromUTF8("Acesso Rápido")) activeTitle = mockAcessoRapido_->getPageName();
     g.drawText(activeTitle, topBarArea.reduced(20, 0), juce::Justification::centredLeft);
 
     int statusH = 22;

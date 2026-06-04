@@ -87,11 +87,11 @@ void SidebarItemComponent::mouseUp(const juce::MouseEvent&) {
 SidebarComponent::SidebarComponent() {
     juce::StringArray mainItems = {
         "Home",
-        "Organizações",
+        juce::String::fromUTF8("Organizações"),
         "Projetos",
         "Equipe",
         "Chat",
-        "Configurações"
+        juce::String::fromUTF8("Configurações")
     };
 
     for (const auto& itemName : mainItems) {
@@ -101,7 +101,7 @@ SidebarComponent::SidebarComponent() {
         items_.push_back(std::move(item));
     }
 
-    auto header = std::make_unique<SidebarItemComponent>("ACESSO RÁPIDO", false, true);
+    auto header = std::make_unique<SidebarItemComponent>(juce::String::fromUTF8("ACESSO RÁPIDO"), false, true);
     addAndMakeVisible(header.get());
     items_.push_back(std::move(header));
 
