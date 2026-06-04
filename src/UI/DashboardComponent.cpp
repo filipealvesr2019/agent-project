@@ -92,21 +92,22 @@ void DashboardComponent::resized() {
     int statusH = 22;
     int phase6PanelH = 110;
 
-    menuFile_ = area.removeFromTop(menuH).removeFromLeft(100);
-    menuTools_ = {menuFile_.getRight(), menuFile_.getY(), 120, menuH};
-    menuSecurity_ = {menuTools_.getRight(), menuTools_.getY(), 100, menuH};
-    menuPhase6_ = {menuSecurity_.getRight(), menuSecurity_.getY(), 80, menuH};
-    menuHelp_ = {menuPhase6_.getRight(), menuPhase6_.getY(), 60, menuH};
+    auto menuTop = area.removeFromTop(menuH);
+    menuFile_ = menuTop.removeFromLeft(100);
+    menuTools_ = menuTop.removeFromLeft(120);
+    menuSecurity_ = menuTop.removeFromLeft(100);
+    menuPhase6_ = menuTop.removeFromLeft(80);
+    menuHelp_ = menuTop.removeFromLeft(60);
+
+    int sidebarW = 220;
+    auto sidebarArea = area.removeFromLeft(sidebarW);
+    sidebar_->setBounds(sidebarArea);
 
     auto statusArea = area.removeFromBottom(statusH);
     logViewer_->setBounds(area.removeFromBottom(200)); // Mais espaco pros logs
 
     // Phase 17 metrics row
     auto metricsArea = area.removeFromBottom(phase6PanelH);
-
-    int sidebarW = 220;
-    auto sidebarArea = area.removeFromLeft(sidebarW);
-    sidebar_->setBounds(sidebarArea);
 
     mainTabs_->setBounds(area);
 
@@ -141,12 +142,16 @@ void DashboardComponent::paint(juce::Graphics& g) {
     g.setColour(juce::Colour(0xFF30363d));
     g.drawLine(0, menuH, getWidth(), menuH, 1);
 
-    // Phase 17 Metrics Panel
-    auto metricsArea = area.removeFromBottom(phase6PanelH + 200 + statusH);
-    metricsArea = metricsArea.withHeight(phase6PanelH);
-    paintMetricsPanel(g, metricsArea);
+    int sidebarW = 220;
+    area.removeFromLeft(sidebarW);
 
     auto statusArea = area.removeFromBottom(statusH);
+    area.removeFromBottom(200); // logs
+
+    // Phase 17 Metrics Panel
+    auto metricsArea = area.removeFromBottom(phase6PanelH);
+    paintMetricsPanel(g, metricsArea);
+
     g.setColour(juce::Colour(0xFF161b22));
     g.fillRect(statusArea);
     g.setColour(juce::Colour(0xFF8b949e));
