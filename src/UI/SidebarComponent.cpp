@@ -1,4 +1,4 @@
-#include "UI/SidebarComponent.h"
+﻿#include "UI/SidebarComponent.h"
 #include "UI/UI.h"
 
 namespace AgentOS {
@@ -113,7 +113,7 @@ void SidebarComponent::paint(juce::Graphics& g) {
     g.fillRoundedRectangle(24, 20, 32, 32, 8.0f);
     
     g.setColour(juce::Colours::white);
-    g.setFont(juce::Font("Inter", 20.0f, juce::Font::bold));
+    g.setFont(juce::Font(20.0f, juce::Font::bold));
     g.drawText("AGENTOS", 68, 20, getWidth() - 70, 32, juce::Justification::centredLeft, true);
 
     // Profile Area (Bottom)
@@ -128,11 +128,11 @@ void SidebarComponent::paint(juce::Graphics& g) {
     g.fillEllipse(24, profileY + 22, 36, 36);
 
     g.setColour(juce::Colours::white);
-    g.setFont(juce::Font("Inter", 14.0f, juce::Font::bold));
+    g.setFont(juce::Font(14.0f, juce::Font::bold));
     g.drawText("Matheus", 72, profileY + 22, getWidth() - 80, 20, juce::Justification::bottomLeft, true);
 
     g.setColour(juce::Colours::white.withAlpha(0.7f));
-    g.setFont(juce::Font("Inter", 13.0f, juce::Font::plain));
+    g.setFont(juce::Font(13.0f, juce::Font::plain));
     g.drawText("Administrador", 72, profileY + 42, getWidth() - 80, 20, juce::Justification::topLeft, true);
 }
 

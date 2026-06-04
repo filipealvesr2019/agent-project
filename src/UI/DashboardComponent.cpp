@@ -1,4 +1,4 @@
-#include "UI/DashboardComponent.h"
+﻿#include "UI/DashboardComponent.h"
 #include "UI/SidebarComponent.h"
 #include "UI/AgentListComponent.h"
 #include "UI/LogViewerComponent.h"
@@ -41,7 +41,7 @@ public:
         
         // Header
         g.setColour(juce::Colour(0xFFFFFFFF));
-        g.setFont(juce::Font("Inter", 32.0f, juce::Font::bold));
+        g.setFont(juce::Font(32.0f, juce::Font::bold));
         g.drawText(juce::String::fromUTF8("Organizações e Agentes"), bounds.removeFromTop(50), juce::Justification::centredLeft);
         
         bounds.removeFromTop(20);
@@ -73,11 +73,11 @@ private:
         g.drawRoundedRectangle(area.toFloat(), 16.0f, 1.0f);
         
         g.setColour(juce::Colours::grey);
-        g.setFont(juce::Font("Inter", 14.0f, juce::Font::plain));
+        g.setFont(juce::Font(14.0f, juce::Font::plain));
         g.drawText(title, area.withTrimmedTop(15).withTrimmedLeft(20), juce::Justification::topLeft);
         
         g.setColour(accent);
-        g.setFont(juce::Font("Inter", 36.0f, juce::Font::bold));
+        g.setFont(juce::Font(36.0f, juce::Font::bold));
         g.drawText(value, area.withTrimmedBottom(15).withTrimmedLeft(20), juce::Justification::bottomLeft);
     }
     
@@ -93,15 +93,15 @@ private:
         g.drawRoundedRectangle(area.toFloat(), 20.0f, 1.0f);
         
         g.setColour(juce::Colours::white);
-        g.setFont(juce::Font("Inter", 20.0f, juce::Font::bold));
+        g.setFont(juce::Font(20.0f, juce::Font::bold));
         g.drawText(name, area.withTrimmedTop(25).withTrimmedLeft(25), juce::Justification::topLeft);
         
         g.setColour(juce::Colours::white.withAlpha(0.7f));
-        g.setFont(juce::Font("Inter", 13.0f, juce::Font::plain));
+        g.setFont(juce::Font(13.0f, juce::Font::plain));
         g.drawText(subtitle, area.withTrimmedTop(60).withTrimmedLeft(25), juce::Justification::topLeft);
         
         g.setColour(status == "Online" ? juce::Colour(0xFF22C55E) : (status == "Ocioso" ? juce::Colour(0xFFF59E0B) : juce::Colour(0xFF3B82F6)));
-        g.setFont(juce::Font("Inter", 14.0f, juce::Font::bold));
+        g.setFont(juce::Font(14.0f, juce::Font::bold));
         g.drawText(juce::String::fromUTF8("● ") + status, area.withTrimmedBottom(25).withTrimmedLeft(25), juce::Justification::bottomLeft);
     }
 };
@@ -122,7 +122,7 @@ public:
         g.setColour(juce::Colour(0xFFFFFFFF).withAlpha(0.05f));
         g.drawRoundedRectangle(bounds.withHeight(70).withY(bounds.getY()-70).toFloat(), 16.0f, 1.0f);
         g.setColour(juce::Colours::white);
-        g.setFont(juce::Font("Inter", 20.0f, juce::Font::bold));
+        g.setFont(juce::Font(20.0f, juce::Font::bold));
         g.drawText("AgentOS Assistant", getLocalBounds().reduced(60, 55), juce::Justification::topLeft);
         
         bounds.removeFromTop(20);
@@ -145,7 +145,7 @@ public:
         g.drawRoundedRectangle(inputArea.toFloat(), 14.0f, 1.0f);
         
         g.setColour(juce::Colours::white.withAlpha(0.7f));
-        g.setFont(juce::Font("Inter", 14.0f, juce::Font::plain));
+        g.setFont(juce::Font(14.0f, juce::Font::plain));
         g.drawText("Digite sua mensagem para o agente...", inputArea.withTrimmedLeft(20), juce::Justification::centredLeft);
         
         // Send Button
@@ -167,7 +167,7 @@ private:
         }
         
         g.setColour(juce::Colours::white);
-        g.setFont(juce::Font("Inter", 14.0f, juce::Font::plain));
+        g.setFont(juce::Font(14.0f, juce::Font::plain));
         g.drawMultiLineText(text, bubbleArea.getX() + 20, bubbleArea.getY() + 30, bubbleArea.getWidth() - 40);
     }
 };
@@ -183,7 +183,7 @@ public:
         auto bounds = getLocalBounds().reduced(40);
         
         g.setColour(juce::Colours::white);
-        g.setFont(juce::Font("Inter", 32.0f, juce::Font::bold));
+        g.setFont(juce::Font(32.0f, juce::Font::bold));
         g.drawText(juce::String::fromUTF8("Configurações do Sistema"), bounds.removeFromTop(50), juce::Justification::centredLeft);
         
         bounds.removeFromTop(20);
@@ -202,11 +202,11 @@ private:
         g.drawRoundedRectangle(area.reduced(2).toFloat(), 16.0f, 1.0f);
         
         g.setColour(juce::Colours::white.withAlpha(0.7f));
-        g.setFont(juce::Font("Inter", 14.0f, juce::Font::plain));
+        g.setFont(juce::Font(14.0f, juce::Font::plain));
         g.drawText(label, area.withTrimmedLeft(20), juce::Justification::centredLeft);
         
         g.setColour(juce::Colours::white);
-        g.setFont(juce::Font("Inter", 14.0f, juce::Font::bold));
+        g.setFont(juce::Font(14.0f, juce::Font::bold));
         g.drawText(value, area.withTrimmedRight(20), juce::Justification::centredRight);
     }
 };
