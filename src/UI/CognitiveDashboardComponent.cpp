@@ -1,14 +1,53 @@
-﻿#include "UI/CognitiveDashboardComponent.h"
+#include "UI/CognitiveDashboardComponent.h"
 #include <BinaryData.h>
 
 namespace AgentOS {
 
+class DashboardButtonLookAndFeel : public juce::LookAndFeel_V4 {
+public:
+    void drawButtonBackground(juce::Graphics& g, juce::Button& button, const juce::Colour& backgroundColour, 
+                              bool shouldDrawButtonAsHighlighted, bool shouldDrawButtonAsDown) override {
+        auto bounds = button.getLocalBounds().toFloat();
+        float alpha = button.isEnabled() ? 1.0f : 0.5f;
+        
+        if (backgroundColour == juce::Colour(0xFF7B61FF)) {
+            // Primary button (Gradient)
+            juce::Colour c1 = juce::Colour(0xFF7B61FF);
+            juce::Colour c2 = juce::Colour(0xFF5B46F5);
+            if (shouldDrawButtonAsHighlighted || shouldDrawButtonAsDown) {
+                c1 = c1.brighter(0.1f);
+                c2 = c2.brighter(0.1f);
+            }
+            juce::ColourGradient grad(c1, 0, 0, c2, 0, bounds.getHeight(), false);
+            g.setGradientFill(grad);
+            g.fillRoundedRectangle(bounds, 8.0f);
+            
+            // Glow border
+            g.setColour(juce::Colour(0xFFFFFFFF).withAlpha(0.1f));
+            g.drawRoundedRectangle(bounds, 8.0f, 1.0f);
+        } else {
+            // Secondary button
+            juce::Colour bg = backgroundColour;
+            if (shouldDrawButtonAsHighlighted || shouldDrawButtonAsDown)
+                bg = bg.brighter(0.1f);
+                
+            g.setColour(bg.withAlpha(alpha));
+            g.fillRoundedRectangle(bounds, 8.0f);
+            
+            g.setColour(juce::Colour(0xFFFFFFFF).withAlpha(0.04f));
+            g.drawRoundedRectangle(bounds, 8.0f, 1.0f);
+        }
+    }
+};
+
+static DashboardButtonLookAndFeel gButtonLaf;
+
 CognitiveDashboardComponent::CognitiveDashboardComponent() {
     // Style buttons
     auto styleButton = [](juce::TextButton& btn, bool isPrimary) {
-        btn.setColour(juce::TextButton::buttonColourId, isPrimary ? juce::Colour(0xFF6D5DFE) : juce::Colour(0xFF1A1F2B));
+        btn.setLookAndFeel(&gButtonLaf);
+        btn.setColour(juce::TextButton::buttonColourId, isPrimary ? juce::Colour(0xFF7B61FF) : juce::Colour(0xFF1A1F2B));
         btn.setColour(juce::TextButton::textColourOffId, juce::Colours::white);
-        btn.setColour(juce::TextButton::buttonOnColourId, isPrimary ? juce::Colour(0xFF5750C9) : juce::Colour(0xFF131C2F));
     };
 
     styleButton(btnTask_, false);
@@ -35,16 +74,23 @@ CognitiveDashboardComponent::CognitiveDashboardComponent() {
     addAndMakeVisible(promptInput_);
 }
 
-CognitiveDashboardComponent::~CognitiveDashboardComponent() {}
+CognitiveDashboardComponent::~CognitiveDashboardComponent() {
+    btnTask_.setLookAndFeel(nullptr);
+    btnQuestion_.setLookAndFeel(nullptr);
+    btnAnalyze_.setLookAndFeel(nullptr);
+    btnSubmit_.setLookAndFeel(nullptr);
+    btnChat_.setLookAndFeel(nullptr);
+    btnMoreInfo_.setLookAndFeel(nullptr);
+}
 
 void CognitiveDashboardComponent::paintCard(juce::Graphics& g, juce::Rectangle<int> bounds, bool hasBorder) {
-    juce::DropShadow shadow(juce::Colour::fromFloatRGBA(0.0f, 0.0f, 0.0f, 0.2f), 8, juce::Point<int>(0, 4));
+    juce::DropShadow shadow(juce::Colour::fromFloatRGBA(0.0f, 0.0f, 0.0f, 0.25f), 12, juce::Point<int>(0, 6));
     shadow.drawForRectangle(g, bounds);
 
-    g.setColour(juce::Colour(0xFF1A1F2B));
+    g.setColour(juce::Colour(0xFF121826).withAlpha(0.85f));
     g.fillRoundedRectangle(bounds.toFloat(), 12.0f);
     if (hasBorder) {
-        g.setColour(juce::Colour(0x1AFFFFFF));
+        g.setColour(juce::Colour(0xFFFFFFFF).withAlpha(0.04f));
         g.drawRoundedRectangle(bounds.toFloat(), 12.0f, 1.0f);
     }
 }
@@ -110,7 +156,11 @@ void CognitiveDashboardComponent::paintFileItem(juce::Graphics& g, juce::Rectang
 }
 
 void CognitiveDashboardComponent::paint(juce::Graphics& g) {
-    g.fillAll(juce::Colour(0xFF0D111F)); // Main background
+    juce::ColourGradient bg(
+        juce::Colour(0xFF0B1224), getWidth() * 0.35f, getHeight() * 0.2f,
+        juce::Colour(0xFF050913), getWidth() * 0.8f, (float)getHeight(), true);
+    g.setGradientFill(bg);
+    g.fillAll();
 
     auto area = getLocalBounds();
     auto rightSidebar = area.removeFromRight(340);
@@ -126,7 +176,7 @@ void CognitiveDashboardComponent::paint(juce::Graphics& g) {
     
     g.setColour(juce::Colours::white);
     g.setFont(juce::Font(32.0f, juce::Font::bold));
-    g.drawText(juce::String::fromUTF8("Ola, Matheus! \\xF0\\x9F\\x91\\x8B"), mainArea.removeFromTop(45), juce::Justification::topLeft);
+    g.drawText("Ola, Matheus!", mainArea.removeFromTop(45), juce::Justification::topLeft);
     
     g.setColour(juce::Colour(0xFF8A91A8));
     g.setFont(juce::Font(16.0f));
