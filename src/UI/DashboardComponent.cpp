@@ -1,4 +1,4 @@
-﻿#include "UI/DashboardComponent.h"
+#include "UI/DashboardComponent.h"
 #include "UI/SidebarComponent.h"
 #include "UI/AgentListComponent.h"
 #include "UI/LogViewerComponent.h"
@@ -107,6 +107,7 @@ private:
 };
 
 // --- Mock Chat Page ---
+// --- Mock Chat Page ---
 class MockChatPage : public MockPageComponent {
 public:
     MockChatPage() : MockPageComponent("Chat") {}
@@ -114,61 +115,327 @@ public:
     void paint(juce::Graphics& g) override {
         MockPageComponent::paint(g);
         
-        auto bounds = getLocalBounds().reduced(40);
+        auto bounds = getLocalBounds();
+        auto leftPanel = bounds.removeFromLeft(260);
+        auto rightPanel = bounds.removeFromRight(320);
+        auto centerPanel = bounds;
+
+        // ==========================================
+        // LEFT PANEL - HIERARCHY
+        // ==========================================
+        g.setColour(juce::Colour(0xFF070B17));
+        g.fillRect(leftPanel);
         
-        // Chat Header
-        g.setColour(juce::Colour(0xFF0B1220));
-        g.fillRoundedRectangle(bounds.removeFromTop(70).toFloat(), 16.0f);
-        g.setColour(juce::Colour(0xFFFFFFFF).withAlpha(0.05f));
-        g.drawRoundedRectangle(bounds.withHeight(70).withY(bounds.getY()-70).toFloat(), 16.0f, 1.0f);
+        auto leftContent = leftPanel.reduced(16, 20);
+        
+        // Org Header
         g.setColour(juce::Colours::white);
-        g.setFont(juce::Font(20.0f, juce::Font::bold));
-        g.drawText("AgentOS Assistant", getLocalBounds().reduced(60, 55), juce::Justification::topLeft);
+        g.setFont(juce::Font(18.0f, juce::Font::bold));
+        g.drawText("Alpha Systems", leftContent.removeFromTop(24), juce::Justification::centredLeft);
+        g.setColour(juce::Colour(0xFF22C55E));
+        g.fillRoundedRectangle(leftContent.getX() + 140, leftContent.getY() - 20, 45, 18, 4.0f);
+        g.setColour(juce::Colours::black);
+        g.setFont(juce::Font(10.0f, juce::Font::bold));
+        g.drawText("Ativa", leftContent.getX() + 140, leftContent.getY() - 20, 45, 18, juce::Justification::centred);
         
-        bounds.removeFromTop(20);
+        g.setColour(juce::Colours::white.withAlpha(0.5f));
+        g.setFont(juce::Font(12.0f, juce::Font::plain));
+        g.drawText(juce::String::fromUTF8(u8"Organização"), leftContent.removeFromTop(20), juce::Justification::centredLeft);
         
-        // Chat History Area
-        auto inputArea = bounds.removeFromBottom(60);
-        auto historyArea = bounds.withTrimmedBottom(20);
+        leftContent.removeFromTop(20);
         
-        // Draw Mock Messages
-        drawMessage(g, historyArea.removeFromTop(80), "Como posso ajudar com a sua infraestrutura hoje?", true);
-        historyArea.removeFromTop(10);
-        drawMessage(g, historyArea.removeFromTop(80), juce::String::fromUTF8(u8"Gere um relatório de uso da TechCorp AI."), false);
-        historyArea.removeFromTop(10);
-        drawMessage(g, historyArea.removeFromTop(120), juce::String::fromUTF8(u8"Gerando relatório...\n- Consumo Llama 3: 450K tokens\n- Custos: $0.45\n- Tempo ocioso: 12%"), true);
+        // CEO Agent
+        auto ceoArea = leftContent.removeFromTop(40);
+        g.setColour(juce::Colour(0xFF6D5DFE));
+        g.fillRoundedRectangle(ceoArea.removeFromLeft(32).withSizeKeepingCentre(24, 24).toFloat(), 6.0f);
+        g.setColour(juce::Colours::white);
+        g.setFont(juce::Font(14.0f, juce::Font::bold));
+        g.drawText("CEO Agent", ceoArea.withTrimmedLeft(10).withHeight(20), juce::Justification::centredLeft);
+        g.setColour(juce::Colour(0xFF22C55E));
+        g.fillEllipse(ceoArea.getX() + 10, ceoArea.getY() + 24, 6, 6);
+        g.setColour(juce::Colours::white.withAlpha(0.5f));
+        g.setFont(juce::Font(11.0f, juce::Font::plain));
+        g.drawText(juce::String::fromUTF8(u8"CEO da organização"), ceoArea.withTrimmedLeft(20).withY(ceoArea.getY() + 18).withHeight(20), juce::Justification::centredLeft);
         
-        // Input Box
+        leftContent.removeFromTop(20);
+        
+        // Projetos Header
+        g.setColour(juce::Colours::white.withAlpha(0.4f));
+        g.setFont(juce::Font(11.0f, juce::Font::bold));
+        g.drawText("PROJETOS", leftContent.removeFromTop(20), juce::Justification::centredLeft);
+        
+        // Active Project
+        auto projArea = leftContent.removeFromTop(40);
+        g.setColour(juce::Colour(0xFF131C2F));
+        g.fillRoundedRectangle(projArea.toFloat(), 8.0f);
+        g.setColour(juce::Colour(0xFF6D5DFE));
+        g.fillRoundedRectangle(projArea.removeFromLeft(32).withSizeKeepingCentre(24, 24).toFloat(), 6.0f);
+        g.setColour(juce::Colours::white);
+        g.setFont(juce::Font(14.0f, juce::Font::bold));
+        g.drawText("Editor de Circuitos", projArea.withTrimmedLeft(10).withHeight(20), juce::Justification::centredLeft);
+        g.setColour(juce::Colour(0xFF3B82F6));
+        g.setFont(juce::Font(11.0f, juce::Font::plain));
+        g.drawText("Em andamento", projArea.withTrimmedLeft(10).withY(projArea.getY() + 18).withHeight(20), juce::Justification::centredLeft);
+        
+        // Teams
+        drawSubTeam(g, leftContent.removeFromTop(36), "Frontend Team", "Beatriz Souza", juce::Colour(0xFF8B5CF6));
+        drawSubTeam(g, leftContent.removeFromTop(36), "Backend Team", "Rafael Costa", juce::Colour(0xFF22C55E));
+        drawSubTeam(g, leftContent.removeFromTop(36), "DSP Team", "Lucas Martins", juce::Colour(0xFFF59E0B));
+        drawSubTeam(g, leftContent.removeFromTop(36), "QA Team", "Amanda Silva", juce::Colour(0xFF3B82F6));
+        
+        leftContent.removeFromTop(10);
+        
+        // Other projects
+        drawInactiveProject(g, leftContent.removeFromTop(40), "Plugin VST");
+        drawInactiveProject(g, leftContent.removeFromTop(40), "Marketplace IA");
+        
+        leftContent.removeFromTop(20);
+        
+        // Canais Gerais Header
+        g.setColour(juce::Colours::white.withAlpha(0.4f));
+        g.setFont(juce::Font(11.0f, juce::Font::bold));
+        g.drawText("CANAIS GERAIS", leftContent.removeFromTop(20), juce::Justification::centredLeft);
+        
+        drawChannel(g, leftContent.removeFromTop(32), juce::String::fromUTF8(u8"Anúncios"));
+        drawChannel(g, leftContent.removeFromTop(32), "Suporte");
+        drawChannel(g, leftContent.removeFromTop(32), juce::String::fromUTF8(u8"Reuniões"));
+        drawChannel(g, leftContent.removeFromTop(32), "Recursos Humanos");
+
+        // ==========================================
+        // CENTER PANEL - CHAT
+        // ==========================================
         g.setColour(juce::Colour(0xFF0B1220));
+        g.fillRect(centerPanel);
+        g.setColour(juce::Colour(0xFFFFFFFF).withAlpha(0.05f));
+        g.fillRect(centerPanel.getX(), 0, 1, centerPanel.getHeight());
+        
+        auto centerContent = centerPanel.reduced(30, 20);
+        
+        // Center Header
+        auto headerArea = centerContent.removeFromTop(80);
+        g.setColour(juce::Colour(0xFF6D5DFE));
+        g.fillRoundedRectangle(headerArea.removeFromLeft(48).withSizeKeepingCentre(48, 48).toFloat(), 12.0f);
+        
+        g.setColour(juce::Colours::white);
+        g.setFont(juce::Font(24.0f, juce::Font::bold));
+        g.drawText("Editor de Circuitos", headerArea.withTrimmedLeft(16).withHeight(30), juce::Justification::centredLeft);
+        
+        g.setColour(juce::Colour(0xFF6D5DFE).withAlpha(0.2f));
+        g.fillRoundedRectangle(headerArea.getX() + 220, headerArea.getY() + 4, 50, 22, 11.0f);
+        g.setColour(juce::Colour(0xFF6D5DFE));
+        g.setFont(juce::Font(12.0f, juce::Font::bold));
+        g.drawText("Projeto", headerArea.getX() + 220, headerArea.getY() + 4, 50, 22, juce::Justification::centred);
+        
+        g.setColour(juce::Colours::white.withAlpha(0.6f));
+        g.setFont(juce::Font(14.0f, juce::Font::plain));
+        g.drawText("4 equipes participantes", headerArea.withTrimmedLeft(16).withY(headerArea.getY() + 30).withHeight(20), juce::Justification::centredLeft);
+        
+        // Tabs
+        auto tabsArea = centerContent.removeFromTop(40);
+        g.setColour(juce::Colour(0xFFFFFFFF).withAlpha(0.05f));
+        g.fillRect(tabsArea.getX(), tabsArea.getBottom() - 1, tabsArea.getWidth(), 1);
+        
+        int tabX = tabsArea.getX();
+        drawTab(g, tabX, tabsArea, "Chat", true);
+        drawTab(g, tabX, tabsArea, "Arquivos", false);
+        drawTab(g, tabX, tabsArea, "Tarefas", false);
+        drawTab(g, tabX, tabsArea, "Planejamento", false);
+        drawTab(g, tabX, tabsArea, juce::String::fromUTF8(u8"Configurações"), false);
+        
+        centerContent.removeFromTop(20);
+        
+        // Chat Feed
+        auto inputArea = centerContent.removeFromBottom(60);
+        centerContent.removeFromBottom(20);
+        
+        drawChatMessage(g, centerContent.removeFromTop(100), "CEO Agent", "CEO", "14:31", 
+            juce::String::fromUTF8(u8"Pessoal, o projeto Editor de Circuitos está oficialmente iniciado! \nNosso objetivo é entregar um MVP funcional em 45 dias.\nConto com todos para fazermos algo incrível."));
+            
+        drawChatMessage(g, centerContent.removeFromTop(80), "Beatriz Souza", "Frontend Manager", "14:32", 
+            juce::String::fromUTF8(u8"Perfeito! Já estamos organizando as tarefas de UI/UX.\nEm breve compartilhamos o protótipo."));
+            
+        drawChatMessage(g, centerContent.removeFromTop(80), "Rafael Costa", "Backend Manager", "14:33", 
+            juce::String::fromUTF8(u8"A API de simulação será nossa prioridade inicial.\nAtualizo o progresso ainda hoje."));
+            
+        drawChatMessage(g, centerContent.removeFromTop(80), "Lucas Martins", "DSP Manager", "14:34", 
+            juce::String::fromUTF8(u8"Modelagem do pré-amplificador já está 60% concluída.\nAté amanhã entrego a primeira versão."));
+            
+        // Input Box
+        g.setColour(juce::Colour(0xFF070B17));
         g.fillRoundedRectangle(inputArea.toFloat(), 14.0f);
         g.setColour(juce::Colour(0xFFFFFFFF).withAlpha(0.05f));
         g.drawRoundedRectangle(inputArea.toFloat(), 14.0f, 1.0f);
         
-        g.setColour(juce::Colours::white.withAlpha(0.7f));
+        g.setColour(juce::Colours::white.withAlpha(0.5f));
         g.setFont(juce::Font(14.0f, juce::Font::plain));
-        g.drawText("Digite sua mensagem para o agente...", inputArea.withTrimmedLeft(20), juce::Justification::centredLeft);
+        g.drawText("Digite sua mensagem...", inputArea.withTrimmedLeft(20).withHeight(30), juce::Justification::centredLeft);
         
-        // Send Button
-        auto btnArea = inputArea.removeFromRight(60).reduced(10);
         g.setColour(juce::Colour(0xFF6D5DFE));
-        g.fillRoundedRectangle(btnArea.toFloat(), 12.0f);
+        g.fillRoundedRectangle(inputArea.removeFromRight(50).reduced(5).toFloat(), 10.0f);
+
+        // ==========================================
+        // RIGHT PANEL - VISÃO OPERACIONAL
+        // ==========================================
+        g.setColour(juce::Colour(0xFF050816));
+        g.fillRect(rightPanel);
+        g.setColour(juce::Colour(0xFFFFFFFF).withAlpha(0.05f));
+        g.fillRect(rightPanel.getX(), 0, 1, rightPanel.getHeight());
+        
+        auto rightContent = rightPanel.reduced(24, 20);
+        
+        g.setColour(juce::Colours::white);
+        g.setFont(juce::Font(16.0f, juce::Font::bold));
+        g.drawText("Sobre o Projeto", rightContent.removeFromTop(30), juce::Justification::centredLeft);
+        
+        auto statsCard = rightContent.removeFromTop(160);
+        g.setColour(juce::Colour(0xFF0B1220));
+        g.fillRoundedRectangle(statsCard.toFloat(), 16.0f);
+        g.setColour(juce::Colour(0xFFFFFFFF).withAlpha(0.05f));
+        g.drawRoundedRectangle(statsCard.toFloat(), 16.0f, 1.0f);
+        
+        g.setColour(juce::Colour(0xFF3B82F6));
+        g.drawPath(createCirclePath(statsCard.getCentreX(), statsCard.getY() + 80, 40), 6.0f);
+        g.setColour(juce::Colours::white);
+        g.setFont(juce::Font(24.0f, juce::Font::bold));
+        g.drawText("64%", statsCard.withY(statsCard.getY() + 10), juce::Justification::centred);
+        g.setFont(juce::Font(11.0f, juce::Font::plain));
+        g.setColour(juce::Colours::white.withAlpha(0.5f));
+        g.drawText("Progresso geral", statsCard.withY(statsCard.getY() + 35), juce::Justification::centred);
+        
+        rightContent.removeFromTop(20);
+        
+        g.setColour(juce::Colours::white);
+        g.setFont(juce::Font(16.0f, juce::Font::bold));
+        g.drawText("Equipes do Projeto", rightContent.removeFromTop(30), juce::Justification::centredLeft);
+        
+        drawTeamProgress(g, rightContent.removeFromTop(40), "Frontend Team", "Beatriz Souza", 0.68f, juce::Colour(0xFF8B5CF6));
+        drawTeamProgress(g, rightContent.removeFromTop(40), "Backend Team", "Rafael Costa", 0.55f, juce::Colour(0xFF22C55E));
+        drawTeamProgress(g, rightContent.removeFromTop(40), "DSP Team", "Lucas Martins", 0.72f, juce::Colour(0xFFF59E0B));
+        drawTeamProgress(g, rightContent.removeFromTop(40), "QA Team", "Amanda Silva", 0.40f, juce::Colour(0xFF3B82F6));
+        
+        rightContent.removeFromTop(20);
+        
+        g.setColour(juce::Colours::white);
+        g.setFont(juce::Font(16.0f, juce::Font::bold));
+        g.drawText(juce::String::fromUTF8(u8"Próximas Entregas"), rightContent.removeFromTop(30), juce::Justification::centredLeft);
+        
+        drawDelivery(g, rightContent.removeFromTop(25), juce::String::fromUTF8(u8"Protótipo de UI"), "25/05");
+        drawDelivery(g, rightContent.removeFromTop(25), juce::String::fromUTF8(u8"Motor de Simulação DSP"), "28/05");
+        drawDelivery(g, rightContent.removeFromTop(25), juce::String::fromUTF8(u8"Integração da API"), "05/06");
     }
     
 private:
-    void drawMessage(juce::Graphics& g, juce::Rectangle<int> area, const juce::String& text, bool isBot) {
-        int width = juce::jmin(600, area.getWidth() - 100);
-        auto bubbleArea = isBot ? area.withWidth(width) : area.withTrimmedLeft(area.getWidth() - width);
+    juce::Path createCirclePath(float x, float y, float radius) {
+        juce::Path p;
+        p.addArc(x - radius, y - radius, radius * 2, radius * 2, 0.0f, 4.0f, true);
+        return p;
+    }
+
+    void drawSubTeam(juce::Graphics& g, juce::Rectangle<int> area, const juce::String& name, const juce::String& manager, juce::Colour color) {
+        area.removeFromLeft(30); // indent
         
-        g.setColour(isBot ? juce::Colour(0xFF0B1220) : juce::Colour(0xFF6D5DFE));
-        g.fillRoundedRectangle(bubbleArea.toFloat(), 16.0f);
-        if (isBot) {
-            g.setColour(juce::Colour(0xFFFFFFFF).withAlpha(0.05f));
-            g.drawRoundedRectangle(bubbleArea.toFloat(), 16.0f, 1.0f);
-        }
+        // Tree line
+        g.setColour(juce::Colour(0xFFFFFFFF).withAlpha(0.1f));
+        g.fillRect(area.getX() - 15, area.getY() - 10, 2, area.getHeight());
+        g.fillRect(area.getX() - 15, area.getY() + area.getHeight() / 2, 10, 2);
+        
+        g.setColour(color);
+        g.fillRoundedRectangle(area.removeFromLeft(20).withSizeKeepingCentre(16, 16).toFloat(), 4.0f);
         
         g.setColour(juce::Colours::white);
+        g.setFont(juce::Font(13.0f, juce::Font::bold));
+        g.drawText(name, area.withTrimmedLeft(10).withHeight(18), juce::Justification::centredLeft);
+        
+        g.setColour(juce::Colours::white.withAlpha(0.5f));
+        g.setFont(juce::Font(11.0f, juce::Font::plain));
+        g.drawText("Gerente: " + manager, area.withTrimmedLeft(10).withY(area.getY() + 16).withHeight(18), juce::Justification::centredLeft);
+    }
+    
+    void drawInactiveProject(juce::Graphics& g, juce::Rectangle<int> area, const juce::String& name) {
+        g.setColour(juce::Colour(0xFFFFFFFF).withAlpha(0.05f));
+        g.fillRoundedRectangle(area.removeFromLeft(32).withSizeKeepingCentre(24, 24).toFloat(), 6.0f);
+        g.setColour(juce::Colours::white.withAlpha(0.7f));
+        g.setFont(juce::Font(14.0f, juce::Font::bold));
+        g.drawText(name, area.withTrimmedLeft(10).withHeight(20), juce::Justification::centredLeft);
+        g.setColour(juce::Colour(0xFFF59E0B));
+        g.setFont(juce::Font(11.0f, juce::Font::plain));
+        g.drawText("Planejamento", area.withTrimmedLeft(10).withY(area.getY() + 18).withHeight(20), juce::Justification::centredLeft);
+    }
+    
+    void drawChannel(juce::Graphics& g, juce::Rectangle<int> area, const juce::String& name) {
+        g.setColour(juce::Colours::white.withAlpha(0.7f));
         g.setFont(juce::Font(14.0f, juce::Font::plain));
-        g.drawMultiLineText(text, bubbleArea.getX() + 20, bubbleArea.getY() + 30, bubbleArea.getWidth() - 40);
+        g.drawText("#  " + name, area, juce::Justification::centredLeft);
+    }
+    
+    void drawTab(juce::Graphics& g, int& x, juce::Rectangle<int> bounds, const juce::String& name, bool active) {
+        int w = 100;
+        g.setColour(active ? juce::Colour(0xFF6D5DFE) : juce::Colours::white.withAlpha(0.5f));
+        g.setFont(juce::Font(14.0f, active ? juce::Font::bold : juce::Font::plain));
+        g.drawText(name, x, bounds.getY(), w, bounds.getHeight(), juce::Justification::centred);
+        if (active) {
+            g.fillRect(x + 20, bounds.getBottom() - 2, w - 40, 2);
+        }
+        x += w;
+    }
+    
+    void drawChatMessage(juce::Graphics& g, juce::Rectangle<int> area, const juce::String& name, const juce::String& role, const juce::String& time, const juce::String& msg) {
+        // Avatar
+        g.setColour(juce::Colour(0xFF6D5DFE).withAlpha(0.5f));
+        g.fillEllipse(area.removeFromLeft(40).withSizeKeepingCentre(36, 36).toFloat());
+        
+        area.removeFromLeft(10);
+        
+        auto header = area.removeFromTop(20);
+        g.setColour(juce::Colours::white);
+        g.setFont(juce::Font(14.0f, juce::Font::bold));
+        g.drawText(name, header.removeFromLeft(100), juce::Justification::centredLeft);
+        
+        g.setColour(juce::Colour(0xFF6D5DFE).withAlpha(0.2f));
+        g.fillRoundedRectangle(header.removeFromLeft(100).withSizeKeepingCentre(90, 18).toFloat(), 4.0f);
+        g.setColour(juce::Colour(0xFF8B5CF6));
+        g.setFont(juce::Font(11.0f, juce::Font::bold));
+        g.drawText(role, header.withX(header.getX() - 100).withWidth(100), juce::Justification::centred);
+        
+        g.setColour(juce::Colours::white.withAlpha(0.3f));
+        g.setFont(juce::Font(12.0f, juce::Font::plain));
+        g.drawText(time, area.withX(area.getRight() - 50).withWidth(50).withY(area.getY() - 20).withHeight(20), juce::Justification::centredRight);
+        
+        g.setColour(juce::Colours::white.withAlpha(0.8f));
+        g.setFont(juce::Font(14.0f, juce::Font::plain));
+        g.drawMultiLineText(msg, area.getX(), area.getY() + 15, area.getWidth());
+    }
+    
+    void drawTeamProgress(juce::Graphics& g, juce::Rectangle<int> area, const juce::String& team, const juce::String& manager, float progress, juce::Colour color) {
+        g.setColour(color.withAlpha(0.2f));
+        g.fillRoundedRectangle(area.removeFromLeft(32).withSizeKeepingCentre(24, 24).toFloat(), 6.0f);
+        
+        g.setColour(juce::Colours::white);
+        g.setFont(juce::Font(13.0f, juce::Font::bold));
+        g.drawText(team, area.withTrimmedLeft(10).withHeight(18), juce::Justification::centredLeft);
+        
+        g.setColour(juce::Colours::white.withAlpha(0.5f));
+        g.setFont(juce::Font(11.0f, juce::Font::plain));
+        g.drawText("Gerente: " + manager, area.withTrimmedLeft(10).withY(area.getY() + 18).withHeight(18), juce::Justification::centredLeft);
+        
+        // Progress bar
+        auto barArea = area.removeFromRight(60).withSizeKeepingCentre(60, 6);
+        g.setColour(juce::Colour(0xFF1A2438));
+        g.fillRoundedRectangle(barArea.toFloat(), 3.0f);
+        g.setColour(color);
+        g.fillRoundedRectangle(barArea.withWidth(int(60 * progress)).toFloat(), 3.0f);
+        
+        g.setColour(juce::Colours::white.withAlpha(0.8f));
+        g.drawText(juce::String(int(progress * 100)) + "%", barArea.withY(barArea.getY() - 20).withHeight(20), juce::Justification::centredRight);
+    }
+    
+    void drawDelivery(juce::Graphics& g, juce::Rectangle<int> area, const juce::String& name, const juce::String& date) {
+        g.setColour(juce::Colours::white.withAlpha(0.8f));
+        g.setFont(juce::Font(13.0f, juce::Font::plain));
+        g.drawText("- " + name, area.removeFromLeft(180), juce::Justification::centredLeft);
+        
+        g.setColour(juce::Colours::white.withAlpha(0.4f));
+        g.drawText(date, area, juce::Justification::centredRight);
     }
 };
 
