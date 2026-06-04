@@ -12,7 +12,7 @@ CreateAgentDialog::CreateAgentDialog() {
         editor.setColour(juce::TextEditor::textColourId, juce::Colours::white);
         editor.setColour(juce::TextEditor::outlineColourId, juce::Colour(0xFF30363d));
         editor.setFont(juce::Font(14.0f));
-    };0
+    };
 
     setupField(nameField_, "Nome do agente");
     setupField(roleField_, "Ex: Backend Dev, QA Tester");
@@ -29,7 +29,7 @@ CreateAgentDialog::CreateAgentDialog() {
 
     autonomyBox_.setEditableText(false);
     autonomyBox_.addItem("Baixa", 1);
-    autonomyBox_.addItem("Média", 2);
+    autonomyBox_.addItem(juce::String::fromUTF8("Média"), 2);
     autonomyBox_.addItem("Alta", 3);
     autonomyBox_.setSelectedId(2);
     autonomyBox_.setColour(juce::ComboBox::backgroundColourId, juce::Colour(0xFF0d1117));

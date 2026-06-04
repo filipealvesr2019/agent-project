@@ -49,7 +49,7 @@ DashboardComponent::DashboardComponent() {
     addAndMakeVisible(logViewer_.get());
 
     sidebar_->onAgentSelected = [this](const juce::String& name) {
-        addLogMessage("Agente selecionado: " + name);
+        addLogMessage(juce::String::fromUTF8("Agente selecionado: ") + name);
     };
 
     UI::getInstance().onAgentsChanged = [this] {
@@ -79,7 +79,7 @@ DashboardComponent::DashboardComponent() {
 
     startTimerHz(1); // Refresh every 1 second
     setSize(1200, 800);
-    statusText_ = "AgentOS Phase 17: Studio UI Ativo";
+    statusText_ = juce::String::fromUTF8("AgentOS Phase 17: Studio UI Ativo");
 }
 
 DashboardComponent::~DashboardComponent() {
