@@ -13,6 +13,7 @@
 #include "OrganizationEngine/MeetingEngine.h"
 #include "OrganizationEngine/ExecutiveCouncil.h"
 #include "OrganizationEngine/ConflictEngine.h"
+#include "SecurityEngine/SecurityEngine.h"
 
 using namespace AgentOS;
 
@@ -394,6 +395,58 @@ int main() {
             }
         }
         CHECK(foundGraphqlOrRest == true);
+    }
+
+    // TEST 17: Security Permissions
+    {
+        TEST("Test 17: Security Permissions & Action Validation");
+        
+        auto worker = std::make_shared<WorkerAgent>("SteveWorker", "Worker", "Engineering", "Apple");
+        auto manager = std::make_shared<ManagerAgent>("TimManager", "Engineering", "Apple");
+        auto ceo = std::make_shared<CEOAgent>("CookCEO", "Apple");
+        
+        // 1. Worker tenta criar Goal (Deve falhar)
+        bool workerCanCreateGoal = PermissionEngine::getInstance().canPerformAction(worker->getName(), "Worker", "Create Goal", "GOAL_MEM");
+        CHECK(workerCanCreateGoal == false);
+        
+        // 2. Manager tenta escalar blocker (Deve passar)
+        bool managerCanEscalate = PermissionEngine::getInstance().canPerformAction(manager->getName(), "Manager", "Escalate Blockers", "TASK_X");
+        CHECK(managerCanEscalate == true);
+        
+        // 3. CEO tenta aprovar decisão estratégica (Deve passar)
+        bool ceoCanApprove = PermissionEngine::getInstance().canPerformAction(ceo->getName(), "CEO", "Approve Strategic Decisions", "GOAL_MEM");
+        CHECK(ceoCanApprove == true);
+        
+        // 4. Reviewer tenta criar Task (Deve falhar)
+        bool reviewerCanCreateTask = PermissionEngine::getInstance().canPerformAction("QA", "Reviewer", "Create Task", "TASK_Y");
+        CHECK(reviewerCanCreateTask == false);
+    }
+
+    // TEST 18: Audit Logging
+    {
+        TEST("Test 18: Audit Engine Logging");
+        
+        // The previous test fired 4 actions. Let's check the logs.
+        auto logs = AuditEngine::getInstance().getLogs();
+        
+        // There should be exactly 4 logs or more (if other tests hit the engine, but they don't yet)
+        CHECK(logs.size() >= 4);
+        
+        bool foundWorkerDenial = false;
+        bool foundManagerApproval = false;
+        
+        for (const auto& log : logs) {
+            if (log.agentName == "SteveWorker" && log.action == "Create Goal" && log.result == "Denied") {
+                foundWorkerDenial = true;
+                CHECK(log.reason == "Insufficient Permission");
+            }
+            if (log.agentName == "TimManager" && log.action == "Escalate Blockers" && log.result == "Allowed") {
+                foundManagerApproval = true;
+            }
+        }
+        
+        CHECK(foundWorkerDenial == true);
+        CHECK(foundManagerApproval == true);
     }
 
     std::printf("\n=== Summary: %d passed, %d failed ===\n", passed, failed);
