@@ -6,6 +6,34 @@
 
 namespace AgentOS {
 
+enum class AgentRole {
+    CEO,
+    Manager,
+    Worker,
+    Reviewer,
+    Human,
+    System
+};
+
+struct AgentIdentity {
+    std::string id;
+    std::string name;
+    AgentRole role;
+    
+    // Helper to stringify for logs
+    std::string getRoleString() const {
+        switch(role) {
+            case AgentRole::CEO: return "CEO";
+            case AgentRole::Manager: return "Manager";
+            case AgentRole::Worker: return "Worker";
+            case AgentRole::Reviewer: return "Reviewer";
+            case AgentRole::Human: return "Human";
+            case AgentRole::System: return "System";
+            default: return "Unknown";
+        }
+    }
+};
+
 enum class PermissionAction {
     // CEO Actions
     CreateGoal,
@@ -42,9 +70,9 @@ public:
         return instance;
     }
 
-    bool hasPermission(const std::string& role, const std::string& actionStr) {
-        PermissionAction action = stringToAction(actionStr);
-        if (role == "Human") return true; // Full override
+    bool hasPermission(AgentRole role, PermissionAction action) {
+        if (role == AgentRole::Human) return true; // Full override
+        if (role == AgentRole::System) return true; // System level override
         
         auto it = rolePermissions.find(role);
         if (it != rolePermissions.end()) {
@@ -57,11 +85,34 @@ public:
         return false;
     }
 
+    std::string actionToString(PermissionAction action) const {
+        switch(action) {
+            case PermissionAction::CreateGoal: return "Create Goal";
+            case PermissionAction::CreateProject: return "Create Project";
+            case PermissionAction::CreateOrganization: return "Create Organization";
+            case PermissionAction::CreateExecutiveMeeting: return "Create Executive Meeting";
+            case PermissionAction::ApproveStrategicDecisions: return "Approve Strategic Decisions";
+            case PermissionAction::CreateTask: return "Create Task";
+            case PermissionAction::AssignTask: return "Assign Task";
+            case PermissionAction::ReprioritizeTask: return "Reprioritize Task";
+            case PermissionAction::EscalateBlockers: return "Escalate Blockers";
+            case PermissionAction::CreateMeeting: return "Create Meeting";
+            case PermissionAction::ExecuteTask: return "Execute Task";
+            case PermissionAction::UpdateOwnTask: return "Update Own Task";
+            case PermissionAction::SendMessages: return "Send Messages";
+            case PermissionAction::ApproveTask: return "Approve Task";
+            case PermissionAction::RejectTask: return "Reject Task";
+            case PermissionAction::GenerateFeedback: return "Generate Feedback";
+            case PermissionAction::FullOverride: return "Full Override";
+            default: return "Unknown Action";
+        }
+    }
+
 private:
     AgentPermissionsSystem() {
         // Formal definition of RBAC Permissions mapping
         
-        rolePermissions["CEO"] = {
+        rolePermissions[AgentRole::CEO] = {
             PermissionAction::CreateGoal,
             PermissionAction::CreateProject,
             PermissionAction::CreateOrganization,
@@ -71,7 +122,7 @@ private:
             PermissionAction::SendMessages
         };
         
-        rolePermissions["Manager"] = {
+        rolePermissions[AgentRole::Manager] = {
             PermissionAction::CreateTask,
             PermissionAction::AssignTask,
             PermissionAction::ReprioritizeTask,
@@ -80,13 +131,13 @@ private:
             PermissionAction::SendMessages
         };
         
-        rolePermissions["Worker"] = {
+        rolePermissions[AgentRole::Worker] = {
             PermissionAction::ExecuteTask,
             PermissionAction::UpdateOwnTask,
             PermissionAction::SendMessages
         };
         
-        rolePermissions["Reviewer"] = {
+        rolePermissions[AgentRole::Reviewer] = {
             PermissionAction::ApproveTask,
             PermissionAction::RejectTask,
             PermissionAction::GenerateFeedback,
@@ -94,32 +145,7 @@ private:
         };
     }
 
-    PermissionAction stringToAction(const std::string& str) {
-        if (str == "Create Goal") return PermissionAction::CreateGoal;
-        if (str == "Create Project") return PermissionAction::CreateProject;
-        if (str == "Create Organization") return PermissionAction::CreateOrganization;
-        if (str == "Create Executive Meeting") return PermissionAction::CreateExecutiveMeeting;
-        if (str == "Approve Strategic Decisions") return PermissionAction::ApproveStrategicDecisions;
-        
-        if (str == "Create Task") return PermissionAction::CreateTask;
-        if (str == "Assign Task") return PermissionAction::AssignTask;
-        if (str == "Reprioritize Task") return PermissionAction::ReprioritizeTask;
-        if (str == "Escalate Blockers") return PermissionAction::EscalateBlockers;
-        if (str == "Create Meeting") return PermissionAction::CreateMeeting;
-        
-        if (str == "Execute Task") return PermissionAction::ExecuteTask;
-        if (str == "Update Own Task") return PermissionAction::UpdateOwnTask;
-        if (str == "Send Messages") return PermissionAction::SendMessages;
-        
-        if (str == "Approve Task") return PermissionAction::ApproveTask;
-        if (str == "Reject Task") return PermissionAction::RejectTask;
-        if (str == "Generate Feedback") return PermissionAction::GenerateFeedback;
-        
-        // Default to a highly restricted action if not found to deny by default
-        return static_cast<PermissionAction>(-1);
-    }
-
-    std::map<std::string, std::vector<PermissionAction>> rolePermissions;
+    std::map<AgentRole, std::vector<PermissionAction>> rolePermissions;
 };
 
 } // namespace AgentOS

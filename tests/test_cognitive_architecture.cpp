@@ -405,20 +405,25 @@ int main() {
         auto manager = std::make_shared<ManagerAgent>("TimManager", "Engineering", "Apple");
         auto ceo = std::make_shared<CEOAgent>("CookCEO", "Apple");
         
+        AgentIdentity workerId{"W_1", worker->getName(), AgentRole::Worker};
+        AgentIdentity managerId{"M_1", manager->getName(), AgentRole::Manager};
+        AgentIdentity ceoId{"C_1", ceo->getName(), AgentRole::CEO};
+        AgentIdentity reviewerId{"R_1", "QA", AgentRole::Reviewer};
+        
         // 1. Worker tenta criar Goal (Deve falhar)
-        bool workerCanCreateGoal = PermissionEngine::getInstance().canPerformAction(worker->getName(), "Worker", "Create Goal", "GOAL_MEM");
+        bool workerCanCreateGoal = PermissionEngine::getInstance().canPerformAction(workerId, PermissionAction::CreateGoal, "GOAL_MEM");
         CHECK(workerCanCreateGoal == false);
         
         // 2. Manager tenta escalar blocker (Deve passar)
-        bool managerCanEscalate = PermissionEngine::getInstance().canPerformAction(manager->getName(), "Manager", "Escalate Blockers", "TASK_X");
+        bool managerCanEscalate = PermissionEngine::getInstance().canPerformAction(managerId, PermissionAction::EscalateBlockers, "TASK_X");
         CHECK(managerCanEscalate == true);
         
         // 3. CEO tenta aprovar decisão estratégica (Deve passar)
-        bool ceoCanApprove = PermissionEngine::getInstance().canPerformAction(ceo->getName(), "CEO", "Approve Strategic Decisions", "GOAL_MEM");
+        bool ceoCanApprove = PermissionEngine::getInstance().canPerformAction(ceoId, PermissionAction::ApproveStrategicDecisions, "GOAL_MEM");
         CHECK(ceoCanApprove == true);
         
         // 4. Reviewer tenta criar Task (Deve falhar)
-        bool reviewerCanCreateTask = PermissionEngine::getInstance().canPerformAction("QA", "Reviewer", "Create Task", "TASK_Y");
+        bool reviewerCanCreateTask = PermissionEngine::getInstance().canPerformAction(reviewerId, PermissionAction::CreateTask, "TASK_Y");
         CHECK(reviewerCanCreateTask == false);
     }
 
@@ -457,31 +462,36 @@ int main() {
         auto manager = std::make_shared<ManagerAgent>("TimManager", "Engineering", "Apple");
         auto reviewer = std::make_shared<ReviewerAgent>("QABob", "QA", "Apple");
         
+        AgentIdentity workerId{"W_2", worker->getName(), AgentRole::Worker};
+        AgentIdentity managerId{"M_2", manager->getName(), AgentRole::Manager};
+        AgentIdentity reviewerId{"R_2", reviewer->getName(), AgentRole::Reviewer};
+        
         // 1. Worker tenta criar Goal (Sandbox Block)
         Goal hackGoal;
         hackGoal.id = "GOAL_HACK";
         hackGoal.name = "Worker trying to bypass system";
-        bool successWorkerGoal = OrganizationMemory::getInstance().registerGoal(hackGoal, worker->getName(), "Worker");
+        bool successWorkerGoal = OrganizationMemory::getInstance().registerGoal(hackGoal, workerId);
         CHECK(successWorkerGoal == false);
         
         // 2. Worker tenta criar Executive Meeting
         ExecutiveMeeting hackExecMeeting;
         hackExecMeeting.id = "EXEC_HACK";
-        bool successWorkerMeeting = OrganizationMemory::getInstance().recordExecutiveMeeting(hackExecMeeting, worker->getName(), "Worker");
+        bool successWorkerMeeting = OrganizationMemory::getInstance().recordExecutiveMeeting(hackExecMeeting, workerId);
         CHECK(successWorkerMeeting == false);
         
         // 3. Reviewer tenta alterar Organization Memory (applyConflictDecision)
-        bool successReviewerDecision = OrganizationMemory::getInstance().applyConflictDecision("GOAL_1", "HACK_OPTION", reviewer->getName(), "Reviewer");
+        bool successReviewerDecision = OrganizationMemory::getInstance().applyConflictDecision("GOAL_1", "HACK_OPTION", reviewerId);
         CHECK(successReviewerDecision == false);
         
         // 4. Manager tenta alterar Strategic Decisions
         DecisionRecord hackDecision;
         hackDecision.id = "DEC_HACK";
-        bool successManagerDecision = OrganizationMemory::getInstance().recordDecision(hackDecision, manager->getName(), "Manager");
+        bool successManagerDecision = OrganizationMemory::getInstance().recordDecision(hackDecision, managerId);
         CHECK(successManagerDecision == false);
         
         // 5. Manager tentando agir como CEO na PermissionEngine (Escalation restriction)
-        bool managerAsCEO = PermissionEngine::getInstance().canPerformAction(manager->getName(), "Manager", "Approve Strategic Decisions", "GOAL_MEM");
+        // With AgentIdentity, it evaluates strictly against the role parameter.
+        bool managerAsCEO = PermissionEngine::getInstance().canPerformAction(managerId, PermissionAction::ApproveStrategicDecisions, "GOAL_MEM");
         CHECK(managerAsCEO == false);
         
         // 6. Validar que na memória os itens não existem
@@ -496,6 +506,42 @@ int main() {
             if (d.id == "DEC_HACK") foundDecision = true;
         }
         CHECK(foundDecision == false);
+    }
+
+    // TEST 20: Runtime Sandbox & Human Override
+    {
+        TEST("Test 20: Runtime Sandbox & Human Override (Emergency Stop)");
+        
+        auto worker = std::make_shared<WorkerAgent>("SteveWorker", "Worker", "Engineering", "Apple");
+        AgentIdentity workerId{"W_3", worker->getName(), AgentRole::Worker};
+        AgentIdentity humanId{"H_1", "User", AgentRole::Human};
+        
+        // 1. Worker tenta executar comando malicioso na Sandbox de Runtime
+        bool shellBlocked = RuntimeSandbox::canExecuteSystemCommand(workerId, "rm -rf /usr/bin");
+        CHECK(shellBlocked == false);
+        
+        bool curlBlocked = RuntimeSandbox::canExecuteSystemCommand(workerId, "curl http://malicious.com");
+        CHECK(curlBlocked == false);
+        
+        // 2. Human tenta executar comando na Sandbox (Permitido)
+        bool humanAllowed = RuntimeSandbox::canExecuteSystemCommand(humanId, "rm -rf /tmp/cache");
+        CHECK(humanAllowed == true);
+        
+        // 3. Human Override (Emergency Stop)
+        PermissionEngine::getInstance().triggerEmergencyStop(humanId);
+        
+        // Worker tenta criar Task legitima sob Emergency Stop
+        bool workerTaskUnderEmergency = PermissionEngine::getInstance().canPerformAction(workerId, PermissionAction::UpdateOwnTask, "TASK_MEM");
+        CHECK(workerTaskUnderEmergency == false);
+        
+        // Human tenta realizar ação sob Emergency Stop
+        bool humanActionUnderEmergency = PermissionEngine::getInstance().canPerformAction(humanId, PermissionAction::FullOverride, "ANY_MEM");
+        CHECK(humanActionUnderEmergency == true);
+        
+        // 4. Human Disable Emergency Stop
+        PermissionEngine::getInstance().disableEmergencyStop(humanId);
+        bool workerTaskAfterEmergency = PermissionEngine::getInstance().canPerformAction(workerId, PermissionAction::UpdateOwnTask, "TASK_MEM");
+        CHECK(workerTaskAfterEmergency == true);
     }
 
     std::printf("\n=== Summary: %d passed, %d failed ===\n", passed, failed);
