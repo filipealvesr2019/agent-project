@@ -7,6 +7,7 @@
 #include "AgentEngine/Task.h"
 #include "OrganizationEngine/GoalSystem.h"
 #include "OrganizationEngine/MeetingEngine.h"
+#include "OrganizationEngine/ExecutiveCouncil.h"
 #include "MemoryEngine/AgentMemoryBase.h"
 
 namespace AgentOS {
@@ -120,12 +121,26 @@ public:
         return meetingList;
     }
 
+    void recordExecutiveMeeting(const ExecutiveMeeting& meeting) {
+        std::lock_guard<std::mutex> lock(mutex_);
+        executiveMeetings[meeting.id] = meeting;
+    }
+
+    ExecutiveMeeting getExecutiveMeeting(const std::string& meetingId) {
+        std::lock_guard<std::mutex> lock(mutex_);
+        if (executiveMeetings.find(meetingId) != executiveMeetings.end()) {
+            return executiveMeetings[meetingId];
+        }
+        return ExecutiveMeeting();
+    }
+
 private:
     OrganizationMemory() = default;
     
     std::map<std::string, Task> allTasks;
     std::map<std::string, Goal> goals;
     std::map<std::string, Meeting> meetings;
+    std::map<std::string, ExecutiveMeeting> executiveMeetings;
     std::map<std::string, std::vector<Message>> conversationThreads;
     std::map<std::string, std::vector<std::string>> teamAssignments;
     OrganizationMetrics metrics;

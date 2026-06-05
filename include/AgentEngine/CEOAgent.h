@@ -4,6 +4,7 @@
 
 #include "MemoryEngine/OrganizationMemory.h"
 #include "OrganizationEngine/MeetingEngine.h"
+#include "OrganizationEngine/ExecutiveCouncil.h"
 
 namespace AgentOS {
 
@@ -49,6 +50,35 @@ public:
         EventBus::getInstance().publish(Event(EventType::TaskAssigned, getName(), "ALL", "Convening Meeting: " + meeting.title));
         MeetingEngine::getInstance().conductMeeting(meeting);
         OrganizationMemory::getInstance().recordMeeting(meeting);
+    }
+
+    void conveneExecutiveMeeting(const std::string& goalId, const std::vector<CouncilMember>& council) {
+        ExecutiveMeeting meeting;
+        meeting.id = "EXEC_" + std::to_string(std::chrono::system_clock::now().time_since_epoch().count());
+        meeting.goalId = goalId;
+        meeting.title = "Executive Council: " + goalId;
+        meeting.participants = council;
+
+        // Gerar agenda automática baseada no Goal
+        auto goals = OrganizationMemory::getInstance().getGoals();
+        for (const auto& g : goals) {
+            if (g.id == goalId) {
+                for (const auto& proj : g.projects) {
+                    for (const auto& mile : proj.milestones) {
+                        AgendaItem item;
+                        item.topic = mile.title;
+                        item.owner = "Manager";
+                        item.status = mile.status;
+                        meeting.addAgendaItem(item);
+                    }
+                }
+            }
+        }
+
+        EventBus::getInstance().publish(Event(EventType::TaskAssigned, getName(), "ALL", "Convening Executive Meeting: " + meeting.title));
+        ExecutiveCouncilEngine::getInstance().conveneExecutiveMeeting(meeting);
+        ExecutiveCouncilEngine::getInstance().concludeExecutiveMeeting(meeting);
+        OrganizationMemory::getInstance().recordExecutiveMeeting(meeting);
     }
 
 private:
