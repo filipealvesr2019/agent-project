@@ -342,3 +342,141 @@ src/
 
 ---
 
+Perfeito! Vamos criar um **diagrama textual detalhado de fluxo de interação de agentes**, simulando a colaboração humana em tempo real, incluindo CEO, Managers, Workers e Reviewer. Ele vai mostrar os eventos na Timeline, quem faz o que, feedbacks e resolução de tarefas.
+
+---
+
+```text
++-------------------------------------------------------------+
+|                         PROMPT USER                         |
+| "Crie uma campanha de marketing para o produto X"          |
++-------------------------------------------------------------+
+              |
+              v
++-----------------------------+
+| CEO Agent                   |
+| Role: CEO                   |
+| Action: Analisa prompt      |
+| Event: "Analisando solicitação..." |
++-----------------------------+
+              |
+              v
++-----------------------------+
+| PlanningResult Generated    |
+| requiresOrganization = true |
+| WorkType = CREATE_PROJECT   |
+| Domain = MARKETING          |
+| Complexity = Medium         |
++-----------------------------+
+              |
+              v
++-----------------------------+
+| PlannerValidator            |
+| Checks confidence, roles,   |
+| and complexity              |
+| Event: "Planner validated successfully" |
++-----------------------------+
+              |
+              v
++-----------------------------+
+| OrganizationArchitect       |
+| Action: Monta squads        |
+| Event: "Organização criada: Marketing Campaign" |
++-----------------------------+
+              |
+              v
++-----------------------------+
+| Manager Agents              |
+| Role: Marketing Manager     |
+| Action: Divide tarefas      |
+| Event: "Marketing Manager assigned 'Design Logo'" |
++-----------------------------+
+              |
+              v
++-----------------------------+
+| Worker Agents               |
+| Role: Designer Agent        |
+| Action: Executa tarefa      |
+| Event: "Started 'Design Logo'" |
++-----------------------------+
+              |
+              v
++-----------------------------+
+| EventBus / Timeline         |
+| Updates Timeline in UI      |
+| [09:05] Designer Agent: Started 'Design Logo' |
++-----------------------------+
+              |
+              v
++-----------------------------+
+| Worker Agent                |
+| Action: Completa tarefa     |
+| Event: "Completed 'Design Logo'" |
++-----------------------------+
+              |
+              v
++-----------------------------+
+| Reviewer Agent              |
+| Action: Revê e comenta      |
+| Feedback: "Ajustar cores do logo" |
+| Event: "Reviewer completed review" |
++-----------------------------+
+              |
+              v
++-----------------------------+
+| Worker Agent                |
+| Action: Corrige e finaliza  |
+| Event: "Adjusted colors, task completed" |
++-----------------------------+
+              |
+              v
++-----------------------------+
+| Timeline UI Finalizado      |
+| Shows progress, comments,   |
+| timestamps, current tasks   |
++-----------------------------+
+```
+
+---
+
+💡 **Explicações do Fluxo:**
+
+1. **CEO Agent**:
+
+   * Recebe o prompt do usuário.
+   * Cria `PlanningResult` com todos os dados da organização.
+   * Não faz nenhuma execução real, apenas decide.
+
+2. **PlannerValidator**:
+
+   * Confirma que o LLM produziu roles válidos e complexidade adequada.
+   * Se confidence < 0.6, aciona fallback (HeuristicPlanner).
+
+3. **OrganizationArchitect**:
+
+   * Monta squads reais.
+   * Não interpreta o prompt, apenas consome o `PlanningResult`.
+
+4. **Managers**:
+
+   * Recebem as tarefas do CEO.
+   * Dividem em subtarefas para Workers.
+
+5. **Workers**:
+
+   * Executam tarefas e reportam progresso.
+   * Recebem feedback do Reviewer.
+
+6. **Reviewer**:
+
+   * Corrige, comenta e garante qualidade.
+   * Garante realismo na colaboração (como supervisão humana).
+
+7. **EventBus / Timeline**:
+
+   * Registra cada ação.
+   * Atualiza a interface em tempo real.
+   * Exibe status atual de cada tarefa.
+
+---
+
