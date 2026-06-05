@@ -5,6 +5,7 @@
 #include <vector>
 #include <mutex>
 #include "AgentEngine/Task.h"
+#include "OrganizationEngine/GoalSystem.h"
 #include "MemoryEngine/AgentMemoryBase.h"
 
 namespace AgentOS {
@@ -90,10 +91,25 @@ public:
         return metrics;
     }
 
+    std::vector<Goal> getGoals() {
+        std::lock_guard<std::mutex> lock(mutex_);
+        std::vector<Goal> goalList;
+        for (const auto& pair : goals) {
+            goalList.push_back(pair.second);
+        }
+        return goalList;
+    }
+
+    void registerGoal(const Goal& goal) {
+        std::lock_guard<std::mutex> lock(mutex_);
+        goals[goal.id] = goal;
+    }
+
 private:
     OrganizationMemory() = default;
     
     std::map<std::string, Task> allTasks;
+    std::map<std::string, Goal> goals;
     std::map<std::string, std::vector<Message>> conversationThreads;
     std::map<std::string, std::vector<std::string>> teamAssignments;
     OrganizationMetrics metrics;

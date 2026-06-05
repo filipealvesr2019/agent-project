@@ -196,6 +196,39 @@ int main() {
         CHECK(true);
     }
 
+    // TEST 12: Goal System
+    {
+        TEST("Test 12: Goal System Initialization");
+        Goal mainGoal;
+        mainGoal.id = "GOAL_1";
+        mainGoal.name = "Launch Video Editor AI";
+        
+        Project coreEngine;
+        coreEngine.id = "PROJ_1";
+        coreEngine.name = "Editor Core";
+        
+        Milestone timeline;
+        timeline.id = "MILE_1";
+        timeline.title = "Timeline System";
+        timeline.taskIds = {"TASK_TRACK", "TASK_LAYER"};
+        
+        coreEngine.milestones.push_back(timeline);
+        mainGoal.projects.push_back(coreEngine);
+        
+        OrganizationMemory::getInstance().registerGoal(mainGoal);
+        
+        auto goals = OrganizationMemory::getInstance().getGoals();
+        bool found = false;
+        for (const auto& g : goals) {
+            if (g.id == "GOAL_1") {
+                found = true;
+                CHECK(g.projects.size() == 1);
+                CHECK(g.projects[0].milestones.size() == 1);
+            }
+        }
+        CHECK(found == true);
+    }
+
     std::printf("\n=== Summary: %d passed, %d failed ===\n", passed, failed);
     return failed > 0 ? 1 : 0;
 }
