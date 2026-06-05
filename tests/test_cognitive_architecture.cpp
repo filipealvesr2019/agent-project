@@ -14,6 +14,7 @@
 #include "OrganizationEngine/ExecutiveCouncil.h"
 #include "OrganizationEngine/ConflictEngine.h"
 #include "OrganizationEngine/DecisionEngine.h"
+#include "ValidationEngine/ValidationEngine.h"
 #include "SecurityEngine/CommandSystem.h"
 #include "SecurityEngine/SecurityEngine.h"
 #include "MetricsEngine/MetricsEngine.h"
@@ -767,6 +768,48 @@ int main() {
             }
         }
         CHECK(foundOverrideLog == true);
+    }
+
+    // TEST 26: Data Validation
+    {
+        TEST("Test 26: Data Validation (Goal without ID)");
+        Goal corrupt;
+        corrupt.id = "";
+        corrupt.name = "Should Fail";
+        bool isValid = ValidationEngine::getInstance().validateData(corrupt);
+        CHECK(isValid == false);
+    }
+
+    // TEST 27: Metrics Validation
+    {
+        TEST("Test 27: Metrics Validation (Agent lies about progress)");
+        bool isValid = ValidationEngine::getInstance().validateMetrics(50.0, 80.0);
+        CHECK(isValid == false);
+    }
+
+    // TEST 28: Consistency Validation
+    {
+        TEST("Test 28: Consistency Validation (Completed but Rejected)");
+        Task t("Impossible Task", "Worker");
+        t.id = "T_FAIL";
+        t.completed = true;
+        t.status = "Rejected";
+        bool isValid = ValidationEngine::getInstance().validateConsistency(t);
+        CHECK(isValid == false);
+    }
+
+    // TEST 29: Report Validation
+    {
+        TEST("Test 29: Report Validation (Fabricated numbers)");
+        bool isValid = ValidationEngine::getInstance().validateReport(45, 90);
+        CHECK(isValid == false);
+    }
+
+    // TEST 30: Human Override Validation
+    {
+        TEST("Test 30: Human Override Validation (No reason given)");
+        bool isValid = ValidationEngine::getInstance().validateHumanOverride("no");
+        CHECK(isValid == false); // Will generate a WARNING in Audit Log
     }
 
     std::printf("\n=== Summary: %d passed, %d failed ===\n", passed, failed);
