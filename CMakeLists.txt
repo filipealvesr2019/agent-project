@@ -76,7 +76,7 @@ juce_add_gui_app(AgentOS
     VERSION 1.0.0
 )
 
-target_sources(AgentOS PRIVATE src/main.cpp src/ChangeManagement/ChangeManagement.cpp)
+target_sources(AgentOS PRIVATE src/main.cpp src/ChangeManagement/ChangeManagement.cpp src/Core/CEOPlanner.cpp)
 
 target_link_libraries(AgentOS PRIVATE 
     AgentOS_Icons

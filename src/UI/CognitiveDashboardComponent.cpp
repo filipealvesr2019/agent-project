@@ -5,73 +5,68 @@
 #include "WorkflowEngine/WorkflowEngine.h"
 #include "AgentEngine/Agent.h"
 #include "EventBus/EventBus.h"
+#include "Core/CEOPlanner.h"
+#include "Core/RoleLibrary.h"
 
 namespace AgentOS {
 
 // ==========================================
-// FASE 2 & 3: Organization Architect e Builder
+// FASE 4 & 6: Organization Architect e Organização Progressiva
 // ==========================================
 namespace {
 
-juce::String generateDynamicJSON(const juce::String& prompt) {
-    // Simulation of LLM JSON generation
-    juce::StringArray words;
-    words.addTokens(prompt.toLowerCase(), " .,!?", "\"");
-    juce::StringArray keywords;
-    juce::StringArray stopWords = {"um", "uma", "o", "a", "os", "as", "de", "do", "da", "para", "com", "que", "em", "no", "na", "fazer", "criar", "quero", "preciso"};
-    
-    for (auto w : words) {
-        if (w.length() > 3 && !stopWords.contains(w)) {
-            keywords.add(w);
-        }
-    }
-    
-    juce::String kw1 = keywords.size() > 0 ? keywords[0] : "Geral";
-    juce::String kw2 = keywords.size() > 1 ? keywords[1] : "Operacao";
-    
-    kw1 = kw1.substring(0, 1).toUpperCase() + kw1.substring(1);
-    kw2 = kw2.substring(0, 1).toUpperCase() + kw2.substring(1);
-
-    juce::DynamicObject::Ptr root = new juce::DynamicObject();
-    juce::String orgName = kw1 + " " + kw2 + " Team";
-    root->setProperty("organization_name", orgName);
-    
-    juce::Array<juce::var> ceos;
-    juce::DynamicObject::Ptr ceo1 = new juce::DynamicObject();
-    ceo1->setProperty("name", "CEO " + kw1);
-    ceos.add(juce::var(ceo1.get()));
-    root->setProperty("ceos", ceos);
-    
-    juce::Array<juce::var> depts;
-    
-    juce::DynamicObject::Ptr dept1 = new juce::DynamicObject();
-    dept1->setProperty("name", "Departamento de " + kw1);
-    dept1->setProperty("manager", "Gerente de " + kw1);
-    juce::Array<juce::var> ag1;
-    ag1.add("Especialista em " + kw1);
-    ag1.add("Assistente de " + kw1);
-    dept1->setProperty("agents", ag1);
-    depts.add(juce::var(dept1.get()));
-
-    juce::DynamicObject::Ptr dept2 = new juce::DynamicObject();
-    dept2->setProperty("name", "Departamento de " + kw2);
-    dept2->setProperty("manager", "Gerente de " + kw2);
-    juce::Array<juce::var> ag2;
-    ag2.add(kw2 + " Analyst");
-    ag2.add(kw2 + " Operador");
-    dept2->setProperty("agents", ag2);
-    depts.add(juce::var(dept2.get()));
-
-    root->setProperty("departments", depts);
-
-    return juce::JSON::toString(juce::var(root.get()));
-}
-
 class OrganizationArchitect {
 public:
-    static juce::String generateJSON(const juce::String& prompt) {
-        // Futuro: Chamada ao LocalRuntimeEngine (LLM)
-        return generateDynamicJSON(prompt);
+    static juce::String generateJSONFromPlan(const PlanningResult& plan) {
+        juce::DynamicObject::Ptr root = new juce::DynamicObject();
+        
+        juce::String orgName = "Operacao Customizada";
+        if (plan.domain == Domain::Software) orgName = "Software Studio";
+        else if (plan.domain == Domain::Marketing) orgName = "Agencia de Marketing";
+        else if (plan.domain == Domain::Research) orgName = "Instituto de Pesquisa";
+        else if (plan.domain == Domain::Data) orgName = "Data Intelligence Lab";
+        
+        root->setProperty("organization_name", orgName);
+        
+        juce::Array<juce::var> ceos;
+        juce::DynamicObject::Ptr ceo = new juce::DynamicObject();
+        
+        auto roles = RoleLibrary::getRoles(plan.domain, plan.complexity);
+        juce::String ceoRole = roles.size() > 0 ? roles[0] : "CEO";
+        ceo->setProperty("name", ceoRole);
+        ceos.add(juce::var(ceo.get()));
+        root->setProperty("ceos", ceos);
+
+        juce::Array<juce::var> depts;
+        
+        if (plan.type == WorkType::Task || plan.complexity == Complexity::Low) {
+            juce::DynamicObject::Ptr dept = new juce::DynamicObject();
+            dept->setProperty("name", "Execution Squad");
+            dept->setProperty("manager", roles.size() > 1 ? roles[1] : "Manager");
+            juce::Array<juce::var> agents;
+            for (int i = 2; i < roles.size(); ++i) {
+                agents.add(roles[i]);
+            }
+            if (agents.isEmpty()) agents.add("Agent");
+            dept->setProperty("agents", agents);
+            depts.add(juce::var(dept.get()));
+        } else {
+            for (int i = 1; i < roles.size(); ++i) {
+                juce::DynamicObject::Ptr dept = new juce::DynamicObject();
+                dept->setProperty("name", roles[i] + " Dept");
+                dept->setProperty("manager", roles[i]);
+                
+                juce::Array<juce::var> agents;
+                agents.add(roles[i] + " Agent 1");
+                if (plan.complexity == Complexity::High) agents.add(roles[i] + " Agent 2");
+                
+                dept->setProperty("agents", agents);
+                depts.add(juce::var(dept.get()));
+            }
+        }
+        
+        root->setProperty("departments", depts);
+        return juce::JSON::toString(juce::var(root.get()));
     }
 };
 
@@ -239,13 +234,30 @@ CognitiveDashboardComponent::CognitiveDashboardComponent() {
         juce::String prompt = promptInput_.getText();
         if (prompt.isEmpty()) return;
         
-        // Fase 2: Organization Architect cria JSON dinamico
-        juce::String jsonArchitecture = OrganizationArchitect::generateJSON(prompt);
+        // CEO Agent pensando...
+        AgentOS::EventBus::getInstance().publish(AgentOS::Event(AgentOS::EventType::TaskAssigned, "CEO Agent: Analisando solicitação..."));
         
-        // Fase 3: Builder constroi entidades no backend
+        AgentOS::PlanningResult plan = AgentOS::CEOPlanner::analyze(prompt);
+        
+        // Fase 6: Question Mode - não abre workspace, não cria org
+        if (plan.type == WorkType::Question) {
+            AgentOS::EventBus::getInstance().publish(AgentOS::Event(AgentOS::EventType::TaskAssigned, "CEO Agent: Pesquisando resposta direta..."));
+            promptInput_.setText("");
+            return;
+        }
+        
+        // CEO Agent decide
+        AgentOS::EventBus::getInstance().publish(AgentOS::Event(AgentOS::EventType::TaskAssigned, "CEO Agent: Domínio detectado: " + plan.getDomainStr().toStdString()));
+        AgentOS::EventBus::getInstance().publish(AgentOS::Event(AgentOS::EventType::TaskAssigned, "CEO Agent: Complexidade: " + plan.getComplexityStr().toStdString()));
+        AgentOS::EventBus::getInstance().publish(AgentOS::Event(AgentOS::EventType::TaskAssigned, "CEO Agent: Criando equipes..."));
+        
+        // Fase 4: Organization Architect cria JSON dinamico usando PlanningResult limpo
+        juce::String jsonArchitecture = OrganizationArchitect::generateJSONFromPlan(plan);
+        
+        // Fase 6: Progressive Setup happens inside Builder or UI
         juce::String projectName = OrganizationBuilder::buildFromJSON(jsonArchitecture, prompt);
 
-        // Fase 4: Redirect para Workspace
+        // Fase 4: Redirect para Workspace apenas para TASK e PROJECT
         if (onNavigateToWorkspace) {
             onNavigateToWorkspace(projectName, prompt);
         }
