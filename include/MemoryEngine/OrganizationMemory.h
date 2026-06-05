@@ -6,6 +6,7 @@
 #include <mutex>
 #include "AgentEngine/Task.h"
 #include "OrganizationEngine/GoalSystem.h"
+#include "OrganizationEngine/MeetingEngine.h"
 #include "MemoryEngine/AgentMemoryBase.h"
 
 namespace AgentOS {
@@ -105,11 +106,26 @@ public:
         goals[goal.id] = goal;
     }
 
+    void recordMeeting(const Meeting& meeting) {
+        std::lock_guard<std::mutex> lock(mutex_);
+        meetings[meeting.id] = meeting;
+    }
+
+    std::vector<Meeting> getMeetings() {
+        std::lock_guard<std::mutex> lock(mutex_);
+        std::vector<Meeting> meetingList;
+        for (const auto& pair : meetings) {
+            meetingList.push_back(pair.second);
+        }
+        return meetingList;
+    }
+
 private:
     OrganizationMemory() = default;
     
     std::map<std::string, Task> allTasks;
     std::map<std::string, Goal> goals;
+    std::map<std::string, Meeting> meetings;
     std::map<std::string, std::vector<Message>> conversationThreads;
     std::map<std::string, std::vector<std::string>> teamAssignments;
     OrganizationMetrics metrics;

@@ -229,6 +229,47 @@ int main() {
         CHECK(found == true);
     }
 
+    // TEST 13: Meeting Engine
+    {
+        TEST("Test 13: Meeting Engine (Executive Council)");
+        
+        auto ceo = std::make_shared<CEOAgent>("Steve", "Apple");
+        auto cto = std::make_shared<ManagerAgent>("Woz", "Tech", "Apple");
+        auto prodDirector = std::make_shared<ManagerAgent>("Jony", "Product", "Apple");
+        
+        // Define a Goal
+        Goal mainGoal;
+        mainGoal.id = "GOAL_OSX";
+        mainGoal.name = "Launch OSX";
+        
+        Project kernel;
+        kernel.name = "XNU Kernel";
+        Milestone m1;
+        m1.title = "Memory Manager";
+        m1.status = "Blocked";
+        kernel.milestones.push_back(m1);
+        mainGoal.projects.push_back(kernel);
+        
+        OrganizationMemory::getInstance().registerGoal(mainGoal);
+        
+        // CEO convenes meeting
+        std::vector<std::shared_ptr<Agent>> council = {ceo, cto, prodDirector};
+        ceo->conveneMeeting("GOAL_OSX", council);
+        
+        // Assert meeting was recorded
+        auto meetings = OrganizationMemory::getInstance().getMeetings();
+        bool found = false;
+        for (const auto& m : meetings) {
+            if (m.goalId == "GOAL_OSX") {
+                found = true;
+                CHECK(m.agenda.size() == 1);
+                CHECK(m.logs.size() > 0);
+                CHECK(m.participants.size() == 3);
+            }
+        }
+        CHECK(found == true);
+    }
+
     std::printf("\n=== Summary: %d passed, %d failed ===\n", passed, failed);
     return failed > 0 ? 1 : 0;
 }
