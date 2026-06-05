@@ -2,6 +2,7 @@
 #include <juce_gui_extra/juce_gui_extra.h>
 #include <string>
 #include "UI/DashboardProfiler.h"
+#include "UI/WorkspaceComponent.h"
 
 namespace AgentOS {
 
@@ -34,6 +35,7 @@ public:
     void addLogMessage(const juce::String& message);
     void showCreateAgentDialog();
     void refreshStatusBar();
+    void navigateToWorkspace(const juce::String& projectName);
 
 private:
     void handleMenuClick(int itemId);
@@ -49,6 +51,7 @@ private:
     std::unique_ptr<WorkflowEditorComponent> workflowEditor_;
     std::unique_ptr<MemoryVisualizationComponent> memoryVisualization_;
     std::unique_ptr<juce::Component> cognitiveDashboard_;
+    std::unique_ptr<WorkspaceComponent> workspace_;
 
     DashboardProfiler profiler_;
     

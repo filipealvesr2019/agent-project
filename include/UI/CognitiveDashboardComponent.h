@@ -18,6 +18,8 @@ public:
     void fileDragExit(const juce::StringArray& files) override;
     void filesDropped(const juce::StringArray& files, int x, int y) override;
 
+    std::function<void(const juce::String&)> onNavigateToWorkspace;
+
 private:
     DashboardProfiler profiler_;
     void updateCachedBackground();

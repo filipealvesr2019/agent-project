@@ -8,6 +8,7 @@
 #include "UI/WorkflowEditor/WorkflowEditorComponent.h"
 #include "UI/MemoryVisualization/MemoryVisualizationComponent.h"
 #include "UI/CognitiveDashboardFactory.h"
+#include "UI/CognitiveDashboardComponent.h"
 #include "UI/UI.h"
 #include "VisionEngine/VisionEngine.h"
 #include "ChangeManagement/ChangeManagement.h"
@@ -495,8 +496,15 @@ DashboardComponent::DashboardComponent() {
     memoryVisualization_ = std::make_unique<MemoryVisualizationComponent>();
     cognitiveDashboard_.reset(createCognitiveDashboard());
     
+    if (auto* cogDash = dynamic_cast<CognitiveDashboardComponent*>(cognitiveDashboard_.get())) {
+        cogDash->onNavigateToWorkspace = [this](const juce::String& projectName) {
+            this->navigateToWorkspace(projectName);
+        };
+    }
+    
     mockOrganizacoes_ = std::make_unique<MockOrganizationsPage>();
     mockChat_ = std::make_unique<MockChatPage>();
+    workspace_ = std::make_unique<WorkspaceComponent>();
     
 
     mainTabs_->addTab("Home", juce::Colour(0xFF050816), cognitiveDashboard_.get(), false);
@@ -504,6 +512,7 @@ DashboardComponent::DashboardComponent() {
     mainTabs_->addTab("Projetos", juce::Colour(0xFF050816), projectPanel_.get(), false);
     mainTabs_->addTab("Equipe", juce::Colour(0xFF050816), agentList_.get(), false);
     mainTabs_->addTab("Chat", juce::Colour(0xFF050816), mockChat_.get(), false);
+    mainTabs_->addTab("Workspace", juce::Colour(0xFF050816), workspace_.get(), false);
     mainTabs_->addTab("Configuracoes", juce::Colour(0xFF050816), systemMonitor_.get(), false);
     
     mainTabs_->setCurrentTabIndex(0);
@@ -520,7 +529,8 @@ DashboardComponent::DashboardComponent() {
         else if (name == "Projetos") mainTabs_->setCurrentTabIndex(2);
         else if (name == "Equipe") mainTabs_->setCurrentTabIndex(3);
         else if (name == "Chat") mainTabs_->setCurrentTabIndex(4);
-        else if (name == "Configuracoes") mainTabs_->setCurrentTabIndex(5);
+        else if (name == "Workspace") mainTabs_->setCurrentTabIndex(5);
+        else if (name == "Configuracoes") mainTabs_->setCurrentTabIndex(6);
         
         auto t2 = juce::Time::getHighResolutionTicks();
         auto ms = juce::Time::highResolutionTicksToSeconds(t2 - t1) * 1000.0;
@@ -736,6 +746,29 @@ void DashboardComponent::showSnapshotTimeline() {
 
 void DashboardComponent::refreshAgentList() {
     if (agentList_) agentList_->refresh();
+}
+
+void DashboardComponent::navigateToWorkspace(const juce::String& projectName) {
+    if (workspace_) {
+        workspace_->setProjectInfo(projectName, "Inicializando agentes...");
+    }
+    
+    // Find the Workspace tab index
+    int idx = -1;
+    for (int i = 0; i < mainTabs_->getNumTabs(); ++i) {
+        if (mainTabs_->getTabNames()[i] == "Workspace") {
+            idx = i;
+            break;
+        }
+    }
+    if (idx != -1) {
+        mainTabs_->setCurrentTabIndex(idx);
+    }
+    
+    // Select it in the sidebar
+    if (sidebar_) {
+        sidebar_->selectItem("Workspace");
+    }
 }
 
 } // namespace AgentOS

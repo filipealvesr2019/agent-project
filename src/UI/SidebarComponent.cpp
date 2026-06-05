@@ -119,6 +119,7 @@ SidebarComponent::SidebarComponent() {
         "Projetos",
         "Equipe",
         "Chat",
+        "Workspace",
         "Configuracoes"
     };
 

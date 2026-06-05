@@ -1,5 +1,10 @@
 #include "UI/CognitiveDashboardComponent.h"
 #include <BinaryData.h>
+#include "OrganizationEngine/OrganizationEngine.h"
+#include "ProjectManager/ProjectManager.h"
+#include "WorkflowEngine/WorkflowEngine.h"
+#include "AgentEngine/Agent.h"
+#include "EventBus/EventBus.h"
 
 namespace AgentOS {
 
@@ -113,6 +118,38 @@ CognitiveDashboardComponent::CognitiveDashboardComponent() {
                 repaint(inputFooterBounds_);
             }
         });
+    };
+
+    btnSubmit_.onClick = [this] {
+        juce::String prompt = promptInput_.getText();
+        if (prompt.isEmpty()) prompt = "Desenvolver uma Plataforma E-commerce completa";
+        
+        // 1. Integracao Real com o Backend
+        auto& orgEngine = AgentOS::OrganizationEngine::getInstance();
+        orgEngine.createOrganization("Alpha Systems", "Criado pelo Dashboard");
+        
+        AgentOS::Department frontendDept{"Frontend Team", {"Beatriz Souza"}, {"React Agent", "UI Agent"}};
+        AgentOS::Department backendDept{"Backend Team", {"Rafael Costa"}, {"API Agent", "Database Agent"}};
+        orgEngine.addDepartment("Alpha Systems", frontendDept);
+        orgEngine.addDepartment("Alpha Systems", backendDept);
+        
+        auto& projManager = AgentOS::ProjectManager::getInstance();
+        juce::String projectName = "Plataforma E-commerce";
+        projManager.createProject(projectName.toStdString(), "C:/AgentOS_Projects/ECommerce");
+        orgEngine.addProjectToOrganization("Alpha Systems", projectName.toStdString());
+        
+        auto& wfEngine = AgentOS::WorkflowEngine::getInstance();
+        int objId = wfEngine.createObjective(prompt.toStdString(), "Criar MVP em 45 dias", "CEO Agent", "Alpha Systems");
+        
+        wfEngine.createTask("Setup Frontend", "Configurar React, Vite, Tailwind", "Beatriz Souza", "CEO Agent", objId, 0, AgentOS::WorkflowPriority::High, "Alpha Systems", "Frontend Team");
+        wfEngine.createTask("Setup Backend", "Configurar Node.js, Express, Postgres", "Rafael Costa", "CEO Agent", objId, 0, AgentOS::WorkflowPriority::High, "Alpha Systems", "Backend Team");
+
+        // Disparar evento de projeto iniciado
+        AgentOS::EventBus::getInstance().publish(AgentOS::Event(AgentOS::EventType::TaskAssigned, "Projeto inicializado e tarefas delegadas pelo CEO Agent"));
+
+        if (onNavigateToWorkspace) {
+            onNavigateToWorkspace(projectName);
+        }
     };
 }
 

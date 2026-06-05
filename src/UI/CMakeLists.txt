@@ -1,4 +1,4 @@
-﻿# CMakeLists for UI
+# CMakeLists for UI
 add_library(UI STATIC
     UI.cpp
     DashboardComponent.cpp
@@ -10,7 +10,7 @@ add_library(UI STATIC
     ModelManagerDialog.cpp
     ProjectPanelComponent.cpp
     CognitiveDashboardComponent.cpp
-    SystemMonitorComponent.cpp
+    WorkspaceComponent.cpp
     WorkflowEditor/WorkflowEditorComponent.cpp
     MemoryVisualization/MemoryVisualizationComponent.cpp
 )
