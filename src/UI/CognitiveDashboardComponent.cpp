@@ -31,8 +31,7 @@ public:
         juce::Array<juce::var> ceos;
         juce::DynamicObject::Ptr ceo = new juce::DynamicObject();
         
-        auto roles = RoleLibrary::getRoles(plan.domain, plan.complexity);
-        juce::String ceoRole = roles.size() > 0 ? roles[0] : "CEO";
+        juce::String ceoRole = plan.roles.size() > 0 ? plan.roles[0].role : "CEO";
         ceo->setProperty("name", ceoRole);
         ceos.add(juce::var(ceo.get()));
         root->setProperty("ceos", ceos);
@@ -42,23 +41,22 @@ public:
         if (plan.type == WorkType::Task || plan.complexity == Complexity::Low) {
             juce::DynamicObject::Ptr dept = new juce::DynamicObject();
             dept->setProperty("name", "Execution Squad");
-            dept->setProperty("manager", roles.size() > 1 ? roles[1] : "Manager");
+            dept->setProperty("manager", plan.roles.size() > 1 ? plan.roles[1].role : "Manager");
             juce::Array<juce::var> agents;
-            for (int i = 2; i < roles.size(); ++i) {
-                agents.add(roles[i]);
+            for (size_t i = 2; i < plan.roles.size(); ++i) {
+                agents.add(plan.roles[i].role);
             }
             if (agents.isEmpty()) agents.add("Agent");
             dept->setProperty("agents", agents);
             depts.add(juce::var(dept.get()));
         } else {
-            for (int i = 1; i < roles.size(); ++i) {
+            for (size_t i = 1; i < plan.roles.size(); ++i) {
                 juce::DynamicObject::Ptr dept = new juce::DynamicObject();
-                dept->setProperty("name", roles[i] + " Dept");
-                dept->setProperty("manager", roles[i]);
+                dept->setProperty("name", plan.roles[i].department);
+                dept->setProperty("manager", plan.roles[i].manager);
                 
                 juce::Array<juce::var> agents;
-                agents.add(roles[i] + " Agent 1");
-                if (plan.complexity == Complexity::High) agents.add(roles[i] + " Agent 2");
+                agents.add(plan.roles[i].role);
                 
                 dept->setProperty("agents", agents);
                 depts.add(juce::var(dept.get()));
@@ -238,6 +236,13 @@ CognitiveDashboardComponent::CognitiveDashboardComponent() {
         AgentOS::EventBus::getInstance().publish(AgentOS::Event(AgentOS::EventType::TaskAssigned, "CEO Agent: Analisando solicitação..."));
         
         AgentOS::PlanningResult plan = AgentOS::CEOPlanner::analyze(prompt);
+        
+        // Exibe origem do plano e confiança
+        if (plan.source == AgentOS::PlannerSource::LLM) {
+            AgentOS::EventBus::getInstance().publish(AgentOS::Event(AgentOS::EventType::TaskAssigned, ("Planner: Llama 3.3\nConfidence: " + juce::String(plan.confidence, 2)).toStdString()));
+        } else {
+            AgentOS::EventBus::getInstance().publish(AgentOS::Event(AgentOS::EventType::TaskAssigned, "Planner: Fallback\nReason: " + plan.fallbackReason.toStdString()));
+        }
         
         // Fase 6: Question Mode - não abre workspace, não cria org
         if (plan.type == WorkType::Question) {

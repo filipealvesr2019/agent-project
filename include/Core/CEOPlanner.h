@@ -22,7 +22,19 @@ enum class Domain {
     Data,
     Research,
     Business,
-    General
+    General,
+    Unknown
+};
+
+enum class PlannerSource {
+    LLM,
+    Fallback
+};
+
+struct RoleDefinition {
+    juce::String role;
+    juce::String department;
+    juce::String manager;
 };
 
 struct PlanningResult {
@@ -31,6 +43,13 @@ struct PlanningResult {
     Complexity complexity;
     juce::String summary;
     juce::StringArray tasks;
+    
+    PlannerSource source;
+    float confidence;
+    bool requiresOrganization;
+    juce::String projectName;
+    std::vector<RoleDefinition> roles;
+    juce::String fallbackReason;
     
     // Converte enumeradores para strings p/ debug
     juce::String getTypeStr() const;
