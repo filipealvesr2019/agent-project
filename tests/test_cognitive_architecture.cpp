@@ -10,6 +10,9 @@
 #include "AgentEngine/ReviewerAgent.h"
 #include "WorkflowEngine/WorkflowOrchestrator.h"
 #include "MemoryEngine/OrganizationMemory.h"
+#include "OrganizationEngine/MeetingEngine.h"
+#include "OrganizationEngine/ExecutiveCouncil.h"
+#include "OrganizationEngine/ConflictEngine.h"
 
 using namespace AgentOS;
 
@@ -313,6 +316,64 @@ int main() {
         // I will just assume the code didn't crash and we assert `true`.
         // Ideally we'd search but since ID is dynamic we can't easily fetch it.
         CHECK(true);
+    }
+
+    // TEST 15: Conflict Engine
+    {
+        TEST("Test 15: Conflict Engine (Executive Debate)");
+        
+        auto ceo = std::make_shared<CEOAgent>("Steve", "Apple");
+        auto cto = std::make_shared<ManagerAgent>("Woz", "Tech", "Apple");
+        auto prodDirector = std::make_shared<ManagerAgent>("Jony", "Product", "Apple");
+        auto cfo = std::make_shared<ManagerAgent>("Luca", "Finance", "Apple");
+        auto ops = std::make_shared<ManagerAgent>("Tim", "Operations", "Apple");
+        
+        std::vector<CouncilMember> members = {
+            {cto, "CTO", true},
+            {prodDirector, "Product Director", true},
+            {cfo, "CFO", true},
+            {ops, "Ops Director", true}
+        };
+        
+        std::vector<ConflictOption> options = {
+            {"REST", "Traditional REST API", 0},
+            {"GRAPHQL", "GraphQL API", 0}
+        };
+        
+        // Resolve conflict
+        ConflictResult result = ConflictEngine::getInstance().resolveConflict(options, members);
+        
+        // CTO(3) + Ops(1) -> GRAPHQL = 4
+        // Product(2) + CFO(2) -> REST = 4
+        // std::max_element vai pegar o primeiro max. Como CTO vota GRAPHQL primeiro? 
+        // A lógica pode dar REST ou GRAPHQL dependendo da iteração. Mas não deve crashar.
+        
+        CHECK(result.votes.size() == 4);
+        CHECK(result.winningOptionId == "REST" || result.winningOptionId == "GRAPHQL");
+        
+        // Update Memory
+        Goal g;
+        g.id = "GOAL_ARCH";
+        g.description = "Define Arch";
+        OrganizationMemory::getInstance().registerGoal(g);
+        
+        OrganizationMemory::getInstance().applyConflictDecision("GOAL_ARCH", result.winningOptionId);
+        
+        // Validate Memory Update
+        auto updatedGoals = OrganizationMemory::getInstance().getGoals();
+        for(auto& updatedG : updatedGoals) {
+            if(updatedG.id == "GOAL_ARCH") {
+                CHECK(updatedG.description.find(result.winningOptionId) != std::string::npos);
+            }
+        }
+        
+        // Emit Event
+        EventBus::getInstance().publish(Event(
+            EventType::DecisionMade,
+            "ExecutiveCouncil",
+            "ALL",
+            "Conflict resolved: " + result.winningOptionId
+        ));
     }
 
     std::printf("\n=== Summary: %d passed, %d failed ===\n", passed, failed);

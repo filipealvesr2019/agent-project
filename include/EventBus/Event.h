@@ -9,7 +9,8 @@ enum class EventType {
     TaskCompleted,
     TaskFailed,
     ReviewRequested,
-    ReviewRejected
+    ReviewRejected,
+    DecisionMade
 };
 
 struct Event {

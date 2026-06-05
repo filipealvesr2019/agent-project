@@ -134,6 +134,14 @@ public:
         return ExecutiveMeeting();
     }
 
+    void applyConflictDecision(const std::string& goalId, const std::string& winningOptionId) {
+        std::lock_guard<std::mutex> lock(mutex_);
+        if (goals.find(goalId) != goals.end()) {
+            // Log decision in Goal description or add a new field
+            goals[goalId].description += "\n[Decision: " + winningOptionId + "]";
+        }
+    }
+
 private:
     OrganizationMemory() = default;
     
