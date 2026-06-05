@@ -13,6 +13,7 @@
 #include "OrganizationEngine/MeetingEngine.h"
 #include "OrganizationEngine/ExecutiveCouncil.h"
 #include "OrganizationEngine/ConflictEngine.h"
+#include "OrganizationEngine/DecisionEngine.h"
 #include "SecurityEngine/CommandSystem.h"
 #include "SecurityEngine/SecurityEngine.h"
 #include "MetricsEngine/MetricsEngine.h"
@@ -735,6 +736,37 @@ int main() {
         // The ones that are valid will pass sandbox, but many will fail.
         // We just ensure no crash happened and validation blocked when it should.
         CHECK(fuzzPasses > 1000); 
+    }
+
+    // TEST 25: Human Override (Decision Engine)
+    {
+        TEST("Test 25: Human Override in Decision Engine");
+        
+        AgentIdentity humanId = SystemIdentityProvider::createIdentity("H_1", "Alice_Human", AgentRole::Human);
+        
+        std::vector<std::pair<std::string,double>> scores = {
+            {"REST", 7.0},
+            {"GRAPHQL", 7.2}
+        };
+        
+        // Simulating the exact scenario provided by the user
+        auto record = DecisionEngine::getInstance().resolveDecision("DEC_101", scores, humanId, "REST", "Legacy compatibility");
+        
+        CHECK(record.humanOverride == true);
+        CHECK(record.winningOption == "REST");
+        CHECK(record.humanReason == "Legacy compatibility");
+        
+        // Check if AuditEngine logged it
+        auto logs = AuditEngine::getInstance().getLogs();
+        bool foundOverrideLog = false;
+        for (const auto& log : logs) {
+            if (log.action == "Resolve Decision" && log.target == "DEC_101") {
+                foundOverrideLog = true;
+                CHECK(log.agentName == "HUMAN_OVERRIDE");
+                CHECK(log.reason == "Legacy compatibility");
+            }
+        }
+        CHECK(foundOverrideLog == true);
     }
 
     std::printf("\n=== Summary: %d passed, %d failed ===\n", passed, failed);

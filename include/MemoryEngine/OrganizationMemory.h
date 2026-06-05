@@ -13,15 +13,7 @@
 
 namespace AgentOS {
 
-struct DecisionRecord {
-    std::string id;
-    std::string goalId;
-    std::string problem;
-    std::vector<std::string> participants;
-    std::string winningOption;
-    std::string justification;
-    // std::chrono::system_clock::time_point timestamp;
-};
+#include "OrganizationEngine/DecisionRecord.h"
 
 struct OrganizationMetrics {
     int completedTasks = 0;

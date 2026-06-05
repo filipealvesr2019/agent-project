@@ -4,6 +4,7 @@
 #include <mutex>
 #include "SecurityEngine/AgentPermissions.h"
 #include "SecurityEngine/CommandSystem.h"
+#include "OrganizationEngine/DecisionRecord.h"
 
 namespace AgentOS {
 
@@ -32,6 +33,19 @@ public:
         entry.target = target;
         entry.result = allowed ? "Allowed" : "Denied";
         entry.reason = reason;
+        
+        std::lock_guard<std::mutex> lock(mutex_);
+        logs.push_back(entry);
+    }
+    
+    void logDecision(const DecisionRecord& record) {
+        AuditLog entry;
+        entry.agentName = record.humanOverride ? "HUMAN_OVERRIDE" : "SYSTEM";
+        entry.agentRole = "DecisionEngine";
+        entry.action = "Resolve Decision";
+        entry.target = record.id;
+        entry.result = "Allowed";
+        entry.reason = record.humanOverride ? record.humanReason : record.justification;
         
         std::lock_guard<std::mutex> lock(mutex_);
         logs.push_back(entry);
