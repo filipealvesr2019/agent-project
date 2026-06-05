@@ -449,6 +449,55 @@ int main() {
         CHECK(foundManagerApproval == true);
     }
 
+    // TEST 19: Sandbox Security & Escalation Security
+    {
+        TEST("Test 19: Sandbox Security & Role Restrictions");
+        
+        auto worker = std::make_shared<WorkerAgent>("SteveWorker", "Worker", "Engineering", "Apple");
+        auto manager = std::make_shared<ManagerAgent>("TimManager", "Engineering", "Apple");
+        auto reviewer = std::make_shared<ReviewerAgent>("QABob", "QA", "Apple");
+        
+        // 1. Worker tenta criar Goal (Sandbox Block)
+        Goal hackGoal;
+        hackGoal.id = "GOAL_HACK";
+        hackGoal.name = "Worker trying to bypass system";
+        bool successWorkerGoal = OrganizationMemory::getInstance().registerGoal(hackGoal, worker->getName(), "Worker");
+        CHECK(successWorkerGoal == false);
+        
+        // 2. Worker tenta criar Executive Meeting
+        ExecutiveMeeting hackExecMeeting;
+        hackExecMeeting.id = "EXEC_HACK";
+        bool successWorkerMeeting = OrganizationMemory::getInstance().recordExecutiveMeeting(hackExecMeeting, worker->getName(), "Worker");
+        CHECK(successWorkerMeeting == false);
+        
+        // 3. Reviewer tenta alterar Organization Memory (applyConflictDecision)
+        bool successReviewerDecision = OrganizationMemory::getInstance().applyConflictDecision("GOAL_1", "HACK_OPTION", reviewer->getName(), "Reviewer");
+        CHECK(successReviewerDecision == false);
+        
+        // 4. Manager tenta alterar Strategic Decisions
+        DecisionRecord hackDecision;
+        hackDecision.id = "DEC_HACK";
+        bool successManagerDecision = OrganizationMemory::getInstance().recordDecision(hackDecision, manager->getName(), "Manager");
+        CHECK(successManagerDecision == false);
+        
+        // 5. Manager tentando agir como CEO na PermissionEngine (Escalation restriction)
+        bool managerAsCEO = PermissionEngine::getInstance().canPerformAction(manager->getName(), "Manager", "Approve Strategic Decisions", "GOAL_MEM");
+        CHECK(managerAsCEO == false);
+        
+        // 6. Validar que na memória os itens não existem
+        bool foundGoal = false;
+        for (const auto& g : OrganizationMemory::getInstance().getGoals()) {
+            if (g.id == "GOAL_HACK") foundGoal = true;
+        }
+        CHECK(foundGoal == false);
+        
+        bool foundDecision = false;
+        for (const auto& d : OrganizationMemory::getInstance().getDecisions()) {
+            if (d.id == "DEC_HACK") foundDecision = true;
+        }
+        CHECK(foundDecision == false);
+    }
+
     std::printf("\n=== Summary: %d passed, %d failed ===\n", passed, failed);
     return failed > 0 ? 1 : 0;
 }

@@ -9,6 +9,7 @@
 #include "OrganizationEngine/MeetingEngine.h"
 #include "OrganizationEngine/ExecutiveCouncil.h"
 #include "MemoryEngine/AgentMemoryBase.h"
+#include "SecurityEngine/SecurityEngine.h"
 
 namespace AgentOS {
 
@@ -38,12 +39,20 @@ public:
         return instance;
     }
 
-    void registerTask(const Task& task) {
+    bool registerTask(const Task& task, const std::string& agentName = "SYSTEM", const std::string& role = "Human") {
+        if (!PermissionEngine::getInstance().canPerformAction(agentName, role, "Create Task", "TASK_MEM")) return false;
         std::lock_guard<std::mutex> lock(mutex_);
         allTasks[task.id] = task;
+        return true;
     }
 
-    void updateTaskStatus(const std::string& taskId, const std::string& status) {
+    bool updateTaskStatus(const std::string& taskId, const std::string& status, const std::string& agentName = "SYSTEM", const std::string& role = "Human") {
+        std::string action = "Update Own Task";
+        if (status == "Approved" || status == "Needs Revision") action = "Approve Task"; // Simplified
+        if (status == "Blocked") action = "Escalate Blockers";
+        
+        if (!PermissionEngine::getInstance().canPerformAction(agentName, role, action, "TASK_MEM")) return false;
+
         std::lock_guard<std::mutex> lock(mutex_);
         if (allTasks.find(taskId) != allTasks.end()) {
             std::string oldStatus = allTasks[taskId].status;
@@ -61,6 +70,7 @@ public:
                 metrics.revisions++;
             }
         }
+        return true;
     }
 
     bool isTaskCompleted(const std::string& taskId) {
@@ -112,14 +122,20 @@ public:
         return goalList;
     }
 
-    void registerGoal(const Goal& goal) {
+    bool registerGoal(const Goal& goal, const std::string& agentName = "SYSTEM", const std::string& role = "Human") {
+        if (!PermissionEngine::getInstance().canPerformAction(agentName, role, "Create Goal", "GOAL_MEM")) {
+            return false;
+        }
         std::lock_guard<std::mutex> lock(mutex_);
         goals[goal.id] = goal;
+        return true;
     }
 
-    void recordMeeting(const Meeting& meeting) {
+    bool recordMeeting(const Meeting& meeting, const std::string& agentName = "SYSTEM", const std::string& role = "Human") {
+        if (!PermissionEngine::getInstance().canPerformAction(agentName, role, "Create Meeting", "MEETING_MEM")) return false;
         std::lock_guard<std::mutex> lock(mutex_);
         meetings[meeting.id] = meeting;
+        return true;
     }
 
     std::vector<Meeting> getMeetings() {
@@ -131,9 +147,11 @@ public:
         return meetingList;
     }
 
-    void recordExecutiveMeeting(const ExecutiveMeeting& meeting) {
+    bool recordExecutiveMeeting(const ExecutiveMeeting& meeting, const std::string& agentName = "SYSTEM", const std::string& role = "Human") {
+        if (!PermissionEngine::getInstance().canPerformAction(agentName, role, "Create Executive Meeting", "EXEC_MEETING_MEM")) return false;
         std::lock_guard<std::mutex> lock(mutex_);
         executiveMeetings[meeting.id] = meeting;
+        return true;
     }
 
     ExecutiveMeeting getExecutiveMeeting(const std::string& meetingId) {
@@ -144,17 +162,20 @@ public:
         return ExecutiveMeeting();
     }
 
-    void applyConflictDecision(const std::string& goalId, const std::string& winningOptionId) {
+    bool applyConflictDecision(const std::string& goalId, const std::string& winningOptionId, const std::string& agentName = "SYSTEM", const std::string& role = "Human") {
+        if (!PermissionEngine::getInstance().canPerformAction(agentName, role, "Approve Strategic Decisions", "GOAL_MEM")) return false;
         std::lock_guard<std::mutex> lock(mutex_);
         if (goals.find(goalId) != goals.end()) {
-            // Log decision in Goal description or add a new field
             goals[goalId].description += "\n[Decision: " + winningOptionId + "]";
         }
+        return true;
     }
 
-    void recordDecision(const DecisionRecord& decision) {
+    bool recordDecision(const DecisionRecord& decision, const std::string& agentName = "SYSTEM", const std::string& role = "Human") {
+        if (!PermissionEngine::getInstance().canPerformAction(agentName, role, "Approve Strategic Decisions", "DECISION_MEM")) return false;
         std::lock_guard<std::mutex> lock(mutex_);
         decisions.push_back(decision);
+        return true;
     }
 
     std::vector<DecisionRecord> getDecisions() {

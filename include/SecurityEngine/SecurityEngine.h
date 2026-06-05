@@ -2,6 +2,7 @@
 #include <string>
 #include <vector>
 #include <mutex>
+#include "SecurityEngine/AgentPermissions.h"
 
 namespace AgentOS {
 
@@ -57,27 +58,8 @@ public:
         bool allowed = false;
         std::string reason = "Insufficient Permission";
         
-        // Define role logic explicitly
-        // If agent role is Manager but acts as CEO, denied
-        if (role == "CEO") {
-            if (action == "Create Goal" || action == "Create Project" || action == "Create Organization" || action == "Create Executive Meeting" || action == "Approve Strategic Decisions") {
-                allowed = true;
-            }
-        } else if (role == "Manager") {
-            if (action == "Create Task" || action == "Assign Task" || action == "Reprioritize Task" || action == "Escalate Blockers") {
-                allowed = true;
-            }
-        } else if (role == "Worker") {
-            if (action == "Execute Task" || action == "Update Own Task" || action == "Send Messages") {
-                allowed = true;
-            }
-        } else if (role == "Reviewer") {
-            if (action == "Approve Task" || action == "Reject Task" || action == "Generate Feedback" || action == "Send Messages") {
-                allowed = true;
-            }
-        } else if (role == "Human") {
-            allowed = true; // Full override
-        }
+        // 1. Agent Permissions System explicit check
+        allowed = AgentPermissionsSystem::getInstance().hasPermission(role, action);
         
         if (allowed) reason = "Action permitted by role";
         
