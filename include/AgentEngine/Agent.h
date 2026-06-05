@@ -3,8 +3,10 @@
 #include <string>
 #include <vector>
 #include <memory>
+#include "EventBus/EventBus.h"
 #include "EventBus/Event.h"
 #include "AgentEngine/Task.h"
+#include "MemoryEngine/AgentMemoryBase.h"
 
 namespace AgentOS {
 
@@ -53,6 +55,29 @@ public:
     virtual void executeTask(Task& task) { (void)task; }
     virtual void reportProgress(Task& task) { (void)task; }
     virtual void receiveFeedback(const std::string& feedback, Task& task) { (void)feedback; (void)task; }
+    
+    // Communication & Memory System
+    AgentMemoryBase memory;
+    
+    virtual void sendMessage(Agent& recipient, const std::string& content, const std::string& taskId = "") {
+        Message msg{ getName(), recipient.getName(), taskId, content, std::chrono::system_clock::now() };
+        memory.storeMessage(msg);
+        
+        // Dispara para o barramento UI e também chama o callback direto
+        EventBus::getInstance().publish(Event(EventType::TaskAssigned, getName(), recipient.getName(), "Message: " + content));
+        recipient.receiveMessage(msg, *this);
+    }
+    
+    virtual void receiveMessage(const Message& msg, Agent& sender) {
+        (void)sender;
+        memory.storeMessage(msg);
+        processIncomingMessage(msg);
+    }
+    
+    virtual void processIncomingMessage(const Message& msg) {
+        // Classes derivadas decidem como reagir
+        (void)msg;
+    }
 
 private:
     std::string name_;

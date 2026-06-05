@@ -878,3 +878,272 @@ private:
 
 ---
 
+testes de validação da execução
+
+Exatamente! 💡 Para um sistema complexo como o que você está construindo, **uma bateria de testes é essencial**. Isso garante que a orquestração, a criação das organizações, CEOs, gerentes, times e revisores funcione como esperado antes de rodar a UI ou criar empresas reais.
+
+Aqui está como você pode estruturar essa bateria de testes:
+
+---
+
+## 1. Testes Unitários
+
+Testam cada classe isoladamente:
+
+* **CEOAgent**:
+
+  * Cria corretamente tarefas com descrição e atribuição.
+  * Notifica o `EventBus`.
+* **ManagerAgent**:
+
+  * Recebe macro-tarefa e cria subtarefas corretas.
+  * Distribui para os `WorkerAgents`.
+* **WorkerAgent**:
+
+  * Executa task, atualiza status e envia progresso.
+  * Recebe feedback e atualiza status (`Needs Revision` / `Approved`).
+* **ReviewerAgent**:
+
+  * Aprova ou rejeita tarefas corretamente.
+  * Emite feedback consistente para os Workers.
+
+**Exemplo de teste unitário em C++ com Catch2:**
+
+```cpp
+TEST_CASE("Worker recebe feedback corretamente") {
+    WorkerAgent worker("Frontend Worker");
+    Task task("Implementar Login", "Frontend Worker");
+
+    ReviewerAgent reviewer("QA Reviewer");
+    reviewer.reviewTask(task, worker, false, "Corrigir função de validação");
+
+    REQUIRE(task.status == "Needs Revision");
+    REQUIRE(task.comments.size() == 1);
+    REQUIRE(task.comments[0] == "Corrigir função de validação");
+}
+```
+
+---
+
+## 2. Testes de Integração
+
+Testam o fluxo completo entre agentes e orquestrador:
+
+* Criar **PlanningResult** de teste com CEO, Managers e Workers.
+* Passar para o **WorkflowOrchestrator**.
+* Verificar se:
+
+  * CEOs criam tarefas.
+  * Managers distribuem subtarefas.
+  * Workers executam e recebem feedback.
+  * Reviewer revisa e corrige se necessário.
+* Conferir que o **EventBus** registra todos os eventos na Timeline.
+
+---
+
+## 3. Testes de Stress e Simulação Humana
+
+* Simular múltiplas organizações ao mesmo tempo.
+* Adicionar delays e conflitos simulados.
+* Verificar que a UI não congela e que todos os eventos são processados.
+* Medir tempo médio de execução do fluxo completo.
+
+---
+
+## 4. Testes de Alucinação e Validação LLM
+
+* Forçar JSON incompleto ou inesperado do LLM.
+* Verificar se o **PlannerValidator** corrige ou aciona o **Fallback**.
+* Garantir que `RoleTemplates` sanitizam todos os cargos.
+
+---
+
+## 5. Monitoramento e Logs
+
+* Criar um **log de eventos de teste**, onde cada agente registra ações.
+* Comparar logs com um **esperado** (baseline).
+* Exemplo:
+
+```
+CEO: Criou tarefa "Planejar Landing Page"
+Manager: Distribuiu subtarefas para 3 Workers
+Worker1: Executando tarefa "Criar wireframe"
+Reviewer: Rejeitou tarefa "Wireframe inicial", Worker1 revisando
+```
+
+---
+
+Se quiser, posso **montar um plano completo de testes**, com:
+
+* Estrutura de pastas de teste (`tests/Agents`, `tests/Workflow`...)
+* Exemplo de scripts de teste automatizado em C++
+* Casos de teste para conflitos, bloqueios e interações complexas
+
+Perfeito! Vou montar um **plano completo de testes** para o AgentOS, cobrindo unidades, integração, fluxo de agentes, validação de LLM, stress tests e monitoramento. Aqui vai o detalhamento:
+
+---
+
+# Plano Completo de Testes – AgentOS
+
+## 1. Estrutura de Pastas de Teste
+
+Organize seus testes desta forma para manter tudo modular e legível:
+
+```
+tests/
+ ├─ Agents/
+ │   ├─ CEOAgentTests.cpp
+ │   ├─ ManagerAgentTests.cpp
+ │   ├─ WorkerAgentTests.cpp
+ │   └─ ReviewerAgentTests.cpp
+ ├─ Workflow/
+ │   ├─ WorkflowOrchestratorTests.cpp
+ │   ├─ EventBusTests.cpp
+ │   └─ TaskFlowTests.cpp
+ ├─ LLM/
+ │   ├─ LlamaPlannerModelTests.cpp
+ │   └─ PlannerValidatorTests.cpp
+ └─ Integration/
+     ├─ FullOrganizationFlowTests.cpp
+     └─ MultiOrgStressTests.cpp
+```
+
+---
+
+## 2. Testes Unitários
+
+### 2.1 Agentes
+
+* **CEOAgent**
+
+  * Criação de tarefas com descrição correta.
+  * Notificação no EventBus.
+  * Atribuição correta de Managers.
+
+* **ManagerAgent**
+
+  * Recebe macro-tarefa e divide corretamente em subtarefas.
+  * Distribui para Workers.
+  * Atualiza status das tarefas corretamente.
+
+* **WorkerAgent**
+
+  * Executa tarefas e atualiza status.
+  * Recebe feedback do Reviewer e altera status para `Needs Revision`.
+
+* **ReviewerAgent**
+
+  * Aprova ou rejeita tarefas com probabilidade simulada.
+  * Envia feedback correto para o Worker.
+
+Exemplo em Catch2:
+
+```cpp
+TEST_CASE("Manager distribui subtarefas corretamente") {
+    ManagerAgent manager("Marketing Manager");
+    WorkerAgent worker("Designer");
+    Task task("Criar Banner", "Marketing Manager");
+    
+    manager.distributeTask(task, &worker);
+    
+    REQUIRE(worker.tasks.size() == 1);
+    REQUIRE(worker.tasks[0].description == "Criar Banner");
+}
+```
+
+---
+
+## 3. Testes de Integração
+
+### 3.1 Fluxo Completo de Organização
+
+* Criar um **PlanningResult** com CEO, Managers, Workers e Reviewers.
+* Passar para o **WorkflowOrchestrator**.
+* Validar:
+
+  * Tarefas criadas pelo CEO.
+  * Subtarefas distribuídas pelo Manager.
+  * Workers reportam progresso corretamente.
+  * Reviewers interagem e forçam revisões.
+  * EventBus propaga todos os eventos corretamente.
+
+### 3.2 JSON e Validação de LLM
+
+* Forçar respostas incompletas ou inválidas do LLM.
+* Validar se **PlannerValidator** corrige ou aciona fallback.
+* Conferir se RoleTemplates padronizam cargos.
+
+---
+
+## 4. Testes de Stress
+
+* Criar múltiplas organizações simultaneamente.
+* Instanciar dezenas de agentes e tarefas.
+* Simular conflitos e bloqueios:
+
+  * Dois Workers tentando alterar a mesma Task.
+  * Reviewer rejeitando repetidamente.
+* Conferir:
+
+  * UI não congela.
+  * Threads paralelas funcionam sem deadlocks.
+  * Timeline reflete todas as interações em tempo real.
+
+---
+
+## 5. Testes de Simulação Humana
+
+* Inserir **delays intencionais**:
+
+  * CEO pensando antes de criar a tarefa.
+  * Workers executando tarefas com tempo variável.
+  * Reviewer com chance de rejeitar (ex.: 30%).
+* Validar que o **WorkflowOrchestrator** mantém coerência e não perde eventos.
+* Conferir logs para ver se o ciclo completo é registrado:
+
+```
+CEO: Criou tarefa "Planejar Landing Page"
+Manager: Distribuiu subtarefas
+Worker1: Trabalhando em "Wireframe"
+Reviewer: Rejeitou "Wireframe", Worker1 refaz
+Worker1: Refazendo tarefa...
+```
+
+---
+
+## 6. Testes Multilingue e Inteligência
+
+* Validar prompts em português e inglês:
+
+  * `"Crie uma campanha de marketing"` → cria organização.
+  * `"Build a SaaS MVP"` → cria organização.
+  * `"Who created Blender?"` → não cria organização, apenas resposta.
+* Validar fallback de LLM caso JSON esteja errado.
+* Validar se RoleTemplates sempre retorna cargos válidos.
+
+---
+
+## 7. Automação
+
+* Usar **Catch2**, **GoogleTest** ou **Boost.Test** para C++.
+* Criar **scripts CMake** para rodar todos os testes.
+* Integrar com **CI/CD** (GitHub Actions, GitLab CI) para rodar testes em cada commit.
+* Coletar **coverage** para verificar se todos fluxos (CEO → Manager → Worker → Reviewer) foram testados.
+
+---
+
+## 8. Logs e Monitoramento
+
+* Registrar eventos do EventBus em arquivo de log.
+* Validar sequência de tarefas com **baseline esperada**.
+* Detectar bloqueios ou deadlocks:
+
+  * Tarefas travadas por conflito de Worker/Reviewer.
+  * Orquestrador parado.
+
+---
+
+💡 **Benefício**: Com esse plano, você consegue **testar tudo antes de rodar a UI** e ter confiança total que a orquestração da organização, os agentes, a timeline e os feedbacks estão funcionando como se fossem humanos.
+
+---
+
