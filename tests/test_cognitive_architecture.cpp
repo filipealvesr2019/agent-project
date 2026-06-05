@@ -15,6 +15,7 @@
 #include "OrganizationEngine/ConflictEngine.h"
 #include "OrganizationEngine/DecisionEngine.h"
 #include "ValidationEngine/ValidationEngine.h"
+#include "LearningEngine/LearningEngine.h"
 #include "SecurityEngine/CommandSystem.h"
 #include "SecurityEngine/SecurityEngine.h"
 #include "MetricsEngine/MetricsEngine.h"
@@ -810,6 +811,28 @@ int main() {
         TEST("Test 30: Human Override Validation (No reason given)");
         bool isValid = ValidationEngine::getInstance().validateHumanOverride("no");
         CHECK(isValid == false); // Will generate a WARNING in Audit Log
+    }
+
+    // TEST 31: Learning Engine Updates
+    {
+        TEST("Test 31: Learning Engine Updates (Human Override Penalty)");
+        
+        LearningInput input;
+        input.decision.id = "DEC_TEST_101";
+        input.decision.participants.push_back("CTO_1");
+        input.decision.participants.push_back("H_1"); // human
+        input.decision.humanOverride = true; // Human vetoed
+        
+        input.validation.passed = true; // Data was technically valid, but strategically overridden
+        
+        std::vector<LearningInput> inputs = {input};
+        LearningEngine::getInstance().processLearningCycle(inputs);
+        
+        auto profile = LearningEngine::getInstance().getProfile("CTO_1");
+        
+        CHECK(profile.overrideAdjustment > 0.0);
+        CHECK(profile.reliabilityScore < 1.0); // Got penalized by human override
+        CHECK(profile.decisionWeight < 1.0);
     }
 
     std::printf("\n=== Summary: %d passed, %d failed ===\n", passed, failed);
