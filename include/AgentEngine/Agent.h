@@ -4,6 +4,7 @@
 #include <vector>
 #include <memory>
 #include "EventBus/Event.h"
+#include "AgentEngine/Task.h"
 
 namespace AgentOS {
 
@@ -45,7 +46,13 @@ public:
     void setTeam(const std::string& team);
 
     // Lógica (será expandida)
-    void update();
+    virtual void update();
+    
+    // Collaborative Pipeline Virtuals
+    std::vector<Task> tasks;
+    virtual void executeTask(Task& task) { (void)task; }
+    virtual void reportProgress(Task& task) { (void)task; }
+    virtual void receiveFeedback(const std::string& feedback, Task& task) { (void)feedback; (void)task; }
 
 private:
     std::string name_;
