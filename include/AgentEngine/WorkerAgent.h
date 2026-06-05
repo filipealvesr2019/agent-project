@@ -2,6 +2,8 @@
 #include "AgentEngine/Agent.h"
 #include "EventBus/EventBus.h"
 
+#include "MemoryEngine/OrganizationMemory.h"
+
 namespace AgentOS {
 
 class WorkerAgent : public Agent {
@@ -12,6 +14,7 @@ public:
         // Simulates work being done
         task.completed = true;
         task.status = "Completed";
+        OrganizationMemory::getInstance().updateTaskStatus(task.id, "Completed");
         EventBus::getInstance().publish(Event(EventType::TaskCompleted, getName(), "", "Completed task: " + task.description));
     }
 

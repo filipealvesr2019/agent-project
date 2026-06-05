@@ -2,6 +2,8 @@
 #include "AgentEngine/Agent.h"
 #include "EventBus/EventBus.h"
 
+#include "MemoryEngine/OrganizationMemory.h"
+
 namespace AgentOS {
 
 class ManagerAgent : public Agent {
@@ -13,6 +15,8 @@ public:
         t.id = parentTask.id + "_SUB_" + std::to_string(++subTaskCounter_);
         t.description = subDescription;
         t.assignedTo = worker.getName();
+        
+        OrganizationMemory::getInstance().registerTask(t);
         
         worker.tasks.push_back(t);
         EventBus::getInstance().publish(Event(EventType::TaskAssigned, getName(), worker.getName(), "Assigned subtask: " + subDescription));

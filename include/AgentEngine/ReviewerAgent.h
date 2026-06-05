@@ -2,6 +2,8 @@
 #include "AgentEngine/Agent.h"
 #include "EventBus/EventBus.h"
 
+#include "MemoryEngine/OrganizationMemory.h"
+
 namespace AgentOS {
 
 class ReviewerAgent : public Agent {
@@ -11,6 +13,8 @@ public:
     void reviewTask(Task& task, Agent& worker, bool approved, const std::string& feedback = "") {
         if (approved) {
             task.status = "Approved";
+            task.completed = true;
+            OrganizationMemory::getInstance().updateTaskStatus(task.id, "Approved");
             EventBus::getInstance().publish(Event(EventType::TaskCompleted, getName(), worker.getName(), "Approved task: " + task.description));
         } else {
             EventBus::getInstance().publish(Event(EventType::TaskFailed, getName(), worker.getName(), "Reviewed task '" + task.description + "' -> Feedback: " + feedback));

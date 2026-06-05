@@ -11,6 +11,7 @@
 #include "AgentEngine/ManagerAgent.h"
 #include "AgentEngine/WorkerAgent.h"
 #include "AgentEngine/ReviewerAgent.h"
+#include "MemoryEngine/OrganizationMemory.h"
 
 namespace AgentOS {
 
@@ -76,21 +77,48 @@ private:
             
             // Manager breaks it down
             const auto& ceoTask = managers_.front()->tasks.back();
+            std::string previousTaskId = "";
             for (auto& worker : workers_) {
                 managers_.front()->distributeTask(ceoTask, *worker, "Specific subtask for " + worker->getName());
+                if (!previousTaskId.empty()) {
+                    // Inject dependency to demonstrate Blockers
+                    worker->tasks.back().dependencies.push_back(previousTaskId);
+                }
+                previousTaskId = worker->tasks.back().id;
                 humanDelay(400);
             }
             
-            // Workers execute
-            for (auto& worker : workers_) {
+            // Phase 4: Blockers & Conflict Management
+            // Try to execute workers in reverse order to trigger the blocker deliberately
+            for (auto it = workers_.rbegin(); it != workers_.rend(); ++it) {
+                auto& worker = *it;
                 for (auto& task : worker->tasks) {
+                    // Check Blockers
+                    bool isBlocked = false;
+                    for (const auto& dep : task.dependencies) {
+                        if (!OrganizationMemory::getInstance().isTaskCompleted(dep)) {
+                            isBlocked = true;
+                            task.status = "Blocked";
+                            OrganizationMemory::getInstance().updateTaskStatus(task.id, "Blocked");
+                            
+                            // Send message about blocker
+                            worker->sendMessage(*managers_.front(), "I am BLOCKED on task " + task.id + " waiting for dependency: " + dep);
+                            humanDelay(1500);
+                        }
+                    }
+                    
+                    if (isBlocked) {
+                        // Skip execution for now, simulating conflict/wait
+                        continue; 
+                    }
+                    
+                    // Normal Execution
                     worker->reportProgress(task);
                     humanDelay(1200); // Worker is working...
                     worker->executeTask(task);
                     
                     humanDelay(600);
-                    // Reviewer steps in
-                    // Simulate random chance of needing revision
+                    // Phase 6: Human Simulation (Reviewer steps in)
                     bool approved = (rand() % 100) > 30; // 70% approval rate
                     
                     if (!approved) {
@@ -102,6 +130,19 @@ private:
                         reviewer->reviewTask(task, *worker, true, "Looks good now.");
                     } else {
                         reviewer->reviewTask(task, *worker, true);
+                    }
+                }
+            }
+            
+            // To prevent hanging tasks in our simulation, let's run a second pass forward to clear the blocked ones
+            for (auto& worker : workers_) {
+                for (auto& task : worker->tasks) {
+                    if (task.status == "Blocked") {
+                        worker->sendMessage(*managers_.front(), "Dependency resolved! Resuming task " + task.id);
+                        worker->reportProgress(task);
+                        humanDelay(1000);
+                        worker->executeTask(task);
+                        reviewer->reviewTask(task, *worker, true); // Auto-approve for second pass simplicity
                     }
                 }
             }
