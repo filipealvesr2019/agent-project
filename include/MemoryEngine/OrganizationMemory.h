@@ -12,6 +12,16 @@
 
 namespace AgentOS {
 
+struct DecisionRecord {
+    std::string id;
+    std::string goalId;
+    std::string problem;
+    std::vector<std::string> participants;
+    std::string winningOption;
+    std::string justification;
+    // std::chrono::system_clock::time_point timestamp;
+};
+
 struct OrganizationMetrics {
     int completedTasks = 0;
     int blockedTasks = 0;
@@ -142,6 +152,16 @@ public:
         }
     }
 
+    void recordDecision(const DecisionRecord& decision) {
+        std::lock_guard<std::mutex> lock(mutex_);
+        decisions.push_back(decision);
+    }
+
+    std::vector<DecisionRecord> getDecisions() {
+        std::lock_guard<std::mutex> lock(mutex_);
+        return decisions;
+    }
+
 private:
     OrganizationMemory() = default;
     
@@ -149,6 +169,7 @@ private:
     std::map<std::string, Goal> goals;
     std::map<std::string, Meeting> meetings;
     std::map<std::string, ExecutiveMeeting> executiveMeetings;
+    std::vector<DecisionRecord> decisions;
     std::map<std::string, std::vector<Message>> conversationThreads;
     std::map<std::string, std::vector<std::string>> teamAssignments;
     OrganizationMetrics metrics;

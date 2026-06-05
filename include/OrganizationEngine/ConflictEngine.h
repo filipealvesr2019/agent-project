@@ -3,8 +3,10 @@
 #include <string>
 #include <vector>
 #include <algorithm>
+#include <chrono>
 #include "OrganizationEngine/ExecutiveCouncil.h"
 #include "EventBus/EventBus.h"
+#include "MemoryEngine/OrganizationMemory.h"
 
 namespace AgentOS {
 
@@ -62,6 +64,18 @@ public:
         
         result.winningOptionId = winnerIt->id;
         result.justification = "Option " + result.winningOptionId + " won with score " + std::to_string(winnerIt->supportScore) + ".";
+        
+        // Phase 9.5: Decision Tracking
+        DecisionRecord record;
+        record.id = "DEC_" + std::to_string(std::chrono::system_clock::now().time_since_epoch().count());
+        record.problem = "Conflict resolution";
+        for (const auto& v : result.votes) {
+            record.participants.push_back(v.memberName + " (" + std::to_string(v.weight) + ")");
+        }
+        record.winningOption = result.winningOptionId;
+        record.justification = result.justification;
+        
+        OrganizationMemory::getInstance().recordDecision(record);
         
         return result;
     }

@@ -376,6 +376,26 @@ int main() {
         ));
     }
 
+    // TEST 16: Decision Tracking
+    {
+        TEST("Test 16: Decision Tracking (Phase 9.5)");
+        
+        auto decisions = OrganizationMemory::getInstance().getDecisions();
+        
+        // Since Test 15 just ran and registered a decision, we expect at least 1 decision.
+        CHECK(decisions.size() >= 1);
+        
+        bool foundGraphqlOrRest = false;
+        for (const auto& d : decisions) {
+            if (d.winningOption == "GRAPHQL" || d.winningOption == "REST") {
+                foundGraphqlOrRest = true;
+                CHECK(d.participants.size() == 4);
+                CHECK(d.problem == "Conflict resolution");
+            }
+        }
+        CHECK(foundGraphqlOrRest == true);
+    }
+
     std::printf("\n=== Summary: %d passed, %d failed ===\n", passed, failed);
     return failed > 0 ? 1 : 0;
 }
