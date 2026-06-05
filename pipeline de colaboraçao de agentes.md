@@ -760,3 +760,121 @@ Organization B
 Cada uma com seus próprios CEOs, Managers e Workers.
 
 Isso se encaixa muito melhor no AgentOS do que tentar simular uma empresa fixa com os mesmos agentes para tudo. O sistema vira um "gerador de organizações especializadas" sob demanda.
+Exatamente, você está no ponto certo. Com os agentes e a estrutura de `Task` implementados, o próximo passo lógico é **construir a orquestração assíncrona** que vai dar vida a esse fluxo colaborativo e humano. Aqui está um guia detalhado do que fazer agora:
+
+---
+
+## Etapa 3: Orquestração Assíncrona
+
+### Objetivo
+
+* Instanciar os agentes (`CEOAgent`, `ManagerAgent`, `WorkerAgent`, `ReviewerAgent`) a partir do `PlanningResult`.
+* Garantir que cada tarefa siga o fluxo correto: CEO → Manager → Worker → Reviewer.
+* Atualizar a **Timeline da UI em tempo real**, sem travar a Message Thread do JUCE.
+* Permitir múltiplos projetos/organizações rodando em paralelo.
+
+---
+
+### Estrutura sugerida
+
+```text
+PlanningResult
+      │
+      v
+WorkflowOrchestrator
+      │
+      ├── CEOAgent
+      │     └─ createTask() -> ManagerAgent
+      │
+      ├── ManagerAgent
+      │     └─ distributeTask() -> WorkerAgents
+      │
+      ├── WorkerAgent(s)
+      │     ├─ executeTask()
+      │     └─ reportProgress() -> EventBus -> UI Timeline
+      │
+      └── ReviewerAgent
+            └─ reviewTask() -> feedback -> WorkerAgent
+```
+
+---
+
+### Código Conceitual (C++/JUCE)
+
+```cpp
+class WorkflowOrchestrator {
+public:
+    void runOrganization(const PlanningResult& plan) {
+        // 1. Instancia CEO(s)
+        for (auto& ceoRole : plan.ceos) {
+            auto ceo = std::make_shared<CEOAgent>(ceoRole.name);
+            ceos_.push_back(ceo);
+        }
+
+        // 2. Instancia Managers e Workers
+        for (auto& dept : plan.departments) {
+            auto manager = std::make_shared<ManagerAgent>(dept.manager);
+            managers_.push_back(manager);
+
+            for (auto& agentName : dept.agents) {
+                auto worker = std::make_shared<WorkerAgent>(agentName);
+                workers_.push_back(worker);
+            }
+        }
+
+        // 3. Distribui tarefas de forma assíncrona
+        std::async(std::launch::async, [this, plan]() {
+            for (auto& ceo : ceos_) {
+                for (auto& taskDesc : plan.tasks) {
+                    ceo->createTask(taskDesc, managers_);
+                }
+            }
+        });
+    }
+
+private:
+    std::vector<std::shared_ptr<CEOAgent>> ceos_;
+    std::vector<std::shared_ptr<ManagerAgent>> managers_;
+    std::vector<std::shared_ptr<WorkerAgent>> workers_;
+};
+```
+
+---
+
+### Pontos de atenção
+
+1. **Threads e Concurrency**
+
+   * Cada agente deve rodar em thread separada ou via `std::async`/`ThreadPoolJob`.
+   * O EventBus deve ser thread-safe para atualizar a Timeline sem travar o UI.
+
+2. **Timeline e Feedback**
+
+   * Cada `reportProgress()` ou `reviewTask()` dispara eventos para o UI.
+   * Permitir que os cards da Timeline mostrem:
+
+     * Quem está executando
+     * Status da tarefa
+     * Feedback recebido
+
+3. **Múltiplos CEOs e Organizações**
+
+   * Se o `PlanningResult` tiver múltiplos CEOs, cada CEO opera sua própria divisão.
+   * Cada organização é independente; o WorkflowOrchestrator gerencia múltiplas organizações simultaneamente.
+
+4. **Simulação Humana**
+
+   * Workers podem ter delays simulados (`std::this_thread::sleep_for`) para dar sensação de "trabalho real".
+   * Reviewers podem devolver feedback ou aprovar tarefas, ajustando o fluxo.
+
+---
+
+### Próximo passo imediato
+
+1. Criar a classe `WorkflowOrchestrator` e integrar com `PlanningResult`.
+2. Implementar a execução assíncrona de CEOs → Managers → Workers → Reviewers.
+3. Conectar `EventBus` para atualizar a Timeline do `WorkspaceComponent`.
+4. Testar com um projeto simples (uma organização com 1 CEO, 2 Managers, 4 Workers e 1 Reviewer) para validar a execução completa.
+
+---
+
