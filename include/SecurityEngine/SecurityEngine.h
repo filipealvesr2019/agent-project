@@ -55,29 +55,29 @@ public:
     }
     
     bool canPerformAction(const AgentIdentity& identity, PermissionAction action, const std::string& target) {
-        if (emergencyStopActive && identity.role != AgentRole::Human) {
-            AuditEngine::getInstance().log(identity.name, identity.getRoleString(), AgentPermissionsSystem::getInstance().actionToString(action), target, false, "EMERGENCY STOP ACTIVE");
+        if (emergencyStopActive && identity.getRole() != AgentRole::Human) {
+            AuditEngine::getInstance().log(identity.getName(), identity.getRoleString(), AgentPermissionsSystem::getInstance().actionToString(action), target, false, "EMERGENCY STOP ACTIVE");
             return false;
         }
 
-        bool allowed = AgentPermissionsSystem::getInstance().hasPermission(identity.role, action);
+        bool allowed = AgentPermissionsSystem::getInstance().hasPermission(identity.getRole(), action);
         std::string reason = allowed ? "Action permitted by role" : "Insufficient Permission";
         
-        AuditEngine::getInstance().log(identity.name, identity.getRoleString(), AgentPermissionsSystem::getInstance().actionToString(action), target, allowed, reason);
+        AuditEngine::getInstance().log(identity.getName(), identity.getRoleString(), AgentPermissionsSystem::getInstance().actionToString(action), target, allowed, reason);
         return allowed;
     }
 
     void triggerEmergencyStop(const AgentIdentity& identity) {
-        if (identity.role == AgentRole::Human) {
+        if (identity.getRole() == AgentRole::Human) {
             emergencyStopActive = true;
-            AuditEngine::getInstance().log(identity.name, identity.getRoleString(), "TRIGGER EMERGENCY STOP", "SYSTEM", true, "Human override initiated");
+            AuditEngine::getInstance().log(identity.getName(), identity.getRoleString(), "TRIGGER EMERGENCY STOP", "SYSTEM", true, "Human override initiated");
         }
     }
 
     void disableEmergencyStop(const AgentIdentity& identity) {
-        if (identity.role == AgentRole::Human) {
+        if (identity.getRole() == AgentRole::Human) {
             emergencyStopActive = false;
-            AuditEngine::getInstance().log(identity.name, identity.getRoleString(), "DISABLE EMERGENCY STOP", "SYSTEM", true, "Human override disabled");
+            AuditEngine::getInstance().log(identity.getName(), identity.getRoleString(), "DISABLE EMERGENCY STOP", "SYSTEM", true, "Human override disabled");
         }
     }
 
@@ -89,7 +89,7 @@ private:
 class RuntimeSandbox {
 public:
     static bool canExecuteSystemCommand(const AgentIdentity& identity, const std::string& cmd) {
-        if (identity.role == AgentRole::Human || identity.role == AgentRole::System) {
+        if (identity.getRole() == AgentRole::Human || identity.getRole() == AgentRole::System) {
              return true;
         }
         
@@ -99,11 +99,11 @@ public:
             cmd.find("wget ") != std::string::npos || 
             cmd.find("..") != std::string::npos) {
             
-            AuditEngine::getInstance().log(identity.name, identity.getRoleString(), "SHELL_EXEC", cmd, false, "Sandbox Command Blocked");
+            AuditEngine::getInstance().log(identity.getName(), identity.getRoleString(), "SHELL_EXEC", cmd, false, "Sandbox Command Blocked");
             return false;
         }
         
-        AuditEngine::getInstance().log(identity.name, identity.getRoleString(), "SHELL_EXEC", cmd, true, "Sandbox Command Allowed");
+        AuditEngine::getInstance().log(identity.getName(), identity.getRoleString(), "SHELL_EXEC", cmd, true, "Sandbox Command Allowed");
         return true;
     }
 };

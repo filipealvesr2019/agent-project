@@ -15,10 +15,24 @@ enum class AgentRole {
     System
 };
 
+class SystemIdentityProvider;
+
 struct AgentIdentity {
+private:
     std::string id;
     std::string name;
     AgentRole role;
+    
+    // Private constructor: Only SystemIdentityProvider can create identities
+    AgentIdentity(std::string i, std::string n, AgentRole r) : id(i), name(n), role(r) {}
+    
+    friend class SystemIdentityProvider;
+
+public:
+    // Expose getters for reading
+    std::string getId() const { return id; }
+    std::string getName() const { return name; }
+    AgentRole getRole() const { return role; }
     
     // Helper to stringify for logs
     std::string getRoleString() const {
@@ -31,6 +45,23 @@ struct AgentIdentity {
             case AgentRole::System: return "System";
             default: return "Unknown";
         }
+    }
+};
+
+class SystemIdentityProvider {
+public:
+    static AgentIdentity createIdentity(const std::string& id, const std::string& name, AgentRole role) {
+        // In a real system, this would require authentication tokens or session keys.
+        // For the simulation, this acts as the sole Factory, proving the identity was legally minted.
+        return AgentIdentity(id, name, role);
+    }
+    
+    static AgentIdentity getSystemIdentity() {
+        return AgentIdentity("SYS_1", "SYSTEM", AgentRole::System);
+    }
+    
+    static AgentIdentity getHumanIdentity() {
+        return AgentIdentity("HUMAN_1", "Human Override", AgentRole::Human);
     }
 };
 

@@ -39,14 +39,14 @@ public:
         return instance;
     }
 
-    bool registerTask(const Task& task, const AgentIdentity& identity = {"SYS_1", "SYSTEM", AgentRole::System}) {
+    bool registerTask(const Task& task, const AgentIdentity& identity = SystemIdentityProvider::getSystemIdentity()) {
         if (!PermissionEngine::getInstance().canPerformAction(identity, PermissionAction::CreateTask, "TASK_MEM")) return false;
         std::lock_guard<std::mutex> lock(mutex_);
         allTasks[task.id] = task;
         return true;
     }
 
-    bool updateTaskStatus(const std::string& taskId, const std::string& status, const AgentIdentity& identity = {"SYS_1", "SYSTEM", AgentRole::System}) {
+    bool updateTaskStatus(const std::string& taskId, const std::string& status, const AgentIdentity& identity = SystemIdentityProvider::getSystemIdentity()) {
         PermissionAction action = PermissionAction::UpdateOwnTask;
         if (status == "Approved" || status == "Needs Revision") action = PermissionAction::ApproveTask; // Simplified
         if (status == "Blocked") action = PermissionAction::EscalateBlockers;
@@ -98,14 +98,18 @@ public:
         return tasks;
     }
 
-    void recordMessage(const std::string& conversationId, const Message& msg) {
+    bool recordMessage(const std::string& conversationId, const Message& msg, const AgentIdentity& identity = SystemIdentityProvider::getSystemIdentity()) {
+        if (!PermissionEngine::getInstance().canPerformAction(identity, PermissionAction::SendMessages, "CONVERSATION_MEM")) return false;
         std::lock_guard<std::mutex> lock(mutex_);
         conversationThreads[conversationId].push_back(msg);
+        return true;
     }
 
-    void assignAgentToTeam(const std::string& teamName, const std::string& agentName) {
+    bool assignAgentToTeam(const std::string& teamName, const std::string& agentName, const AgentIdentity& identity = SystemIdentityProvider::getSystemIdentity()) {
+        if (!PermissionEngine::getInstance().canPerformAction(identity, PermissionAction::CreateOrganization, "TEAM_MEM")) return false;
         std::lock_guard<std::mutex> lock(mutex_);
         teamAssignments[teamName].push_back(agentName);
+        return true;
     }
 
     OrganizationMetrics getMetrics() {
@@ -122,7 +126,7 @@ public:
         return goalList;
     }
 
-    bool registerGoal(const Goal& goal, const AgentIdentity& identity = {"SYS_1", "SYSTEM", AgentRole::System}) {
+    bool registerGoal(const Goal& goal, const AgentIdentity& identity = SystemIdentityProvider::getSystemIdentity()) {
         if (!PermissionEngine::getInstance().canPerformAction(identity, PermissionAction::CreateGoal, "GOAL_MEM")) {
             return false;
         }
@@ -131,7 +135,7 @@ public:
         return true;
     }
 
-    bool recordMeeting(const Meeting& meeting, const AgentIdentity& identity = {"SYS_1", "SYSTEM", AgentRole::System}) {
+    bool recordMeeting(const Meeting& meeting, const AgentIdentity& identity = SystemIdentityProvider::getSystemIdentity()) {
         if (!PermissionEngine::getInstance().canPerformAction(identity, PermissionAction::CreateMeeting, "MEETING_MEM")) return false;
         std::lock_guard<std::mutex> lock(mutex_);
         meetings[meeting.id] = meeting;
@@ -147,7 +151,7 @@ public:
         return meetingList;
     }
 
-    bool recordExecutiveMeeting(const ExecutiveMeeting& meeting, const AgentIdentity& identity = {"SYS_1", "SYSTEM", AgentRole::System}) {
+    bool recordExecutiveMeeting(const ExecutiveMeeting& meeting, const AgentIdentity& identity = SystemIdentityProvider::getSystemIdentity()) {
         if (!PermissionEngine::getInstance().canPerformAction(identity, PermissionAction::CreateExecutiveMeeting, "EXEC_MEETING_MEM")) return false;
         std::lock_guard<std::mutex> lock(mutex_);
         executiveMeetings[meeting.id] = meeting;
@@ -162,7 +166,7 @@ public:
         return ExecutiveMeeting();
     }
 
-    bool applyConflictDecision(const std::string& goalId, const std::string& winningOptionId, const AgentIdentity& identity = {"SYS_1", "SYSTEM", AgentRole::System}) {
+    bool applyConflictDecision(const std::string& goalId, const std::string& winningOptionId, const AgentIdentity& identity = SystemIdentityProvider::getSystemIdentity()) {
         if (!PermissionEngine::getInstance().canPerformAction(identity, PermissionAction::ApproveStrategicDecisions, "GOAL_MEM")) return false;
         std::lock_guard<std::mutex> lock(mutex_);
         if (goals.find(goalId) != goals.end()) {
@@ -171,7 +175,7 @@ public:
         return true;
     }
 
-    bool recordDecision(const DecisionRecord& decision, const AgentIdentity& identity = {"SYS_1", "SYSTEM", AgentRole::System}) {
+    bool recordDecision(const DecisionRecord& decision, const AgentIdentity& identity = SystemIdentityProvider::getSystemIdentity()) {
         if (!PermissionEngine::getInstance().canPerformAction(identity, PermissionAction::ApproveStrategicDecisions, "DECISION_MEM")) return false;
         std::lock_guard<std::mutex> lock(mutex_);
         decisions.push_back(decision);
