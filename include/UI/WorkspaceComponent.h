@@ -27,7 +27,8 @@ public:
 
     void addTimelineEvent(const TimelineEvent& event);
     void updateActiveFile(const juce::String& filename, const juce::String& content);
-    void setProjectInfo(const juce::String& projectName, const juce::String& status);
+    void setProjectInfo(const juce::String& projectName, const juce::String& status, const juce::String& prompt = "");
+    void clearState();
 
 private:
     void drawExplorerPanel(juce::Graphics& g, juce::Rectangle<int> bounds);

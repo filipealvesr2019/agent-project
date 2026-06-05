@@ -497,8 +497,8 @@ DashboardComponent::DashboardComponent() {
     cognitiveDashboard_.reset(createCognitiveDashboard());
     
     if (auto* cogDash = dynamic_cast<CognitiveDashboardComponent*>(cognitiveDashboard_.get())) {
-        cogDash->onNavigateToWorkspace = [this](const juce::String& projectName) {
-            this->navigateToWorkspace(projectName);
+        cogDash->onNavigateToWorkspace = [this](const juce::String& projectName, const juce::String& prompt) {
+            this->navigateToWorkspace(projectName, prompt);
         };
     }
     
@@ -748,9 +748,10 @@ void DashboardComponent::refreshAgentList() {
     if (agentList_) agentList_->refresh();
 }
 
-void DashboardComponent::navigateToWorkspace(const juce::String& projectName) {
+void DashboardComponent::navigateToWorkspace(const juce::String& projectName, const juce::String& prompt) {
     if (workspace_) {
-        workspace_->setProjectInfo(projectName, "Inicializando agentes...");
+        workspace_->clearState();
+        workspace_->setProjectInfo(projectName, "Inicializando planejamento...", prompt);
     }
     
     // Find the Workspace tab index

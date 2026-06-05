@@ -43,41 +43,8 @@ WorkspaceComponent::WorkspaceComponent() {
     EventBus::getInstance().subscribe(EventType::TaskCompleted, callback);
     EventBus::getInstance().subscribe(EventType::TaskFailed, callback);
 
-    activeFileName_ = "Dashboard.tsx";
-    activeFileContent_ = R"(import React, { useState, useEffect } from 'react';
-import { Card, Activity, Users, Cpu, Clock } from '@/ui/components';
-import { useAgentStore } from '@/core/stores/agentStore';
-
-const Dashboard: React.FC = () => {
-  const { agents, tasks, systemStatus } = useAgentStore();
-  const [stats, setStats] = useState<any>(null);
-
-  useEffect(() => {
-    // Carrega estatisticas do sistema
-    fetch('/api/stats')
-      .then(res => res.json())
-      .then(data => setStats(data));
-  }, []);
-
-  return (
-    <div className="dashboard">
-      <div className="header">
-        <h1>Visao Geral do Sistema</h1>
-        <span className="status">{systemStatus}</span>
-      </div>
-
-      <div className="grid grid-cols-4 gap-4">
-        <Card title="Agentes Ativos" icon={<Users />} value={agents.length} />
-        <Card title="Tarefas em Andamento" icon={<Activity />} value={tasks.active} />
-        <Card title="Uso de CPU" icon={<Cpu />} value={`${stats?.cpu || 0}%`} />
-        <Card title="Tempo de Execucao" icon={<Clock />} value={stats?.uptime || '0s'} />
-      </div>
-    </div>
-  );
-};
-
-export default Dashboard;
-)";
+    activeFileName_ = "plano-do-projeto.md";
+    activeFileContent_ = "# Novo Projeto\n\nAguardando instruções...";
 }
 
 WorkspaceComponent::~WorkspaceComponent() {
@@ -104,9 +71,23 @@ void WorkspaceComponent::updateActiveFile(const juce::String& filename, const ju
     repaint();
 }
 
-void WorkspaceComponent::setProjectInfo(const juce::String& projectName, const juce::String& status) {
+void WorkspaceComponent::clearState() {
+    timelineEvents_.clear();
+    activeFileName_ = "plano-do-projeto.md";
+    activeFileContent_ = "# Novo Projeto\n\nAguardando o CEO Agent processar a sua solicitacao...\n";
+    projectName_ = "Carregando...";
+    projectStatus_ = "Em espera";
+    repaint();
+}
+
+void WorkspaceComponent::setProjectInfo(const juce::String& projectName, const juce::String& status, const juce::String& prompt) {
     projectName_ = projectName;
     projectStatus_ = status;
+    
+    if (!prompt.isEmpty()) {
+        activeFileContent_ = "# " + projectName + "\n\n## Solicitacao Original:\n" + prompt + "\n\n## Status\nO CEO Agent esta estruturando as equipes e tarefas...\n";
+    }
+    
     repaint();
 }
 
@@ -179,39 +160,31 @@ void WorkspaceComponent::drawExplorerPanel(juce::Graphics& g, juce::Rectangle<in
     
     g.setColour(juce::Colours::white);
     g.setFont(juce::Font(12.0f, juce::Font::bold));
-    g.drawText("PLATAFORMA E-COMMERCE", content.getX(), y, content.getWidth(), 20, juce::Justification::centredLeft);
+    g.drawText(projectName_.toUpperCase(), content.getX(), y, content.getWidth(), 20, juce::Justification::centredLeft);
     y += 24;
     
     drawFileTreeItem(g, y, 0, ".agentes", true, false);
     drawFileTreeItem(g, y, 0, "docs", true, true);
-    drawFileTreeItem(g, y, 1, "plano-do-projeto.md", false, false);
-    drawFileTreeItem(g, y, 1, "requisitos.md", false, false);
-    drawFileTreeItem(g, y, 1, "arquitetura.md", false, false);
+    drawFileTreeItem(g, y, 1, "plano-do-projeto.md", false, false, true); // Active
     
-    drawFileTreeItem(g, y, 0, "frontend", true, true);
-    drawFileTreeItem(g, y, 1, "src", true, true);
-    drawFileTreeItem(g, y, 2, "components", true, true);
-    drawFileTreeItem(g, y, 3, "Dashboard.tsx", false, false, true); // Active
-    drawFileTreeItem(g, y, 2, "pages", true, true);
-    drawFileTreeItem(g, y, 3, "index.tsx", false, false);
-    drawFileTreeItem(g, y, 3, "login.tsx", false, false);
-    drawFileTreeItem(g, y, 2, "styles", true, false);
-    drawFileTreeItem(g, y, 3, "globals.css", false, false);
+    // Dynamic generic folders based on project name words
+    juce::StringArray words;
+    words.addTokens(projectName_.toLowerCase(), " ", "");
     
-    drawFileTreeItem(g, y, 0, "backend", true, true);
-    drawFileTreeItem(g, y, 1, "src", true, true);
-    drawFileTreeItem(g, y, 2, "routes", true, true);
-    drawFileTreeItem(g, y, 3, "users.routes.ts", false, false);
-    drawFileTreeItem(g, y, 3, "products.routes.ts", false, false);
-    drawFileTreeItem(g, y, 3, "auth.routes.ts", false, false);
+    if (words.size() > 0) {
+        juce::String baseWord = words[0];
+        if (baseWord.length() > 3) {
+            drawFileTreeItem(g, y, 0, baseWord + "_assets", true, false);
+            drawFileTreeItem(g, y, 0, baseWord + "_scripts", true, false);
+        } else {
+            drawFileTreeItem(g, y, 0, "src", true, false);
+        }
+    } else {
+        drawFileTreeItem(g, y, 0, "src", true, false);
+    }
     
     drawFileTreeItem(g, y, 0, "tests", true, false);
-    drawFileTreeItem(g, y, 1, "auth.test.ts", false, false);
-    
-    drawFileTreeItem(g, y, 0, ".gitignore", false, false);
-    drawFileTreeItem(g, y, 0, "README.md", false, false);
-    drawFileTreeItem(g, y, 0, "package.json", false, false);
-    drawFileTreeItem(g, y, 0, "tsconfig.json", false, false);
+    drawFileTreeItem(g, y, 0, "build", true, false);
 }
 
 void WorkspaceComponent::drawFileTreeItem(juce::Graphics& g, int& y, int indent, const juce::String& name, bool isFolder, bool isExpanded, bool isActive) {

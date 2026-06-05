@@ -35,7 +35,7 @@ public:
     void addLogMessage(const juce::String& message);
     void showCreateAgentDialog();
     void refreshStatusBar();
-    void navigateToWorkspace(const juce::String& projectName);
+    void navigateToWorkspace(const juce::String& projectName, const juce::String& prompt = "");
 
 private:
     void handleMenuClick(int itemId);

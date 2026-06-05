@@ -8,6 +8,121 @@
 
 namespace AgentOS {
 
+// ==========================================
+// FASE 2 & 3: Organization Architect e Builder
+// ==========================================
+namespace {
+
+juce::String generateDynamicJSON(const juce::String& prompt) {
+    // Simulation of LLM JSON generation
+    juce::StringArray words;
+    words.addTokens(prompt.toLowerCase(), " .,!?", "\"");
+    juce::StringArray keywords;
+    juce::StringArray stopWords = {"um", "uma", "o", "a", "os", "as", "de", "do", "da", "para", "com", "que", "em", "no", "na", "fazer", "criar", "quero", "preciso"};
+    
+    for (auto w : words) {
+        if (w.length() > 3 && !stopWords.contains(w)) {
+            keywords.add(w);
+        }
+    }
+    
+    juce::String kw1 = keywords.size() > 0 ? keywords[0] : "Geral";
+    juce::String kw2 = keywords.size() > 1 ? keywords[1] : "Operacao";
+    
+    kw1 = kw1.substring(0, 1).toUpperCase() + kw1.substring(1);
+    kw2 = kw2.substring(0, 1).toUpperCase() + kw2.substring(1);
+
+    juce::DynamicObject::Ptr root = new juce::DynamicObject();
+    juce::String orgName = kw1 + " " + kw2 + " Team";
+    root->setProperty("organization_name", orgName);
+    
+    juce::Array<juce::var> ceos;
+    juce::DynamicObject::Ptr ceo1 = new juce::DynamicObject();
+    ceo1->setProperty("name", "CEO " + kw1);
+    ceos.add(juce::var(ceo1.get()));
+    root->setProperty("ceos", ceos);
+    
+    juce::Array<juce::var> depts;
+    
+    juce::DynamicObject::Ptr dept1 = new juce::DynamicObject();
+    dept1->setProperty("name", "Departamento de " + kw1);
+    dept1->setProperty("manager", "Gerente de " + kw1);
+    juce::Array<juce::var> ag1;
+    ag1.add("Especialista em " + kw1);
+    ag1.add("Assistente de " + kw1);
+    dept1->setProperty("agents", ag1);
+    depts.add(juce::var(dept1.get()));
+
+    juce::DynamicObject::Ptr dept2 = new juce::DynamicObject();
+    dept2->setProperty("name", "Departamento de " + kw2);
+    dept2->setProperty("manager", "Gerente de " + kw2);
+    juce::Array<juce::var> ag2;
+    ag2.add(kw2 + " Analyst");
+    ag2.add(kw2 + " Operador");
+    dept2->setProperty("agents", ag2);
+    depts.add(juce::var(dept2.get()));
+
+    root->setProperty("departments", depts);
+
+    return juce::JSON::toString(juce::var(root.get()));
+}
+
+class OrganizationArchitect {
+public:
+    static juce::String generateJSON(const juce::String& prompt) {
+        // Futuro: Chamada ao LocalRuntimeEngine (LLM)
+        return generateDynamicJSON(prompt);
+    }
+};
+
+class OrganizationBuilder {
+public:
+    static juce::String buildFromJSON(const juce::String& jsonStr, const juce::String& originalPrompt) {
+        auto parsed = juce::JSON::parse(jsonStr);
+        if (parsed.isVoid() || !parsed.isObject()) return "Projeto Desconhecido";
+        
+        auto* obj = parsed.getDynamicObject();
+        juce::String orgName = obj->getProperty("organization_name").toString();
+        
+        auto& orgEngine = AgentOS::OrganizationEngine::getInstance();
+        orgEngine.createOrganization(orgName.toStdString(), "Gerado automaticamente pelo Organization Architect");
+        
+        auto depts = obj->getProperty("departments").getArray();
+        if (depts) {
+            for (auto& dVar : *depts) {
+                if (auto* dObj = dVar.getDynamicObject()) {
+                    AgentOS::Department dept;
+                    dept.name = dObj->getProperty("name").toString().toStdString();
+                    dept.managers.push_back(dObj->getProperty("manager").toString().toStdString());
+                    auto agents = dObj->getProperty("agents").getArray();
+                    if (agents) {
+                        for (auto& a : *agents) {
+                            dept.agents.push_back(a.toString().toStdString());
+                        }
+                    }
+                    orgEngine.addDepartment(orgName.toStdString(), dept);
+                }
+            }
+        }
+        
+        juce::String projectName = orgName + " Project";
+        auto& projManager = AgentOS::ProjectManager::getInstance();
+        projManager.createProject(projectName.toStdString(), "C:/AgentOS_Projects/" + projectName.toStdString());
+        orgEngine.addProjectToOrganization(orgName.toStdString(), projectName.toStdString());
+        
+        auto& wfEngine = AgentOS::WorkflowEngine::getInstance();
+        int objId = wfEngine.createObjective(originalPrompt.toStdString(), "Objetivo Principal", "CEO Agent", orgName.toStdString());
+        
+        wfEngine.createTask("Planejar Execucao", originalPrompt.toStdString(), "CEO Agent", "CEO Agent", objId, 0, AgentOS::WorkflowPriority::High, orgName.toStdString(), "");
+        AgentOS::EventBus::getInstance().publish(AgentOS::Event(AgentOS::EventType::TaskAssigned, "CEO Agent iniciou estruturação do projeto: " + projectName.toStdString()));
+        
+        return projectName;
+    }
+};
+
+} // namespace
+
+
 class DashboardButtonLookAndFeel : public juce::LookAndFeel_V4 {
 public:
     void drawButtonBackground(juce::Graphics& g, juce::Button& button, const juce::Colour& backgroundColour, 
@@ -122,33 +237,17 @@ CognitiveDashboardComponent::CognitiveDashboardComponent() {
 
     btnSubmit_.onClick = [this] {
         juce::String prompt = promptInput_.getText();
-        if (prompt.isEmpty()) prompt = "Desenvolver uma Plataforma E-commerce completa";
+        if (prompt.isEmpty()) return;
         
-        // 1. Integracao Real com o Backend
-        auto& orgEngine = AgentOS::OrganizationEngine::getInstance();
-        orgEngine.createOrganization("Alpha Systems", "Criado pelo Dashboard");
+        // Fase 2: Organization Architect cria JSON dinamico
+        juce::String jsonArchitecture = OrganizationArchitect::generateJSON(prompt);
         
-        AgentOS::Department frontendDept{"Frontend Team", {"Beatriz Souza"}, {"React Agent", "UI Agent"}};
-        AgentOS::Department backendDept{"Backend Team", {"Rafael Costa"}, {"API Agent", "Database Agent"}};
-        orgEngine.addDepartment("Alpha Systems", frontendDept);
-        orgEngine.addDepartment("Alpha Systems", backendDept);
-        
-        auto& projManager = AgentOS::ProjectManager::getInstance();
-        juce::String projectName = "Plataforma E-commerce";
-        projManager.createProject(projectName.toStdString(), "C:/AgentOS_Projects/ECommerce");
-        orgEngine.addProjectToOrganization("Alpha Systems", projectName.toStdString());
-        
-        auto& wfEngine = AgentOS::WorkflowEngine::getInstance();
-        int objId = wfEngine.createObjective(prompt.toStdString(), "Criar MVP em 45 dias", "CEO Agent", "Alpha Systems");
-        
-        wfEngine.createTask("Setup Frontend", "Configurar React, Vite, Tailwind", "Beatriz Souza", "CEO Agent", objId, 0, AgentOS::WorkflowPriority::High, "Alpha Systems", "Frontend Team");
-        wfEngine.createTask("Setup Backend", "Configurar Node.js, Express, Postgres", "Rafael Costa", "CEO Agent", objId, 0, AgentOS::WorkflowPriority::High, "Alpha Systems", "Backend Team");
+        // Fase 3: Builder constroi entidades no backend
+        juce::String projectName = OrganizationBuilder::buildFromJSON(jsonArchitecture, prompt);
 
-        // Disparar evento de projeto iniciado
-        AgentOS::EventBus::getInstance().publish(AgentOS::Event(AgentOS::EventType::TaskAssigned, "Projeto inicializado e tarefas delegadas pelo CEO Agent"));
-
+        // Fase 4: Redirect para Workspace
         if (onNavigateToWorkspace) {
-            onNavigateToWorkspace(projectName);
+            onNavigateToWorkspace(projectName, prompt);
         }
     };
 }
