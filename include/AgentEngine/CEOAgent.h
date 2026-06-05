@@ -15,7 +15,7 @@ public:
         t.assignedTo = manager.getName();
         
         manager.tasks.push_back(t);
-        EventBus::getInstance().publish(Event(EventType::TaskAssigned, getName() + " assigned task to " + manager.getName() + ": " + description));
+        EventBus::getInstance().publish(Event(EventType::TaskAssigned, getName(), manager.getName(), "Assigned task: " + description));
     }
 
 private:

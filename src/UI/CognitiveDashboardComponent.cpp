@@ -3,6 +3,7 @@
 #include "OrganizationEngine/OrganizationEngine.h"
 #include "ProjectManager/ProjectManager.h"
 #include "WorkflowEngine/WorkflowEngine.h"
+#include "WorkflowEngine/WorkflowOrchestrator.h"
 #include "AgentEngine/Agent.h"
 #include "EventBus/EventBus.h"
 #include "Core/CEOPlanner.h"
@@ -265,6 +266,9 @@ CognitiveDashboardComponent::CognitiveDashboardComponent() {
         // Fase 4: Redirect para Workspace apenas para TASK e PROJECT
         if (onNavigateToWorkspace) {
             onNavigateToWorkspace(projectName, prompt);
+            
+            // Start the collaborative agent simulation pipeline
+            AgentOS::WorkflowOrchestrator::getInstance().runOrganization(plan);
         }
     };
 }

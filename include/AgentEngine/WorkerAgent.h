@@ -12,18 +12,18 @@ public:
         // Simulates work being done
         task.completed = true;
         task.status = "Completed";
-        EventBus::getInstance().publish(Event(EventType::TaskCompleted, getName() + " completed task: " + task.description));
+        EventBus::getInstance().publish(Event(EventType::TaskCompleted, getName(), "", "Completed task: " + task.description));
     }
 
     void reportProgress(Task& task) override {
         task.status = "In Progress";
-        EventBus::getInstance().publish(Event(EventType::TaskAssigned, getName() + " is working on: " + task.description));
+        EventBus::getInstance().publish(Event(EventType::TaskAssigned, getName(), "", "Working on: " + task.description));
     }
 
     void receiveFeedback(const std::string& feedback, Task& task) override {
         task.comments.push_back(feedback);
         task.status = "Needs Revision";
-        EventBus::getInstance().publish(Event(EventType::TaskFailed, getName() + " received feedback: " + feedback));
+        EventBus::getInstance().publish(Event(EventType::TaskFailed, getName(), "", "Received feedback: " + feedback));
     }
 };
 

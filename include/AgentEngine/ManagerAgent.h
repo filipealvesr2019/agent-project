@@ -15,7 +15,7 @@ public:
         t.assignedTo = worker.getName();
         
         worker.tasks.push_back(t);
-        EventBus::getInstance().publish(Event(EventType::TaskAssigned, getName() + " assigned subtask to " + worker.getName() + ": " + subDescription));
+        EventBus::getInstance().publish(Event(EventType::TaskAssigned, getName(), worker.getName(), "Assigned subtask: " + subDescription));
     }
 
 private:

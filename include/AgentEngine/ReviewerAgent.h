@@ -11,9 +11,9 @@ public:
     void reviewTask(Task& task, Agent& worker, bool approved, const std::string& feedback = "") {
         if (approved) {
             task.status = "Approved";
-            EventBus::getInstance().publish(Event(EventType::TaskCompleted, getName() + " approved task: " + task.description));
+            EventBus::getInstance().publish(Event(EventType::TaskCompleted, getName(), worker.getName(), "Approved task: " + task.description));
         } else {
-            EventBus::getInstance().publish(Event(EventType::TaskFailed, getName() + " reviewed task '" + task.description + "' -> Feedback: " + feedback));
+            EventBus::getInstance().publish(Event(EventType::TaskFailed, getName(), worker.getName(), "Reviewed task '" + task.description + "' -> Feedback: " + feedback));
             worker.receiveFeedback(feedback, task);
         }
     }

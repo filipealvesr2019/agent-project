@@ -9,6 +9,7 @@ struct Task {
     std::string id;
     std::string description;
     std::string assignedTo;
+    std::string status = "Pending";
     bool completed = false;
     std::vector<std::string> comments; // Feedback de revisão
     
