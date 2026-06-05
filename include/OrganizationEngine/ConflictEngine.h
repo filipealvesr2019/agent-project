@@ -35,7 +35,7 @@ public:
         return instance;
     }
 
-    ConflictResult resolveConflict(std::vector<ConflictOption> options, const std::vector<CouncilMember>& members) {
+    ConflictResult resolveConflict(const std::string& goalId, std::vector<ConflictOption> options, const std::vector<CouncilMember>& members) {
         ConflictResult result;
         
         for (const auto& member : members) {
@@ -68,6 +68,7 @@ public:
         // Phase 9.5: Decision Tracking
         DecisionRecord record;
         record.id = "DEC_" + std::to_string(std::chrono::system_clock::now().time_since_epoch().count());
+        record.goalId = goalId;
         record.problem = "Conflict resolution";
         for (const auto& v : result.votes) {
             record.participants.push_back(v.memberName + " (" + std::to_string(v.weight) + ")");

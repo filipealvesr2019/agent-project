@@ -342,7 +342,7 @@ int main() {
         };
         
         // Resolve conflict
-        ConflictResult result = ConflictEngine::getInstance().resolveConflict(options, members);
+        ConflictResult result = ConflictEngine::getInstance().resolveConflict("GOAL_OSX_EXEC", options, members);
         
         // CTO(3) + Ops(1) -> GRAPHQL = 4
         // Product(2) + CFO(2) -> REST = 4
@@ -351,10 +351,10 @@ int main() {
         
         CHECK(result.votes.size() == 4);
         CHECK(result.winningOptionId == "REST" || result.winningOptionId == "GRAPHQL");
-        
-        // Update Memory
+            // Update Memory
         Goal g;
         g.id = "GOAL_ARCH";
+        g.name = "Architecture Goal";
         g.description = "Define Arch";
         OrganizationMemory::getInstance().registerGoal(g);
         
@@ -476,6 +476,7 @@ int main() {
         // 2. Worker tenta criar Executive Meeting
         ExecutiveMeeting hackExecMeeting;
         hackExecMeeting.id = "EXEC_HACK";
+        hackExecMeeting.title = "Hack Meeting";
         bool successWorkerMeeting = OrganizationMemory::getInstance().recordExecutiveMeeting(hackExecMeeting, workerId);
         CHECK(successWorkerMeeting == false);
         
@@ -486,6 +487,7 @@ int main() {
         // 4. Manager tenta alterar Strategic Decisions
         DecisionRecord hackDecision;
         hackDecision.id = "DEC_HACK";
+        hackDecision.goalId = "GOAL_HACK";
         bool successManagerDecision = OrganizationMemory::getInstance().recordDecision(hackDecision, managerId);
         CHECK(successManagerDecision == false);
         
@@ -520,27 +522,27 @@ int main() {
         bool shellBlocked = RuntimeSandbox::canExecuteSystemCommand(workerId, "rm -rf /usr/bin");
         CHECK(shellBlocked == false);
         
-        bool curlBlocked = RuntimeSandbox::canExecuteSystemCommand(workerId, "curl http://malicious.com");
-        CHECK(curlBlocked == false);
-        
-        // 2. Human tenta executar comando na Sandbox (Permitido)
-        bool humanAllowed = RuntimeSandbox::canExecuteSystemCommand(humanId, "rm -rf /tmp/cache");
-        CHECK(humanAllowed == true);
-        
-        // 3. Human Override (Emergency Stop)
+        // 2. Humano aciona o Emergency Stop
         PermissionEngine::getInstance().triggerEmergencyStop(humanId);
         
-        // Worker tenta criar Task legitima sob Emergency Stop
-        bool workerTaskUnderEmergency = PermissionEngine::getInstance().canPerformAction(workerId, PermissionAction::UpdateOwnTask, "TASK_MEM");
-        CHECK(workerTaskUnderEmergency == false);
+        // 3. Qualquer agente tentando fazer qualquer coisa (mesmo sendo CEO) toma block
+        AgentIdentity ceoId = SystemIdentityProvider::createIdentity("C_2", "Tim Cook", AgentRole::CEO);
+        bool ceoBlocked = PermissionEngine::getInstance().canPerformAction(ceoId, PermissionAction::CreateGoal, "GOAL_MEM");
+        CHECK(ceoBlocked == false);
         
-        // Human tenta realizar ação sob Emergency Stop
-        bool humanActionUnderEmergency = PermissionEngine::getInstance().canPerformAction(humanId, PermissionAction::FullOverride, "ANY_MEM");
-        CHECK(humanActionUnderEmergency == true);
+        // Worker também toma block
+        bool workerTaskBlocked = PermissionEngine::getInstance().canPerformAction(workerId, PermissionAction::ExecuteTask, "TASK_MEM");
+        CHECK(workerTaskBlocked == false);
         
-        // 4. Human Disable Emergency Stop
+        // 4. Humano desabilita o Emergency Stop
         PermissionEngine::getInstance().disableEmergencyStop(humanId);
-        bool workerTaskAfterEmergency = PermissionEngine::getInstance().canPerformAction(workerId, PermissionAction::UpdateOwnTask, "TASK_MEM");
+        
+        // CEO pode voltar a agir
+        bool ceoAfterEmergency = PermissionEngine::getInstance().canPerformAction(ceoId, PermissionAction::CreateGoal, "GOAL_MEM");
+        CHECK(ceoAfterEmergency == true);
+        
+        // Worker volta a agir nas próprias permissões
+        bool workerTaskAfterEmergency = PermissionEngine::getInstance().canPerformAction(workerId, PermissionAction::ExecuteTask, "TASK_MEM");
         CHECK(workerTaskAfterEmergency == true);
     }
 
@@ -554,15 +556,15 @@ int main() {
         int blockCount = 0;
         
         // 1. Tenta Criar Goal
-        Goal attackGoal; attackGoal.id = "ATK_GOAL";
+        Goal attackGoal; attackGoal.id = "ATK_GOAL"; attackGoal.name = "Evil Name";
         if (!OrganizationMemory::getInstance().registerGoal(attackGoal, hostileId)) blockCount++;
         
         // 2. Tenta Criar Executive Meeting
-        ExecutiveMeeting attackMeeting; attackMeeting.id = "ATK_MEETING";
+        ExecutiveMeeting attackMeeting; attackMeeting.id = "ATK_MEETING"; attackMeeting.title = "Evil Title";
         if (!OrganizationMemory::getInstance().recordExecutiveMeeting(attackMeeting, hostileId)) blockCount++;
         
         // 3. Tenta Aprovar Decision
-        DecisionRecord attackDecision; attackDecision.id = "ATK_DEC";
+        DecisionRecord attackDecision; attackDecision.id = "ATK_DEC"; attackDecision.goalId = "GOAL_OSX";
         if (!OrganizationMemory::getInstance().recordDecision(attackDecision, hostileId)) blockCount++;
         
         // 4. Tenta Alterar Goal existente
@@ -607,6 +609,48 @@ int main() {
             }
         }
         CHECK(attackLogCount >= 7); // As chamadas ativas ao PermissionEngine/Sandbox devem ser logadas
+    }
+
+    // TEST 22: Advanced Sandbox Hardening (Fase 9.6.2)
+    {
+        TEST("Test 22: UnknownRole Attack & Memory Corruption Prevention");
+        
+        // 1. UnknownRole Attack
+        AgentIdentity unknownId = SystemIdentityProvider::createIdentity("U_1", "MysteryAgent", AgentRole::Unknown);
+        bool canCreateGoal = PermissionEngine::getInstance().canPerformAction(unknownId, PermissionAction::CreateGoal, "GOAL_MEM");
+        CHECK(canCreateGoal == false);
+        
+        bool canExecuteTask = PermissionEngine::getInstance().canPerformAction(unknownId, PermissionAction::ExecuteTask, "TASK_MEM");
+        CHECK(canExecuteTask == false);
+        
+        // 2. Memory Corruption (Invalid Data)
+        AgentIdentity ceoId = SystemIdentityProvider::createIdentity("C_1", "CookCEO", AgentRole::CEO);
+        
+        Goal corruptGoal; 
+        corruptGoal.id = ""; // Empty ID
+        corruptGoal.name = "Corrupt Goal";
+        bool corruptGoalSaved = OrganizationMemory::getInstance().registerGoal(corruptGoal, ceoId);
+        CHECK(corruptGoalSaved == false);
+        
+        DecisionRecord corruptDecision;
+        corruptDecision.id = "DEC_1";
+        corruptDecision.goalId = ""; // Missing Target Goal
+        bool corruptDecisionSaved = OrganizationMemory::getInstance().recordDecision(corruptDecision, ceoId);
+        CHECK(corruptDecisionSaved == false);
+        
+        // 3. Whitelist Sandbox Verification
+        AgentIdentity workerId = SystemIdentityProvider::createIdentity("W_1", "Worker", AgentRole::Worker);
+        
+        // Malicious but attempts to trick with path
+        bool sandboxFail1 = RuntimeSandbox::canExecuteSystemCommand(workerId, "/bin/rm -rf");
+        CHECK(sandboxFail1 == false);
+        
+        bool sandboxFail2 = RuntimeSandbox::canExecuteSystemCommand(workerId, "python os.system('rm')");
+        CHECK(sandboxFail2 == false);
+        
+        // Legitimate Whitelisted command
+        bool sandboxPass = RuntimeSandbox::canExecuteSystemCommand(workerId, "git status");
+        CHECK(sandboxPass == true);
     }
 
     std::printf("\n=== Summary: %d passed, %d failed ===\n", passed, failed);

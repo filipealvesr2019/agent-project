@@ -12,7 +12,8 @@ enum class AgentRole {
     Worker,
     Reviewer,
     Human,
-    System
+    System,
+    Unknown
 };
 
 class SystemIdentityProvider;
@@ -43,6 +44,7 @@ public:
             case AgentRole::Reviewer: return "Reviewer";
             case AgentRole::Human: return "Human";
             case AgentRole::System: return "System";
+            case AgentRole::Unknown: return "Unknown";
             default: return "Unknown";
         }
     }

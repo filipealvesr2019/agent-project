@@ -90,16 +90,29 @@ class RuntimeSandbox {
 public:
     static bool canExecuteSystemCommand(const AgentIdentity& identity, const std::string& cmd) {
         if (identity.getRole() == AgentRole::Human || identity.getRole() == AgentRole::System) {
-             return true;
+             return true; // Human/System can run anything
         }
         
-        // Strict runtime execution blocking
-        if (cmd.find("rm ") != std::string::npos || 
-            cmd.find("curl ") != std::string::npos || 
-            cmd.find("wget ") != std::string::npos || 
-            cmd.find("..") != std::string::npos) {
-            
-            AuditEngine::getInstance().log(identity.getName(), identity.getRoleString(), "SHELL_EXEC", cmd, false, "Sandbox Command Blocked");
+        // Strict Whitelist Execution Policy
+        std::vector<std::string> allowedPrefixes = {
+            "git status",
+            "git log",
+            "npm test",
+            "cmake --build",
+            "ls -la"
+        };
+        
+        bool isAllowed = false;
+        for (const auto& prefix : allowedPrefixes) {
+            // Must strictly start with the allowed prefix
+            if (cmd.find(prefix) == 0) {
+                isAllowed = true;
+                break;
+            }
+        }
+        
+        if (!isAllowed) {
+            AuditEngine::getInstance().log(identity.getName(), identity.getRoleString(), "SHELL_EXEC", cmd, false, "Sandbox Command Blocked by Whitelist");
             return false;
         }
         

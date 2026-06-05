@@ -40,6 +40,7 @@ public:
     }
 
     bool registerTask(const Task& task, const AgentIdentity& identity = SystemIdentityProvider::getSystemIdentity()) {
+        if (task.id.empty() || task.assignedTo.empty()) return false; // Corrupt data prevention
         if (!PermissionEngine::getInstance().canPerformAction(identity, PermissionAction::CreateTask, "TASK_MEM")) return false;
         std::lock_guard<std::mutex> lock(mutex_);
         allTasks[task.id] = task;
@@ -127,6 +128,7 @@ public:
     }
 
     bool registerGoal(const Goal& goal, const AgentIdentity& identity = SystemIdentityProvider::getSystemIdentity()) {
+        if (goal.id.empty() || goal.name.empty()) return false; // Corrupt data prevention
         if (!PermissionEngine::getInstance().canPerformAction(identity, PermissionAction::CreateGoal, "GOAL_MEM")) {
             return false;
         }
@@ -136,6 +138,7 @@ public:
     }
 
     bool recordMeeting(const Meeting& meeting, const AgentIdentity& identity = SystemIdentityProvider::getSystemIdentity()) {
+        if (meeting.id.empty() || meeting.title.empty()) return false; // Corrupt data prevention
         if (!PermissionEngine::getInstance().canPerformAction(identity, PermissionAction::CreateMeeting, "MEETING_MEM")) return false;
         std::lock_guard<std::mutex> lock(mutex_);
         meetings[meeting.id] = meeting;
@@ -152,6 +155,7 @@ public:
     }
 
     bool recordExecutiveMeeting(const ExecutiveMeeting& meeting, const AgentIdentity& identity = SystemIdentityProvider::getSystemIdentity()) {
+        if (meeting.id.empty() || meeting.title.empty()) return false; // Corrupt data prevention
         if (!PermissionEngine::getInstance().canPerformAction(identity, PermissionAction::CreateExecutiveMeeting, "EXEC_MEETING_MEM")) return false;
         std::lock_guard<std::mutex> lock(mutex_);
         executiveMeetings[meeting.id] = meeting;
@@ -176,6 +180,7 @@ public:
     }
 
     bool recordDecision(const DecisionRecord& decision, const AgentIdentity& identity = SystemIdentityProvider::getSystemIdentity()) {
+        if (decision.id.empty() || decision.goalId.empty()) return false; // Corrupt data prevention
         if (!PermissionEngine::getInstance().canPerformAction(identity, PermissionAction::ApproveStrategicDecisions, "DECISION_MEM")) return false;
         std::lock_guard<std::mutex> lock(mutex_);
         decisions.push_back(decision);
