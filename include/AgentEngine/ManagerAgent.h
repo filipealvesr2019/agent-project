@@ -3,6 +3,7 @@
 #include "EventBus/EventBus.h"
 
 #include "MemoryEngine/OrganizationMemory.h"
+#include "OrganizationEngine/EscalationEngine.h"
 
 namespace AgentOS {
 
@@ -20,6 +21,13 @@ public:
         
         worker.tasks.push_back(t);
         EventBus::getInstance().publish(Event(EventType::TaskAssigned, getName(), worker.getName(), "Assigned subtask: " + subDescription));
+    }
+    
+    void processIncomingMessage(const Message& msg) override {
+        if (msg.content.find("BLOCKED") != std::string::npos) {
+            EventBus::getInstance().publish(Event(EventType::TaskAssigned, getName(), "SYSTEM", "Analyzing blocker from " + msg.from + "..."));
+            EscalationEngine::getInstance().detectBlockers(getName());
+        }
     }
 
 private:
