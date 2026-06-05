@@ -3,6 +3,7 @@
 #include <vector>
 #include <mutex>
 #include "SecurityEngine/AgentPermissions.h"
+#include "SecurityEngine/CommandSystem.h"
 
 namespace AgentOS {
 
@@ -88,36 +89,22 @@ private:
 
 class RuntimeSandbox {
 public:
-    static bool canExecuteSystemCommand(const AgentIdentity& identity, const std::string& cmd) {
+    static bool canExecuteSystemCommand(const AgentIdentity& identity, const Command& cmd) {
         if (identity.getRole() == AgentRole::Human || identity.getRole() == AgentRole::System) {
              return true; // Human/System can run anything
         }
         
-        // Strict Whitelist Execution Policy
-        std::vector<std::string> allowedPrefixes = {
-            "git status",
-            "git log",
-            "npm test",
-            "cmake --build",
-            "ls -la"
-        };
-        
-        bool isAllowed = false;
-        for (const auto& prefix : allowedPrefixes) {
-            // Must strictly start with the allowed prefix
-            if (cmd.find(prefix) == 0) {
-                isAllowed = true;
-                break;
-            }
-        }
-        
-        if (!isAllowed) {
-            AuditEngine::getInstance().log(identity.getName(), identity.getRoleString(), "SHELL_EXEC", cmd, false, "Sandbox Command Blocked by Whitelist");
+        // No strings allowed. AST execution validation.
+        if (!CommandValidator::validate(cmd)) {
+            AuditEngine::getInstance().log(identity.getName(), identity.getRoleString(), "SHELL_EXEC", "INVALID_AST_NODE", false, "Sandbox Command Blocked: AST Validation Failed");
             return false;
         }
         
-        AuditEngine::getInstance().log(identity.getName(), identity.getRoleString(), "SHELL_EXEC", cmd, true, "Sandbox Command Allowed");
-        return true;
+        // Structured command is valid. Let the Executor run it.
+        bool execResult = Executor::executeCommand(cmd);
+        
+        AuditEngine::getInstance().log(identity.getName(), identity.getRoleString(), "SHELL_EXEC", cmd.targetId, execResult, execResult ? "Structured Command Executed" : "Executor Failed");
+        return execResult;
     }
 };
 

