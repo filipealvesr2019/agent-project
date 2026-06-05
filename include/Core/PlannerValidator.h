@@ -14,14 +14,14 @@ public:
             return false;
         }
         
-        // 2. Validate Complexity
-        if (!ComplexityValidator::validate(originalPrompt, result.complexity, result.type)) {
-            result.fallbackReason = "Complexity mismatch with heuristics";
-            return false;
-        }
+        // 2. Validate and Correct Complexity
+        result.complexity = ComplexityValidator::correctComplexity(originalPrompt, result.complexity, result.type);
         
-        // 3. Inject Role Templates
-        // Here we override whatever roles the LLM might have hallucinated with strict templates
+        // 3. Populate Context
+        result.context.mission = originalPrompt;
+        if (result.domain == Domain::Software) result.context.assumptions.add("Needs code structure");
+        
+        // 4. Inject Role Templates
         if (result.requiresOrganization) {
             result.roles = RoleTemplates::getRolesFor(result.domain, result.complexity);
         }

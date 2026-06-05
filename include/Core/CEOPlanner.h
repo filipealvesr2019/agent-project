@@ -37,6 +37,12 @@ struct RoleDefinition {
     juce::String manager;
 };
 
+struct PlanningContext {
+    juce::String mission;
+    juce::StringArray goals;
+    juce::StringArray assumptions;
+};
+
 struct PlanningResult {
     WorkType type;
     Domain domain;
@@ -50,6 +56,9 @@ struct PlanningResult {
     juce::String projectName;
     std::vector<RoleDefinition> roles;
     juce::String fallbackReason;
+    
+    PlanningContext context;
+    uint64_t planVersion = 1;
     
     // Converte enumeradores para strings p/ debug
     juce::String getTypeStr() const;
