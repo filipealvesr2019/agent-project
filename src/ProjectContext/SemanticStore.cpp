@@ -72,6 +72,15 @@ void SemanticStore::clear() {
     nextId_ = 0;
 }
 
+void SemanticStore::removeChunksForFile(const std::string& filePath) {
+    for (auto it = entries_.begin(); it != entries_.end(); ) {
+        if (it->second.chunk.source == filePath)
+            it = entries_.erase(it);
+        else
+            ++it;
+    }
+}
+
 bool SemanticStore::save(const std::string& path) const {
     std::ofstream file(path);
     if (!file.is_open()) return false;

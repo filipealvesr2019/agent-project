@@ -10,6 +10,8 @@ add_library(ProjectContext STATIC
     SymbolIndexer.cpp
     TextChunker.cpp
     UniversalIndexer.cpp
+    CodeGraph.cpp
+    Reranker.cpp
 )
 target_include_directories(ProjectContext PUBLIC ${CMAKE_SOURCE_DIR}/include)
 target_link_libraries(ProjectContext PUBLIC llama)

@@ -2,6 +2,7 @@
 #include "ProjectContext/FileScanner.h"
 #include <iostream>
 #include <filesystem>
+#include <fstream>
 #include <set>
 #include <algorithm>
 
@@ -22,10 +23,18 @@ static const std::set<std::string> supportedExts = {
 };
 
 void UniversalIndexer::indexFile(const std::string& filePath, EmbeddingEngine& engine) {
-    auto contents = FileScanner::readFiles({filePath});
-    if (!contents.empty()) {
-        retriever_.indexFile(filePath, contents[0], engine);
-    }
+    // Read file content
+    std::ifstream f(filePath);
+    if (!f.is_open()) return;
+    std::string content((std::istreambuf_iterator<char>(f)),
+                         std::istreambuf_iterator<char>());
+    if (content.empty()) return;
+
+    // Embed + chunk (incremental guard is inside ContextRetriever)
+    retriever_.indexFile(filePath, content, engine);
+
+    // Also update the code dependency graph for this file
+    graph_.indexFile(filePath, content);
 }
 
 void UniversalIndexer::indexFiles(const std::vector<std::string>& filePaths,
@@ -39,11 +48,15 @@ void UniversalIndexer::indexWorkspace(const std::string& rootPath,
                                        EmbeddingEngine& engine) {
     fs::path root(rootPath);
     if (!fs::exists(root) || !fs::is_directory(root)) {
-        std::cerr << "[UniversalIndexer] Raiz invalida: " << rootPath << "\n";
+        std::cerr << "[UniversalIndexer] Invalid root: " << rootPath << "\n";
         return;
     }
 
-    size_t fileCount = 0;
+    // Build the code graph first (fast, no embeddings needed)
+    graph_.buildFromWorkspace(rootPath);
+
+    size_t fileCount  = 0;
+    size_t skippedCount = 0;
     try {
         fs::recursive_directory_iterator it(root);
         fs::recursive_directory_iterator end;
@@ -63,22 +76,28 @@ void UniversalIndexer::indexWorkspace(const std::string& rootPath,
                 std::transform(ext.begin(), ext.end(), ext.begin(), ::tolower);
 
                 if (supportedExts.count(ext)) {
+                    size_t before = retriever_.totalChunks();
                     indexFile(entry.path().string(), engine);
-                    fileCount++;
+                    size_t after  = retriever_.totalChunks();
+                    if (after == before) ++skippedCount; // unchanged file, skipped
+                    else                ++fileCount;
                 }
             }
             ++it;
         }
     } catch (const std::exception& e) {
-        std::cerr << "[UniversalIndexer] Erro: " << e.what() << "\n";
+        std::cerr << "[UniversalIndexer] Error: " << e.what() << "\n";
     }
 
-    std::cerr << "[UniversalIndexer] Indexados " << fileCount << " arquivos, "
-              << retriever_.totalChunks() << " chunks\n";
+    std::cerr << "[UniversalIndexer] Indexed " << fileCount << " files ("
+              << skippedCount << " skipped — unchanged), "
+              << retriever_.totalChunks() << " chunks, "
+              << graph_.nodeCount() << " graph nodes\n";
 }
 
 void UniversalIndexer::clear() {
     retriever_.clear();
+    graph_.clear();
 }
 
 bool UniversalIndexer::saveState(const std::string& path) const {

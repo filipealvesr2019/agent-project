@@ -16,6 +16,10 @@ public:
 
     const ContextChunk* getChunk(const std::string& id) const;
 
+    // Remove all chunks that belong to a given source file path
+    // (used by incremental indexing to evict stale chunks on file change)
+    void removeChunksForFile(const std::string& filePath);
+
     size_t size() const { return entries_.size(); }
     void clear();
 

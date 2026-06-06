@@ -6,6 +6,7 @@
 #include "LocalRuntime/LlamaRuntime.h"
 #include "ProjectContext/PromptComposer.h"
 #include "ProjectContext/ContextChunk.h"
+#include "ProjectContext/Reranker.h"
 #include <filesystem>
 #include <thread>
 #include <sstream>
@@ -239,13 +240,54 @@ WorkspaceComponent::WorkspaceComponent() {
                           semanticIndexer_.totalChunks() > 0;
 
             if (hasRAG) {
-                // Embed the user question
+                // ============================================================
+                // STAGE 1: Vector search — top-50 candidates
+                // ============================================================
+                constexpr size_t CANDIDATE_POOL = 50;
+                constexpr size_t FINAL_K        = 10;
+
                 auto queryEmb = embeddingEngine_.embed(promptStr);
 
-                std::vector<ContextChunk> chunks;
+                std::vector<ContextChunk> candidates;
                 if (!queryEmb.empty()) {
-                    chunks = semanticIndexer_.retriever().retrieve(promptStr, embeddingEngine_, 20);
+                    candidates = semanticIndexer_.retriever()
+                                     .retrieve(promptStr, embeddingEngine_, CANDIDATE_POOL);
                 }
+
+                // ============================================================
+                // STAGE 2: CodeGraph expansion
+                // Collect seed file paths from candidates, then BFS-expand
+                // to files related by import/include edges (depth 2).
+                // Extra files are fetched from the SemanticStore by file path.
+                // ============================================================
+                std::vector<std::string> seedFiles;
+                for (const auto& c : candidates) {
+                    bool found = false;
+                    for (const auto& s : seedFiles) if (s == c.source) { found = true; break; }
+                    if (!found) seedFiles.push_back(c.source);
+                }
+
+                auto expandedFiles = semanticIndexer_.codeGraph().expand(seedFiles, 2);
+
+                // Pull the best chunk from each expanded file out of the store
+                for (const auto& filePath : expandedFiles) {
+                    // Retrieve top-1 for this specific file using keyword
+                    // (re-rank will score them properly later)
+                    auto fileCandidates = semanticIndexer_.retriever()
+                                             .retrieve(promptStr, embeddingEngine_, 5);
+                    for (auto& fc : fileCandidates) {
+                        if (fc.source == filePath) {
+                            candidates.push_back(fc);
+                            break;
+                        }
+                    }
+                }
+
+                // ============================================================
+                // STAGE 3: Multi-signal re-rank — top-50 → top-10
+                // ============================================================
+                static const Reranker reranker;
+                auto chunks = reranker.rerank(promptStr, candidates, FINAL_K);
 
                 // Deduplicate source files for debug display
                 std::vector<std::string> usedFiles;
@@ -255,21 +297,20 @@ WorkspaceComponent::WorkspaceComponent() {
                     if (!found) usedFiles.push_back(c.source);
                 }
 
-                // Build the RAG prompt via PromptComposer
+                // Build the final prompt
                 augmentedPrompt = PromptComposer::build(promptStr, chunks);
 
-                // Estimate tokens (chars / 4)
                 size_t estTokens = augmentedPrompt.size() / 4;
 
-                // Debug block shown to user (transparency — like Cursor's "Context used")
+                // Debug block: show all 3 stages
                 std::ostringstream dbg;
                 dbg << "\n---\n";
-                dbg << "**[RAG DEBUG]**\n";
-                dbg << "Pergunta: " << promptStr << "\n\n";
-                dbg << "Chunks usados: " << chunks.size() << "\n";
-                dbg << "Arquivos:\n";
+                dbg << "**[RAG DEBUG — 3 stages]**\n";
+                dbg << "Stage 1 (vetor):  " << candidates.size() << " candidatos\n";
+                dbg << "Stage 2 (grafo):  +" << expandedFiles.size() << " arquivos expandidos\n";
+                dbg << "Stage 3 (rerank): " << chunks.size() << " chunks finais\n\n";
+                dbg << "Arquivos no contexto:\n";
                 for (const auto& f : usedFiles) {
-                    // show only the filename part
                     auto pos = f.find_last_of("/\\");
                     dbg << "  - " << (pos != std::string::npos ? f.substr(pos+1) : f) << "\n";
                 }

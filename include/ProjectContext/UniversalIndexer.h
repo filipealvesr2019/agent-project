@@ -5,6 +5,7 @@
 #include "ProjectContext/ContextRetriever.h"
 #include "ProjectContext/ContextChunk.h"
 #include "ProjectContext/EmbeddingEngine.h"
+#include "ProjectContext/CodeGraph.h"
 
 namespace AgentOS {
 
@@ -16,8 +17,11 @@ public:
 
     size_t totalChunks() const { return retriever_.totalChunks(); }
 
-    ContextRetriever& retriever() { return retriever_; }
+    ContextRetriever&       retriever()       { return retriever_; }
     const ContextRetriever& retriever() const { return retriever_; }
+
+    CodeGraph&       codeGraph()       { return graph_; }
+    const CodeGraph& codeGraph() const { return graph_; }
 
     void clear();
     bool saveState(const std::string& path) const;
@@ -25,6 +29,7 @@ public:
 
 private:
     ContextRetriever retriever_;
+    CodeGraph        graph_;
     void indexFile(const std::string& filePath, EmbeddingEngine& engine);
 };
 
