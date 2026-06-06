@@ -339,12 +339,17 @@ void WorkspaceComponent::drawNode(juce::Graphics& g, std::shared_ptr<FileNode> n
     bool isActive = (!isFolder && node->file.getFileName() == activeFileName_);
     bool isSelected = (node == selectedNode_);
     
-    juce::Rectangle<int> itemBounds;
-    drawFileTreeItem(g, y, indent, node->file.getFileName(), isFolder, node->isExpanded, isActive, &itemBounds);
+    juce::Rectangle<int> itemBounds(16 + indent * 16, y, 220 - indent * 16, 24);
     node->lastBounds = itemBounds;
     
-    // Selection highlight (light)
-    if (isSelected && !isActive) {
+    // 1. Draw backgrounds first (behind icons and text)
+    if (isActive) {
+        g.setColour(juce::Colour(0xFF2D324A));
+        g.fillRoundedRectangle(itemBounds.toFloat(), 4.0f);
+        g.setColour(juce::Colour(0xFF6D5DFE));
+        g.fillRect(16, y + 4, 3, 16);
+    } else if (isSelected) {
+        // Selection highlight (light)
         g.setColour(juce::Colour(0xFF232840));
         g.fillRoundedRectangle(itemBounds.toFloat(), 4.0f);
     }
@@ -362,6 +367,10 @@ void WorkspaceComponent::drawNode(juce::Graphics& g, std::shared_ptr<FileNode> n
         g.setColour(juce::Colour(0xFF161A25).withAlpha(0.5f));
         g.fillRoundedRectangle(itemBounds.toFloat(), 4.0f);
     }
+    
+    // 2. Draw the text, icons and chevrons on top (pass actual isActive to set correct text color)
+    juce::Rectangle<int> dummyBounds;
+    drawFileTreeItem(g, y, indent, node->file.getFileName(), isFolder, node->isExpanded, isActive, &dummyBounds);
     
     if (isFolder && node->isExpanded) {
         if (!node->isPopulated) populateNode(node);
@@ -700,13 +709,6 @@ void WorkspaceComponent::mouseWheelMove(const juce::MouseEvent& e, const juce::M
 void WorkspaceComponent::drawFileTreeItem(juce::Graphics& g, int& y, int indent, const juce::String& name, bool isFolder, bool isExpanded, bool isActive, juce::Rectangle<int>* outBounds) {
     juce::Rectangle<int> itemBounds(16 + indent * 16, y, 220 - indent * 16, 24);
     if (outBounds) *outBounds = itemBounds;
-    
-    if (isActive) {
-        g.setColour(juce::Colour(0xFF2D324A));
-        g.fillRoundedRectangle(itemBounds.toFloat(), 4.0f);
-        g.setColour(juce::Colour(0xFF6D5DFE));
-        g.fillRect(16, y + 4, 3, 16);
-    }
     
     int x = itemBounds.getX() + 6;
     
