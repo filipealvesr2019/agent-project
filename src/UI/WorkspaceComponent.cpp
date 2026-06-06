@@ -440,7 +440,7 @@ void WorkspaceComponent::mouseDown(const juce::MouseEvent& e) {
     if (e.mods.isRightButtonDown() && rootNode_ && explorerContentBounds_.contains(e.getPosition())) {
         for (auto& child : rootNode_->children) {
             auto hit = hitTestNode(child, e.getPosition());
-            if (hit) { selectedNode_ = hit; repaint(); showContextMenu(hit); return; }
+            if (hit) { selectedNode_ = hit; repaint(); showContextMenu(hit, e.getScreenPosition()); return; }
         }
         return;
     }
@@ -1133,7 +1133,7 @@ void WorkspaceComponent::drawPendingChangesBar(juce::Graphics& g, juce::Rectangl
 // Context-menu helpers
 // ─────────────────────────────────────────────────────────────────────────────
 
-void WorkspaceComponent::showContextMenu(std::shared_ptr<FileNode> node) {
+void WorkspaceComponent::showContextMenu(std::shared_ptr<FileNode> node, juce::Point<int> screenPos) {
     juce::PopupMenu menu;
     menu.addItem(1, "Renomear");
     menu.addSeparator();
@@ -1143,7 +1143,12 @@ void WorkspaceComponent::showContextMenu(std::shared_ptr<FileNode> node) {
     menu.addSeparator();
     menu.addItem(5, "Excluir");
 
-    menu.showMenuAsync(juce::PopupMenu::Options().withTargetComponent(this),
+    // Tema dark + posicionar exatamente onde o usuario clicou
+    menu.setLookAndFeel(&darkMenuLaf_);
+    menu.showMenuAsync(
+        juce::PopupMenu::Options()
+            .withTargetScreenArea(juce::Rectangle<int>(screenPos.x, screenPos.y, 1, 1))
+            .withMinimumWidth(140),
         [this, node](int result) {
             switch (result) {
                 case 1: startRenameNode(node); break;

@@ -23,6 +23,55 @@ struct FileNode {
     juce::Rectangle<int> lastBounds;
 };
 
+// Dark LookAndFeel for the context menu
+class DarkPopupLAF : public juce::LookAndFeel_V4 {
+public:
+    DarkPopupLAF() {
+        setColour(juce::PopupMenu::backgroundColourId,            juce::Colour(0xFF161A25));
+        setColour(juce::PopupMenu::textColourId,                  juce::Colour(0xFFB0B6C9));
+        setColour(juce::PopupMenu::highlightedBackgroundColourId, juce::Colour(0xFF6D5DFE));
+        setColour(juce::PopupMenu::highlightedTextColourId,       juce::Colours::white);
+    }
+    void drawPopupMenuBackground(juce::Graphics& g, int w, int h) override {
+        g.setColour(juce::Colour(0xFF161A25));
+        g.fillRoundedRectangle(0.f, 0.f, (float)w, (float)h, 6.f);
+        g.setColour(juce::Colour(0xFF2D3348));
+        g.drawRoundedRectangle(0.5f, 0.5f, w-1.f, h-1.f, 6.f, 1.f);
+    }
+    void drawPopupMenuItem(juce::Graphics& g, const juce::Rectangle<int>& area,
+        bool isSep, bool isActive, bool isHigh, bool, bool,
+        const juce::String& text, const juce::String&,
+        const juce::Drawable*, const juce::Colour*) override
+    {
+        if (isSep) {
+            g.setColour(juce::Colour(0xFF2D3348));
+            g.fillRect(area.getX()+8, area.getCentreY(), area.getWidth()-16, 1);
+            return;
+        }
+        if (isHigh && isActive) {
+            g.setColour(juce::Colour(0xFF6D5DFE).withAlpha(0.85f));
+            g.fillRoundedRectangle(area.reduced(4,2).toFloat(), 4.f);
+        }
+        juce::Colour col = !isActive ? juce::Colour(0xFF4A526A)
+                         : isHigh   ? juce::Colours::white
+                                    : juce::Colour(0xFFB0B6C9);
+        if (text == "Excluir" && isActive)
+            col = isHigh ? juce::Colour(0xFFFF8080) : juce::Colour(0xFFE06C75);
+        g.setColour(col);
+        g.setFont(juce::Font(13.f));
+        g.drawText(text, area.withTrimmedLeft(14).withTrimmedRight(8),
+                   juce::Justification::centredLeft);
+    }
+    void getIdealPopupMenuItemSize(const juce::String& text, bool isSep,
+                                    int standardH, int& idealW, int& idealH) override {
+        if (isSep) { idealW = 1; idealH = 10; return; }
+        idealH = 28;
+        idealW = juce::Font(13.f).getStringWidth(text) + 28;
+    }
+    int  getPopupMenuBorderSize() override { return 6; }
+    juce::Font getPopupMenuFont()  override { return juce::Font(13.f); }
+};
+
 class WorkspaceComponent : public juce::Component, public juce::Timer, public juce::DragAndDropContainer, public juce::DragAndDropTarget {
 public:
     WorkspaceComponent();
@@ -64,7 +113,7 @@ private:
     void commitInlineCreation();
     void cancelInlineCreation();
     void startRenameNode(std::shared_ptr<FileNode> node);
-    void showContextMenu(std::shared_ptr<FileNode> node);
+    void showContextMenu(std::shared_ptr<FileNode> node, juce::Point<int> screenPos);
     void deleteNode(std::shared_ptr<FileNode> node);
     void pasteClipboard(std::shared_ptr<FileNode> destNode);
 
@@ -124,6 +173,8 @@ private:
     // Clipboard (copy / cut)
     std::shared_ptr<FileNode> clipboardNode_;
     bool clipboardIsCut_ = false;
+
+    DarkPopupLAF darkMenuLaf_;
     
     // Drag & drop file tree state
     std::shared_ptr<FileNode> draggedNode_;
