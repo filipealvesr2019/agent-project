@@ -740,6 +740,13 @@ add_executable(AgentOS_HierarchyTest
 target_include_directories(AgentOS_HierarchyTest PRIVATE include)
 target_compile_features(AgentOS_HierarchyTest PRIVATE cxx_std_20)
 
+add_executable(AgentOS_RecursiveDelegationTest
+    tests/test_recursive_delegation.cpp
+    src/EventBus/EventBus.cpp
+)
+target_include_directories(AgentOS_RecursiveDelegationTest PRIVATE include)
+target_compile_features(AgentOS_RecursiveDelegationTest PRIVATE cxx_std_20)
+
 
 
 
