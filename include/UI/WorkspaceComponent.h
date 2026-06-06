@@ -48,6 +48,14 @@ private:
     std::unique_ptr<juce::Drawable> paperclipIcon_;
     std::unique_ptr<juce::Drawable> folderIcon_;
 
+    juce::TextEditor promptInput_;
+    juce::DrawableButton btnAttachFile_{"Attach File", juce::DrawableButton::ImageFitted};
+    juce::DrawableButton btnAttachFolder_{"Attach Folder", juce::DrawableButton::ImageFitted};
+    juce::TextButton btnSubmit_{"Enviar para o CEO"};
+    std::unique_ptr<juce::FileChooser> fileChooser_;
+    
+    juce::Rectangle<int> promptBarBounds_;
+
     std::vector<TimelineEvent> timelineEvents_;
     float animationPhase_ = 0.0f;
     int eventBusSubscriptionId_ = -1;

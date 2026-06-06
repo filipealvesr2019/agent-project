@@ -2,6 +2,7 @@
 #include <juce_core/juce_core.h>
 #include "EventBus/EventBus.h"
 #include "WorkflowEngine/WorkflowEngine.h"
+#include "UI/UI.h"
 
 namespace AgentOS {
 
@@ -16,6 +17,49 @@ WorkspaceComponent::WorkspaceComponent() {
     if (auto xml = juce::XmlDocument::parse(juce::String(folderSvg))) {
         folderIcon_ = juce::Drawable::createFromSVG(*xml);
     }
+    
+    promptInput_.setMultiLine(true);
+    promptInput_.setReturnKeyStartsNewLine(true);
+    promptInput_.setColour(juce::TextEditor::backgroundColourId, juce::Colours::transparentBlack);
+    promptInput_.setColour(juce::TextEditor::outlineColourId, juce::Colours::transparentBlack);
+    promptInput_.setColour(juce::TextEditor::focusedOutlineColourId, juce::Colours::transparentBlack);
+    promptInput_.setColour(juce::TextEditor::textColourId, juce::Colours::white);
+    promptInput_.setTextToShowWhenEmpty("Descreva o que voce quer que o CEO planeje e execute...", juce::Colour(0xFF8A91A8));
+    addAndMakeVisible(promptInput_);
+
+    btnSubmit_.setColour(juce::TextButton::buttonColourId, juce::Colour(0xFF4338CA));
+    btnSubmit_.setColour(juce::TextButton::textColourOffId, juce::Colours::white);
+    addAndMakeVisible(btnSubmit_);
+
+    if (paperclipIcon_) btnAttachFile_.setImages(paperclipIcon_.get(), nullptr, nullptr);
+    if (folderIcon_) btnAttachFolder_.setImages(folderIcon_.get(), nullptr, nullptr);
+    addAndMakeVisible(btnAttachFile_);
+    addAndMakeVisible(btnAttachFolder_);
+
+    btnAttachFile_.onClick = [this] {
+        fileChooser_ = std::make_unique<juce::FileChooser>("Selecione um arquivo para abrir...", juce::File::getSpecialLocation(juce::File::userDocumentsDirectory), "*");
+        auto flags = juce::FileBrowserComponent::openMode | juce::FileBrowserComponent::canSelectFiles;
+        fileChooser_->launchAsync(flags, [this](const juce::FileChooser& chooser) {
+            if (chooser.getResult().existsAsFile()) {
+                auto file = chooser.getResult();
+                updateActiveFile(file.getFileName(), file.loadFileAsString());
+                repaint();
+            }
+        });
+    };
+
+    btnAttachFolder_.onClick = [this] {
+        fileChooser_ = std::make_unique<juce::FileChooser>("Selecione uma pasta de projeto...", juce::File::getSpecialLocation(juce::File::userDocumentsDirectory), "");
+        auto flags = juce::FileBrowserComponent::openMode | juce::FileBrowserComponent::canSelectDirectories;
+        fileChooser_->launchAsync(flags, [this](const juce::FileChooser& chooser) {
+            if (chooser.getResult().isDirectory()) {
+                auto dir = chooser.getResult();
+                projectName_ = dir.getFileName();
+                projectStatus_ = "Pasta aberta";
+                repaint();
+            }
+        });
+    };
 
     startTimerHz(30); // 30 FPS for animation
 
@@ -135,7 +179,7 @@ void WorkspaceComponent::paint(juce::Graphics& g) {
     auto timelineBounds = panelsArea.removeFromRight(timelineW);
     panelsArea.removeFromRight(10); // gap
     
-    auto promptBarBounds = panelsArea.removeFromBottom(110);
+    promptBarBounds_ = panelsArea.removeFromBottom(110);
     panelsArea.removeFromBottom(10); // gap
     
     int explorerW = 260;
@@ -147,7 +191,13 @@ void WorkspaceComponent::paint(juce::Graphics& g) {
     drawExplorerPanel(g, explorerBounds);
     drawEditorPanel(g, editorBounds);
     drawTimelinePanel(g, timelineBounds);
-    drawPromptBar(g, promptBarBounds);
+    drawPromptBar(g, promptBarBounds_);
+    
+    // Check if we are showing changes bar
+    if (UI::getInstance().getPendingChangesCount() > 0) {
+        auto changesBarBounds = editorBounds.removeFromBottom(60);
+        drawPendingChangesBar(g, changesBarBounds);
+    }
 }
 
 void WorkspaceComponent::drawExplorerPanel(juce::Graphics& g, juce::Rectangle<int> bounds) {
@@ -160,7 +210,6 @@ void WorkspaceComponent::drawExplorerPanel(juce::Graphics& g, juce::Rectangle<in
     g.setFont(juce::Font(12.0f, juce::Font::bold));
     g.drawText("EXPLORADOR", content.removeFromTop(20), juce::Justification::centredLeft);
     
-    // Search box
     auto searchBox = content.removeFromTop(36).reduced(0, 4);
     g.setColour(juce::Colour(0xFF1E2433));
     g.fillRoundedRectangle(searchBox.toFloat(), 6.0f);
@@ -179,9 +228,8 @@ void WorkspaceComponent::drawExplorerPanel(juce::Graphics& g, juce::Rectangle<in
     
     drawFileTreeItem(g, y, 0, ".agentes", true, false);
     drawFileTreeItem(g, y, 0, "docs", true, true);
-    drawFileTreeItem(g, y, 1, "plano-do-projeto.md", false, false, true); // Active
+    drawFileTreeItem(g, y, 1, "plano-do-projeto.md", false, false, true); 
     
-    // Dynamic generic folders based on project name words
     juce::StringArray words;
     words.addTokens(projectName_.toLowerCase(), " ", "");
     
@@ -207,7 +255,6 @@ void WorkspaceComponent::drawFileTreeItem(juce::Graphics& g, int& y, int indent,
     if (isActive) {
         g.setColour(juce::Colour(0xFF2D324A));
         g.fillRoundedRectangle(itemBounds.toFloat(), 4.0f);
-        // Left accent bar
         g.setColour(juce::Colour(0xFF6D5DFE));
         g.fillRect(16, y + 4, 3, 16);
     }
@@ -215,7 +262,6 @@ void WorkspaceComponent::drawFileTreeItem(juce::Graphics& g, int& y, int indent,
     int x = itemBounds.getX() + 6;
     
     if (isFolder) {
-        // Arrow
         g.setColour(juce::Colour(0xFF8A91A8));
         juce::Path p;
         if (isExpanded) {
@@ -226,20 +272,19 @@ void WorkspaceComponent::drawFileTreeItem(juce::Graphics& g, int& y, int indent,
         g.fillPath(p);
         x += 16;
     } else {
-        x += 16; // space where arrow would be
+        x += 16; 
     }
     
-    // Icon (dummy color based on type)
     if (isFolder) {
-        g.setColour(juce::Colour(0xFFF59E0B)); // Orange
+        g.setColour(juce::Colour(0xFFF59E0B)); 
     } else if (name.endsWith(".tsx") || name.endsWith(".ts")) {
-        g.setColour(juce::Colour(0xFF3B82F6)); // Blue
+        g.setColour(juce::Colour(0xFF3B82F6)); 
     } else if (name.endsWith(".md")) {
-        g.setColour(juce::Colour(0xFF8B5CF6)); // Purple
+        g.setColour(juce::Colour(0xFF8B5CF6)); 
     } else if (name.endsWith(".json")) {
-        g.setColour(juce::Colour(0xFF22C55E)); // Green
+        g.setColour(juce::Colour(0xFF22C55E)); 
     } else {
-        g.setColour(juce::Colour(0xFF8A91A8)); // Gray
+        g.setColour(juce::Colour(0xFF8A91A8)); 
     }
     g.setFont(juce::Font(10.0f, juce::Font::bold));
     g.drawText(isFolder ? "" : (name.endsWith(".tsx") ? "TS" : (name.endsWith(".md") ? "MD" : "{}")), x, y, 16, 24, juce::Justification::centred);
@@ -257,16 +302,14 @@ void WorkspaceComponent::drawEditorPanel(juce::Graphics& g, juce::Rectangle<int>
     g.setColour(juce::Colour(0xFF161A25));
     g.fillRoundedRectangle(bounds.toFloat(), 8.0f);
     
-    // Editor Tabs
     auto tabsArea = bounds.removeFromTop(40);
     g.setColour(juce::Colour(0xFF1C2130));
     g.fillRoundedRectangle(tabsArea.toFloat(), 8.0f);
     
     g.setColour(juce::Colour(0xFF161A25));
-    g.fillRoundedRectangle(tabsArea.withWidth(160).toFloat(), 8.0f); // Active tab bg
-    g.fillRect(tabsArea.getX(), tabsArea.getBottom() - 4, 160, 4); // hide rounded bottom
+    g.fillRoundedRectangle(tabsArea.withWidth(160).toFloat(), 8.0f); 
+    g.fillRect(tabsArea.getX(), tabsArea.getBottom() - 4, 160, 4); 
     
-    // Active Tab line
     g.setColour(juce::Colour(0xFF6D5DFE));
     g.fillRect(tabsArea.getX(), tabsArea.getY(), 160, 2);
     
@@ -274,14 +317,8 @@ void WorkspaceComponent::drawEditorPanel(juce::Graphics& g, juce::Rectangle<int>
     g.setFont(juce::Font(13.0f));
     g.drawText("TS  " + activeFileName_, tabsArea.withWidth(160), juce::Justification::centred);
     
-    // Content area
     auto contentArea = bounds.reduced(24);
-    auto pendingChangesBounds = contentArea.removeFromBottom(60);
-    contentArea.removeFromBottom(10);
-    drawPendingChangesBar(g, pendingChangesBounds);
-
     
-    // Mock syntax highlighting text rendering
     int y = contentArea.getY();
     int lineHeight = 20;
     int lineNum = 1;
@@ -290,21 +327,19 @@ void WorkspaceComponent::drawEditorPanel(juce::Graphics& g, juce::Rectangle<int>
     lines.addLines(activeFileContent_);
     
     for (const auto& line : lines) {
-        // Line number
         g.setColour(juce::Colour(0xFF4A526A));
         g.setFont(juce::Font("Consolas", 13.0f, juce::Font::plain));
         g.drawText(juce::String(lineNum), contentArea.getX(), y, 30, lineHeight, juce::Justification::centredRight);
         
-        // Very basic mock syntax coloring
         juce::Colour textColor = juce::Colour(0xFFB0B6C9);
         if (line.trimStart().startsWith("import") || line.trimStart().startsWith("export") || line.contains("const") || line.contains("return")) {
-            textColor = juce::Colour(0xFFC678DD); // Purple/Keyword
+            textColor = juce::Colour(0xFFC678DD); 
         } else if (line.contains("<") && line.contains(">")) {
-            textColor = juce::Colour(0xFFE06C75); // Red/JSX
+            textColor = juce::Colour(0xFFE06C75); 
         } else if (line.contains("'") || line.contains("\"")) {
-            textColor = juce::Colour(0xFF98C379); // Green/String
+            textColor = juce::Colour(0xFF98C379); 
         } else if (line.trimStart().startsWith("//")) {
-            textColor = juce::Colour(0xFF5C6370); // Gray/Comment
+            textColor = juce::Colour(0xFF5C6370); 
         }
         
         g.setColour(textColor);
@@ -328,7 +363,6 @@ void WorkspaceComponent::drawTimelinePanel(juce::Graphics& g, juce::Rectangle<in
     
     content.removeFromTop(10);
     
-    // Draw Timeline Line
     g.setColour(juce::Colour(0xFF2A2E3D));
     g.fillRect(content.getX() + 50, content.getY(), 2, content.getHeight());
     
@@ -344,16 +378,13 @@ void WorkspaceComponent::drawTimelinePanel(juce::Graphics& g, juce::Rectangle<in
 void WorkspaceComponent::drawTimelineItem(juce::Graphics& g, juce::Rectangle<int>& bounds, const TimelineEvent& ev, bool isFirst) {
     int lineX = bounds.getX() + 50;
     
-    // Time
     g.setColour(juce::Colour(0xFF8A91A8));
     g.setFont(juce::Font(11.0f));
     g.drawText(ev.time, bounds.getX(), bounds.getY() + 10, 40, 20, juce::Justification::centredRight);
     
-    // Dot
     juce::Colour dotColor = ev.status == "EXECUTANDO" ? juce::Colour(0xFFEAB308) : juce::Colour(0xFF10B981);
     
     if (ev.status == "EXECUTANDO") {
-        // Animated glow
         float radius = 4.0f + 2.0f * std::sin(animationPhase_);
         g.setColour(dotColor.withAlpha(0.3f));
         g.fillEllipse(lineX - radius + 1, bounds.getY() + 16 - radius, radius * 2, radius * 2);
@@ -363,13 +394,11 @@ void WorkspaceComponent::drawTimelineItem(juce::Graphics& g, juce::Rectangle<int
     g.fillEllipse(lineX - 3 + 1, bounds.getY() + 13, 6, 6);
     
     if (isFirst && ev.status == "EXECUTANDO") {
-        // Gradient line from the first item
         juce::ColourGradient grad(dotColor, lineX, bounds.getY() + 19, juce::Colour(0xFF2A2E3D), lineX, bounds.getY() + 50, false);
         g.setGradientFill(grad);
         g.fillRect(lineX, bounds.getY() + 19, 2, 40);
     }
     
-    // Card
     auto cardArea = bounds.withTrimmedLeft(65).withTrimmedRight(10).withHeight(80);
     g.setColour(juce::Colour(0xFF1C2130));
     g.fillRoundedRectangle(cardArea.toFloat(), 6.0f);
@@ -383,7 +412,6 @@ void WorkspaceComponent::drawTimelineItem(juce::Graphics& g, juce::Rectangle<int
     
     auto header = cardArea.removeFromTop(20);
     
-    // Role Badge
     juce::Colour roleColor;
     if (ev.role == "CEO") roleColor = juce::Colour(0xFF8B5CF6);
     else if (ev.role == "Frontend") roleColor = juce::Colour(0xFF3B82F6);
@@ -425,57 +453,32 @@ void WorkspaceComponent::drawTimelineItem(juce::Graphics& g, juce::Rectangle<int
 }
 
 void WorkspaceComponent::resized() {
-    // Empty
+    auto area = getLocalBounds();
+    auto statusArea = area.removeFromTop(40);
+    auto panelsArea = area.reduced(10);
+    
+    int timelineW = 320;
+    auto timelineBounds = panelsArea.removeFromRight(timelineW);
+    panelsArea.removeFromRight(10); // gap
+    
+    promptBarBounds_ = panelsArea.removeFromBottom(110);
+    panelsArea.removeFromBottom(10); // gap
+    
+    // Components layout
+    auto pb = promptBarBounds_;
+    promptInput_.setBounds(pb.removeFromTop(40).withTrimmedTop(16).withTrimmedLeft(16));
+    
+    auto bottomRow = pb.removeFromBottom(50).withTrimmedBottom(10).withTrimmedLeft(16).withTrimmedRight(16);
+    btnAttachFile_.setBounds(bottomRow.removeFromLeft(24));
+    bottomRow.removeFromLeft(8);
+    btnAttachFolder_.setBounds(bottomRow.removeFromLeft(24));
+    
+    btnSubmit_.setBounds(bottomRow.removeFromRight(150));
 }
 
 void WorkspaceComponent::drawPromptBar(juce::Graphics& g, juce::Rectangle<int> bounds) {
     g.setColour(juce::Colour(0xFF161A25));
     g.fillRoundedRectangle(bounds.toFloat(), 12.0f);
-    
-    auto textArea = bounds.removeFromTop(40).withTrimmedTop(16).withTrimmedLeft(16);
-    g.setColour(juce::Colour(0xFF8A91A8));
-    g.setFont(juce::Font(14.0f));
-    g.drawText("Descreva o que voce quer que o CEO planeje e execute...", textArea, juce::Justification::topLeft);
-    
-    auto bottomRow = bounds.removeFromBottom(50).withTrimmedBottom(10).withTrimmedLeft(16).withTrimmedRight(16);
-    
-    // Left Icons (Lucide SVGs)
-    auto drawPaperclip = [&](juce::Rectangle<int> area) {
-        if (paperclipIcon_) paperclipIcon_->drawWithin(g, area.toFloat(), juce::RectanglePlacement::centred, 1.0f);
-    };
-    
-    auto drawFolder = [&](juce::Rectangle<int> area) {
-        if (folderIcon_) folderIcon_->drawWithin(g, area.toFloat(), juce::RectanglePlacement::centred, 1.0f);
-    };
-    
-    auto icon1 = bottomRow.removeFromLeft(24);
-    bottomRow.removeFromLeft(8); // gap
-    auto icon2 = bottomRow.removeFromLeft(24);
-    
-    drawPaperclip(icon1);
-    drawFolder(icon2);
-    
-    // Right Section
-    auto sendBtn = bottomRow.removeFromRight(150);
-    
-    // Send Button
-    g.setColour(juce::Colour(0xFF4338CA)); // Indigo/purple
-    g.fillRoundedRectangle(sendBtn.toFloat(), 6.0f);
-    g.setColour(juce::Colours::white);
-    g.setFont(juce::Font(14.0f, juce::Font::bold));
-    
-    // Draw paper plane
-    juce::Path plane;
-    float px = sendBtn.getX() + 16;
-    float py = sendBtn.getY() + 10;
-    plane.startNewSubPath(px, py + 8);
-    plane.lineTo(px + 12, py);
-    plane.lineTo(px + 4, py + 16);
-    plane.lineTo(px + 4, py + 8);
-    plane.closeSubPath();
-    g.strokePath(plane, juce::PathStrokeType(1.5f));
-    
-    g.drawText("Enviar para o CEO", sendBtn.withTrimmedLeft(20), juce::Justification::centred);
 }
 
 void WorkspaceComponent::drawPendingChangesBar(juce::Graphics& g, juce::Rectangle<int> bounds) {
