@@ -53,9 +53,17 @@ WorkspaceComponent::WorkspaceComponent() {
         auto flags = juce::FileBrowserComponent::openMode | juce::FileBrowserComponent::canSelectDirectories;
         fileChooser_->launchAsync(flags, [this](const juce::FileChooser& chooser) {
             if (chooser.getResult().isDirectory()) {
-                auto dir = chooser.getResult();
-                projectName_ = dir.getFileName();
+                currentFolder_ = chooser.getResult();
+                projectName_ = currentFolder_.getFileName();
                 projectStatus_ = "Pasta aberta";
+                
+                currentFolderChildren_ = currentFolder_.findChildFiles(juce::File::findFilesAndDirectories, false);
+                std::sort(currentFolderChildren_.begin(), currentFolderChildren_.end(), [](const juce::File& a, const juce::File& b) {
+                    if (a.isDirectory() && !b.isDirectory()) return true;
+                    if (!a.isDirectory() && b.isDirectory()) return false;
+                    return a.getFileName().compareIgnoreCase(b.getFileName()) < 0;
+                });
+                
                 repaint();
             }
         });
@@ -226,27 +234,18 @@ void WorkspaceComponent::drawExplorerPanel(juce::Graphics& g, juce::Rectangle<in
     g.drawText(projectName_.toUpperCase(), content.getX(), y, content.getWidth(), 20, juce::Justification::centredLeft);
     y += 24;
     
-    drawFileTreeItem(g, y, 0, ".agentes", true, false);
-    drawFileTreeItem(g, y, 0, "docs", true, true);
-    drawFileTreeItem(g, y, 1, "plano-do-projeto.md", false, false, true); 
-    
-    juce::StringArray words;
-    words.addTokens(projectName_.toLowerCase(), " ", "");
-    
-    if (words.size() > 0) {
-        juce::String baseWord = words[0];
-        if (baseWord.length() > 3) {
-            drawFileTreeItem(g, y, 0, baseWord + "_assets", true, false);
-            drawFileTreeItem(g, y, 0, baseWord + "_scripts", true, false);
-        } else {
-            drawFileTreeItem(g, y, 0, "src", true, false);
+    if (currentFolder_.exists() && currentFolder_.isDirectory()) {
+        for (const auto& child : currentFolderChildren_) {
+            bool isFolder = child.isDirectory();
+            bool isActive = (child.getFileName() == activeFileName_);
+            // isExpanded = false por padrao (pastas fechadas)
+            drawFileTreeItem(g, y, 0, child.getFileName(), isFolder, false, isActive);
         }
     } else {
-        drawFileTreeItem(g, y, 0, "src", true, false);
+        g.setColour(juce::Colour(0xFF8A91A8));
+        g.setFont(juce::Font(12.0f));
+        g.drawText("Nenhuma pasta aberta", content.getX(), y, content.getWidth(), 20, juce::Justification::centredLeft);
     }
-    
-    drawFileTreeItem(g, y, 0, "tests", true, false);
-    drawFileTreeItem(g, y, 0, "build", true, false);
 }
 
 void WorkspaceComponent::drawFileTreeItem(juce::Graphics& g, int& y, int indent, const juce::String& name, bool isFolder, bool isExpanded, bool isActive) {

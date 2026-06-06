@@ -44,6 +44,8 @@ private:
     juce::String activeFileContent_;
     juce::String projectName_ = "Plataforma E-commerce";
     juce::String projectStatus_ = "Inicializando projeto...";
+    juce::File currentFolder_;
+    juce::Array<juce::File> currentFolderChildren_;
     
     std::unique_ptr<juce::Drawable> paperclipIcon_;
     std::unique_ptr<juce::Drawable> folderIcon_;
