@@ -726,6 +726,13 @@ add_executable(AgentOS_PersonaStressTest
 target_include_directories(AgentOS_PersonaStressTest PRIVATE include)
 target_compile_features(AgentOS_PersonaStressTest PRIVATE cxx_std_20)
 
+add_executable(AgentOS_HumanOverrideTest
+    tests/test_human_override.cpp
+    src/EventBus/EventBus.cpp
+)
+target_include_directories(AgentOS_HumanOverrideTest PRIVATE include)
+target_compile_features(AgentOS_HumanOverrideTest PRIVATE cxx_std_20)
+
 
 
 

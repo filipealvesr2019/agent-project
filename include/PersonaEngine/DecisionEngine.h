@@ -61,7 +61,13 @@ public:
             double impact = pd.confidenceScore * pd.persona.decisionWeight;
             finalDecision.consolidatedScore += impact;
             concatJustifications += "[" + pd.persona.id + "]: " + pd.suggestedAction + " | ";
-            finalDecision.participants.push_back(pd.persona.id);
+            
+            PersonaVote vote;
+            vote.personaId = pd.persona.id;
+            vote.option = pd.suggestedAction;
+            vote.confidence = pd.confidenceScore;
+            vote.type = VoteType::Support;
+            finalDecision.votes.push_back(vote);
         }
         
         finalDecision.justification = concatJustifications;
@@ -97,13 +103,12 @@ private:
             // No teste passaremos o JSON com dados necessários
             std::string serializedRecord = "{ \"action\": \"" + record.winningOption + "\", \"score\": " + std::to_string(record.consolidatedScore);
             
-            // Incluir participantes no JSON para o Learning Engine mock
-            serializedRecord += ", \"participants\": [";
-            for (size_t i = 0; i < record.participants.size(); ++i) {
-                serializedRecord += "\"" + record.participants[i] + "\"";
-                if (i < record.participants.size() - 1) serializedRecord += ", ";
+            serializedRecord += ", \"votes\": \"";
+            for (size_t i = 0; i < record.votes.size(); ++i) {
+                serializedRecord += record.votes[i].personaId + ":" + record.votes[i].option;
+                if (i < record.votes.size() - 1) serializedRecord += ",";
             }
-            serializedRecord += "], \"humanOverride\": false }";
+            serializedRecord += "\" }";
 
             EventBus::getInstance().publish(Event{EventType::DecisionComputed, "DecisionEngine", "", serializedRecord});
             std::cout << "[DecisionEngine] DecisionComputed emitted! Score: " << record.consolidatedScore << "\n";
