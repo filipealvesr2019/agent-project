@@ -19,6 +19,40 @@ void setupSystem() {
     PersonaRegistry::getInstance().registerPersona(workerB);
 }
 
+void testScaledCoverage() {
+    std::cout << "\n--- Iniciando Cobertura Escalonada (30 Personas) ---\n";
+    auto start = std::chrono::high_resolution_clock::now();
+    
+    std::vector<std::future<std::string>> futures;
+    int numPersonas = 30;
+
+    for (int i = 0; i < numPersonas; ++i) {
+        std::string pName = "Worker_" + std::to_string(i);
+        AgentPersona p{pName, AgentRole::Worker, "Tech_" + std::to_string(i), "Task", "WORKER_TEMPLATE"};
+        PersonaRegistry::getInstance().registerPersona(p);
+
+        std::string prompt = "Profile: Tech_" + std::to_string(i) + " | Execute Parallel Task " + std::to_string(i);
+        futures.push_back(SharedModelPool::getInstance().enqueuePrompt(pName, prompt));
+    }
+
+    // Esperar todas e validar a integridade cruzada
+    for (int i = 0; i < numPersonas; ++i) {
+        std::string response = futures[i].get();
+        std::string expectedPersona = "Worker_" + std::to_string(i);
+        std::string expectedProfile = "Tech_" + std::to_string(i);
+        
+        // Se a resposta i não tiver a identidade i, houve mistura (race condition / vazamento de memória)
+        assert(response.find(expectedPersona) != std::string::npos);
+        assert(response.find(expectedProfile) != std::string::npos);
+    }
+    
+    auto end = std::chrono::high_resolution_clock::now();
+    std::chrono::duration<double> diff = end - start;
+    
+    std::cout << "[Status] Processamento de " << numPersonas << " personas concorrentes finalizado sem mistura de memoria ou deadlocks!\n";
+    std::cout << "[Tempo] Duracao total: " << diff.count() << " segundos.\n";
+}
+
 int main() {
     std::cout << "--- Starting Prompt Response Test (Fase 10.5.19) ---\n\n";
     
@@ -58,7 +92,9 @@ int main() {
     assert(responseA.find("Worker_A") != std::string::npos);
     assert(responseB.find("Worker_B") != std::string::npos);
 
-    std::cout << "\n[Status] Teste de coerência de Prompts e SharedModelPool Passou com Sucesso!\n";
+    std::cout << "\n[Status] Teste Simples de Prompts Passou com Sucesso!\n";
+
+    testScaledCoverage();
 
     SharedModelPool::getInstance().stopWorker();
     return 0;
