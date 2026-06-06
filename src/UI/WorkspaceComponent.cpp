@@ -3,6 +3,8 @@
 #include "EventBus/EventBus.h"
 #include "WorkflowEngine/WorkflowEngine.h"
 #include "UI/UI.h"
+#include "PersonaEngine/SharedModelPool.h"
+#include "MemoryEngine/MemoryEngine.h"
 
 namespace AgentOS {
 
@@ -81,6 +83,46 @@ WorkspaceComponent::WorkspaceComponent() {
                 repaint();
             }
         });
+    };
+
+    btnSubmit_.onClick = [this] {
+        auto prompt = promptInput_.getText().trim();
+        if (prompt.isEmpty()) return;
+
+        promptInput_.setText("");
+
+        auto now = juce::Time::getCurrentTime();
+        auto timeStr = juce::String::formatted("%02d:%02d:%02d", now.getHours(), now.getMinutes(), now.getSeconds());
+
+        activeFileContent_ += "\n\n## Voce:\n" + prompt + "\n\n## CEO:\nProcessando...\n";
+        repaint();
+
+        TimelineEvent te{"CEO", "CEO", prompt, "N/A", timeStr, "EXECUTANDO", 0, 0};
+        addTimelineEvent(te);
+
+        auto future = SharedModelPool::getInstance().enqueuePrompt("CEO", prompt.toStdString());
+
+        std::thread([this, future = std::move(future), promptStr = prompt.toStdString()]() mutable {
+            std::string response = future.get();
+
+            juce::MessageManager::callAsync([this, response = juce::String(response), promptStr] {
+                int idx = activeFileContent_.lastIndexOf("Processando...");
+                if (idx != -1)
+                    activeFileContent_ = activeFileContent_.substring(0, idx) + response + "\n";
+
+                auto now2 = juce::Time::getCurrentTime();
+                auto ts = juce::String::formatted("%02d:%02d:%02d", now2.getHours(), now2.getMinutes(), now2.getSeconds());
+                TimelineEvent te2{"CEO", "CEO", response.substring(0, 120), "N/A", ts, "CONCLUIDO", 0, 0};
+                addTimelineEvent(te2);
+
+                MemoryEngine::getInstance().addConversation({
+                    "CEO", promptStr, response.toStdString(),
+                    juce::Time::getCurrentTime().toISO8601(true).toStdString()
+                });
+
+                repaint();
+            });
+        }).detach();
     };
 
     // Setup inline name editor (VSCode style)
