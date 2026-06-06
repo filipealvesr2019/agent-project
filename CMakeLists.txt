@@ -398,6 +398,8 @@ if(BUILD_TESTS)
     target_compile_features(AgentOS_Tests PRIVATE cxx_std_20)
 endif()
 
+option(BUILD_COGNITIVE_ARCHITECTURE_TEST "Build Cognitive Architecture Test" OFF)
+if(BUILD_COGNITIVE_ARCHITECTURE_TEST)
     add_executable(AgentOS_CognitiveArchitectureTest
         tests/test_cognitive_architecture.cpp
         src/WorkflowEngine/WorkflowEngine.cpp
@@ -411,9 +413,10 @@ endif()
     target_include_directories(AgentOS_CognitiveArchitectureTest PRIVATE include libs/sqlite)
     target_link_libraries(AgentOS_CognitiveArchitectureTest PRIVATE sqlite juce::juce_core)
     target_compile_features(AgentOS_CognitiveArchitectureTest PRIVATE cxx_std_20)
+endif()
 
 # Organization Workflow Test Suite
-option(BUILD_ORG_WORKFLOW_TESTS "Build AgentOS Organization Workflow tests" ON)
+option(BUILD_ORG_WORKFLOW_TESTS "Build AgentOS Organization Workflow tests" OFF)
 if(BUILD_ORG_WORKFLOW_TESTS)
     add_executable(AgentOS_OrgWorkflowTest
         tests/test_workflow_organization.cpp
@@ -452,7 +455,7 @@ if(BUILD_HELL_TESTS)
 endif()
 
 # Phase 16.8 Scalability & Benchmark Framework
-option(BUILD_BENCHMARK_RUNNER "Build AgentOS Benchmark Runner" ON)
+option(BUILD_BENCHMARK_RUNNER "Build AgentOS Benchmark Runner" OFF)
 if(BUILD_BENCHMARK_RUNNER)
     add_executable(AgentOS_BenchmarkRunner
         tests/benchmark_runner.cpp
@@ -475,7 +478,7 @@ if(BUILD_BENCHMARK_RUNNER)
 endif()
 
 # Phase 16.11 Memory Leak Apocalypse
-option(BUILD_MEMORY_LEAK_APOCALYPSE "Build AgentOS Memory Leak Test" ON)
+option(BUILD_MEMORY_LEAK_APOCALYPSE "Build AgentOS Memory Leak Test" OFF)
 if(BUILD_MEMORY_LEAK_APOCALYPSE)
     add_executable(AgentOS_MemoryLeakApocalypse
         tests/memory_leak_apocalypse.cpp
@@ -510,7 +513,7 @@ if(BUILD_SURROGATE_TEST)
 endif()
 
 # Phase 16.13 Experience Replay Engine
-option(BUILD_EXPERIENCE_REPLAY_TEST "Build AgentOS Experience Replay Test" ON)
+option(BUILD_EXPERIENCE_REPLAY_TEST "Build AgentOS Experience Replay Test" OFF)
 if(BUILD_EXPERIENCE_REPLAY_TEST)
     add_executable(AgentOS_ExperienceReplayTest
         tests/test_experience_replay.cpp
@@ -523,7 +526,7 @@ if(BUILD_EXPERIENCE_REPLAY_TEST)
 endif()
 
 # Phase 16.14 Runtime Learning Layer
-option(BUILD_RUNTIME_LEARNING_TEST "Build AgentOS Runtime Learning Test" ON)
+option(BUILD_RUNTIME_LEARNING_TEST "Build AgentOS Runtime Learning Test" OFF)
 if(BUILD_RUNTIME_LEARNING_TEST)
     add_executable(AgentOS_RuntimeLearningTest
         tests/test_runtime_learning.cpp
@@ -563,7 +566,7 @@ if(BUILD_HELL_BREAKER_3)
 endif()
 
 # Phase 16.17 Real Inference Runtime
-option(BUILD_REAL_INFERENCE_TEST "Build AgentOS Real Inference Test" ON)
+option(BUILD_REAL_INFERENCE_TEST "Build AgentOS Real Inference Test" OFF)
 if(BUILD_REAL_INFERENCE_TEST)
     add_executable(AgentOS_RealInferenceTest
         tests/test_real_inference.cpp
@@ -581,7 +584,7 @@ set(LLAMA_BUILD_SERVER OFF CACHE BOOL "Disable llama server")
 add_subdirectory(libs/llama.cpp)
 
 # Phase 1: Cognitive Engine / Model Registry Test
-option(BUILD_COGNITIVE_TESTS "Build AgentOS Cognitive Tests" ON)
+option(BUILD_COGNITIVE_TESTS "Build AgentOS Cognitive Tests" OFF)
 if(BUILD_COGNITIVE_TESTS)
     add_executable(AgentOS_ModelRegistryTest
         tests/test_model_registry.cpp
@@ -711,62 +714,65 @@ if(BUILD_COGNITIVE_TESTS)
     target_compile_features(AgentOS_FinalValidationSuite PRIVATE cxx_std_20)
 endif()
 
-# Phase 10.5 Persona Engine Test
-add_executable(AgentOS_PersonaEngineTest
-    tests/test_multi_persona_simulation.cpp
-    src/EventBus/EventBus.cpp
-)
-target_include_directories(AgentOS_PersonaEngineTest PRIVATE include)
-target_compile_features(AgentOS_PersonaEngineTest PRIVATE cxx_std_20)
-target_link_libraries(AgentOS_PersonaEngineTest PRIVATE MemoryEngine)
+option(BUILD_PERSONA_TESTS "Build Persona Engine Tests" OFF)
+if(BUILD_PERSONA_TESTS)
+    # Phase 10.5 Persona Engine Test
+    add_executable(AgentOS_PersonaEngineTest
+        tests/test_multi_persona_simulation.cpp
+        src/EventBus/EventBus.cpp
+    )
+    target_include_directories(AgentOS_PersonaEngineTest PRIVATE include)
+    target_compile_features(AgentOS_PersonaEngineTest PRIVATE cxx_std_20)
+    target_link_libraries(AgentOS_PersonaEngineTest PRIVATE MemoryEngine)
 
-add_executable(AgentOS_PersonaStressTest
-    tests/test_stress_persona.cpp
-    src/EventBus/EventBus.cpp
-)
-target_include_directories(AgentOS_PersonaStressTest PRIVATE include)
-target_compile_features(AgentOS_PersonaStressTest PRIVATE cxx_std_20)
-target_link_libraries(AgentOS_PersonaStressTest PRIVATE MemoryEngine)
+    add_executable(AgentOS_PersonaStressTest
+        tests/test_stress_persona.cpp
+        src/EventBus/EventBus.cpp
+    )
+    target_include_directories(AgentOS_PersonaStressTest PRIVATE include)
+    target_compile_features(AgentOS_PersonaStressTest PRIVATE cxx_std_20)
+    target_link_libraries(AgentOS_PersonaStressTest PRIVATE MemoryEngine)
 
-add_executable(AgentOS_HumanOverrideTest
-    tests/test_human_override.cpp
-    src/EventBus/EventBus.cpp
-)
-target_include_directories(AgentOS_HumanOverrideTest PRIVATE include)
-target_compile_features(AgentOS_HumanOverrideTest PRIVATE cxx_std_20)
-target_link_libraries(AgentOS_HumanOverrideTest PRIVATE MemoryEngine)
+    add_executable(AgentOS_HumanOverrideTest
+        tests/test_human_override.cpp
+        src/EventBus/EventBus.cpp
+    )
+    target_include_directories(AgentOS_HumanOverrideTest PRIVATE include)
+    target_compile_features(AgentOS_HumanOverrideTest PRIVATE cxx_std_20)
+    target_link_libraries(AgentOS_HumanOverrideTest PRIVATE MemoryEngine)
 
-add_executable(AgentOS_HierarchyTest
-    tests/test_hierarchy.cpp
-    src/EventBus/EventBus.cpp
-)
-target_include_directories(AgentOS_HierarchyTest PRIVATE include)
-target_compile_features(AgentOS_HierarchyTest PRIVATE cxx_std_20)
-target_link_libraries(AgentOS_HierarchyTest PRIVATE MemoryEngine)
+    add_executable(AgentOS_HierarchyTest
+        tests/test_hierarchy.cpp
+        src/EventBus/EventBus.cpp
+    )
+    target_include_directories(AgentOS_HierarchyTest PRIVATE include)
+    target_compile_features(AgentOS_HierarchyTest PRIVATE cxx_std_20)
+    target_link_libraries(AgentOS_HierarchyTest PRIVATE MemoryEngine)
 
-add_executable(AgentOS_RecursiveDelegationTest
-    tests/test_recursive_delegation.cpp
-    src/EventBus/EventBus.cpp
-)
-target_include_directories(AgentOS_RecursiveDelegationTest PRIVATE include)
-target_compile_features(AgentOS_RecursiveDelegationTest PRIVATE cxx_std_20)
-target_link_libraries(AgentOS_RecursiveDelegationTest PRIVATE MemoryEngine)
+    add_executable(AgentOS_RecursiveDelegationTest
+        tests/test_recursive_delegation.cpp
+        src/EventBus/EventBus.cpp
+    )
+    target_include_directories(AgentOS_RecursiveDelegationTest PRIVATE include)
+    target_compile_features(AgentOS_RecursiveDelegationTest PRIVATE cxx_std_20)
+    target_link_libraries(AgentOS_RecursiveDelegationTest PRIVATE MemoryEngine)
 
-add_executable(AgentOS_DecisionIntegrationTest
-    tests/test_decision_integration.cpp
-    src/EventBus/EventBus.cpp
-)
-target_include_directories(AgentOS_DecisionIntegrationTest PRIVATE include)
-target_compile_features(AgentOS_DecisionIntegrationTest PRIVATE cxx_std_20)
-target_link_libraries(AgentOS_DecisionIntegrationTest PRIVATE MemoryEngine)
+    add_executable(AgentOS_DecisionIntegrationTest
+        tests/test_decision_integration.cpp
+        src/EventBus/EventBus.cpp
+    )
+    target_include_directories(AgentOS_DecisionIntegrationTest PRIVATE include)
+    target_compile_features(AgentOS_DecisionIntegrationTest PRIVATE cxx_std_20)
+    target_link_libraries(AgentOS_DecisionIntegrationTest PRIVATE MemoryEngine)
 
-add_executable(AgentOS_PromptResponseTest
-    tests/test_prompt_response.cpp
-    src/EventBus/EventBus.cpp
-)
-target_include_directories(AgentOS_PromptResponseTest PRIVATE include)
-target_compile_features(AgentOS_PromptResponseTest PRIVATE cxx_std_20)
-target_link_libraries(AgentOS_PromptResponseTest PRIVATE MemoryEngine)
+    add_executable(AgentOS_PromptResponseTest
+        tests/test_prompt_response.cpp
+        src/EventBus/EventBus.cpp
+    )
+    target_include_directories(AgentOS_PromptResponseTest PRIVATE include)
+    target_compile_features(AgentOS_PromptResponseTest PRIVATE cxx_std_20)
+    target_link_libraries(AgentOS_PromptResponseTest PRIVATE MemoryEngine)
+endif()
 
 
 

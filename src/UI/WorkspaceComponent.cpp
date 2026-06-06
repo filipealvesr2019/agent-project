@@ -253,8 +253,12 @@ void WorkspaceComponent::drawExplorerPanel(juce::Graphics& g, juce::Rectangle<in
     } else {
         g.setColour(juce::Colour(0xFF8A91A8));
         g.setFont(juce::Font(12.0f));
-        g.drawText("Nenhuma pasta aberta", content.getX(), y, content.getWidth(), 20, juce::Justification::centredLeft);
     }
+    
+    // Scrollbar puramente visual (mock)
+    juce::Rectangle<float> scrollBar(bounds.getRight() - 10.0f, bounds.getY() + 80.0f, 4.0f, bounds.getHeight() * 0.4f);
+    g.setColour(juce::Colour(0xFF282D3D));
+    g.fillRoundedRectangle(scrollBar, 2.0f);
 }
 
 void WorkspaceComponent::populateNode(std::shared_ptr<FileNode> node) {
@@ -417,6 +421,11 @@ void WorkspaceComponent::drawEditorPanel(juce::Graphics& g, juce::Rectangle<int>
         y += lineHeight;
         lineNum++;
     }
+    
+    // Scrollbar puramente visual (mock)
+    juce::Rectangle<float> scrollBar(bounds.getRight() - 10.0f, bounds.getY() + 50.0f, 4.0f, bounds.getHeight() * 0.3f);
+    g.setColour(juce::Colour(0xFF282D3D));
+    g.fillRoundedRectangle(scrollBar, 2.0f);
 }
 
 void WorkspaceComponent::drawTimelinePanel(juce::Graphics& g, juce::Rectangle<int> bounds) {
