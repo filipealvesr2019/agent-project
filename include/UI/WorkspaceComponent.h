@@ -34,6 +34,8 @@ private:
     void drawExplorerPanel(juce::Graphics& g, juce::Rectangle<int> bounds);
     void drawEditorPanel(juce::Graphics& g, juce::Rectangle<int> bounds);
     void drawTimelinePanel(juce::Graphics& g, juce::Rectangle<int> bounds);
+    void drawPromptBar(juce::Graphics& g, juce::Rectangle<int> bounds);
+    void drawPendingChangesBar(juce::Graphics& g, juce::Rectangle<int> bounds);
     
     void drawFileTreeItem(juce::Graphics& g, int& y, int indent, const juce::String& name, bool isFolder, bool isExpanded, bool isActive = false);
     void drawTimelineItem(juce::Graphics& g, juce::Rectangle<int>& bounds, const TimelineEvent& ev, bool isFirst);
