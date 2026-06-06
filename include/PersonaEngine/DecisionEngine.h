@@ -3,6 +3,7 @@
 #include "PersonaRegistry.h"
 #include "../EventBus/EventBus.h"
 #include "../OrganizationEngine/DecisionRecord.h"
+#include "../LearningEngine/LearningEngine.h"
 #include <string>
 #include <vector>
 #include <mutex>
@@ -56,11 +57,17 @@ public:
         
         std::string concatJustifications;
 
+        std::map<std::string, double> optionScores;
+
         for (const auto& pd : pendingDecisions_) {
-            // score consolidado ponderando confiança e peso da persona (decisionWeight)
-            double impact = pd.confidenceScore * pd.persona.decisionWeight;
+            auto profile = LearningEngine::getInstance().getProfile(pd.persona.id);
+            double reliability = profile.reliabilityScore;
+            
+            double impact = reliability * pd.persona.decisionWeight * pd.confidenceScore;
+            optionScores[pd.suggestedAction] += impact;
+            
             finalDecision.consolidatedScore += impact;
-            concatJustifications += "[" + pd.persona.id + "]: " + pd.suggestedAction + " | ";
+            concatJustifications += "[" + pd.persona.id + "]: " + pd.suggestedAction + " (Imp: " + std::to_string(impact).substr(0, 4) + ") | ";
             
             PersonaVote vote;
             vote.personaId = pd.persona.id;
@@ -70,9 +77,17 @@ public:
             finalDecision.votes.push_back(vote);
         }
         
+        std::string bestOption = "None";
+        double maxOptionScore = -1.0;
+        for (const auto& pair : optionScores) {
+            if (pair.second > maxOptionScore) {
+                maxOptionScore = pair.second;
+                bestOption = pair.first;
+            }
+        }
+        
         finalDecision.justification = concatJustifications;
-        // Mock de escolha da melhor ação
-        finalDecision.winningOption = pendingDecisions_.empty() ? "None" : pendingDecisions_.front().suggestedAction;
+        finalDecision.winningOption = bestOption;
         
         // Limpa para a próxima rodada
         pendingDecisions_.clear();

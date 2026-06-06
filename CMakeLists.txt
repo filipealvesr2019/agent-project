@@ -752,6 +752,14 @@ target_include_directories(AgentOS_RecursiveDelegationTest PRIVATE include)
 target_compile_features(AgentOS_RecursiveDelegationTest PRIVATE cxx_std_20)
 target_link_libraries(AgentOS_RecursiveDelegationTest PRIVATE MemoryEngine)
 
+add_executable(AgentOS_DecisionIntegrationTest
+    tests/test_decision_integration.cpp
+    src/EventBus/EventBus.cpp
+)
+target_include_directories(AgentOS_DecisionIntegrationTest PRIVATE include)
+target_compile_features(AgentOS_DecisionIntegrationTest PRIVATE cxx_std_20)
+target_link_libraries(AgentOS_DecisionIntegrationTest PRIVATE MemoryEngine)
+
 
 
 
