@@ -76,7 +76,11 @@ juce_add_gui_app(AgentOS
     VERSION 1.0.0
 )
 
-target_sources(AgentOS PRIVATE src/main.cpp src/ChangeManagement/ChangeManagement.cpp src/Core/CEOPlanner.cpp)
+target_sources(AgentOS PRIVATE
+    src/main.cpp
+    src/ChangeManagement/ChangeManagement.cpp
+    src/Core/CEOPlanner.cpp
+)
 
 target_link_libraries(AgentOS PRIVATE 
     AgentOS_Icons
@@ -587,6 +591,26 @@ if(BUILD_HUMANIZED_PROMPT_TEST)
     target_include_directories(AgentOS_HumanizedPromptTest PRIVATE include)
     target_link_libraries(AgentOS_HumanizedPromptTest PRIVATE llama)
     target_compile_features(AgentOS_HumanizedPromptTest PRIVATE cxx_std_20)
+endif()
+
+# ProjectContext Test
+option(BUILD_PROJECT_CONTEXT_TEST "Build AgentOS ProjectContext Test" OFF)
+if(BUILD_PROJECT_CONTEXT_TEST)
+    add_executable(AgentOS_ProjectContextTest
+        tests/test_project_context.cpp
+        src/ProjectContext/ProjectScanner.cpp
+        src/ProjectContext/SymbolIndexer.cpp
+        src/ProjectContext/ContextBuilder.cpp
+        src/ProjectContext/EmbeddingEngine.cpp
+        src/ProjectContext/SemanticStore.cpp
+        src/ProjectContext/FileScanner.cpp
+        src/ProjectContext/TextChunker.cpp
+        src/ProjectContext/ContextRetriever.cpp
+        src/ProjectContext/UniversalIndexer.cpp
+        src/ProjectContext/PromptComposer.cpp
+    )
+    target_include_directories(AgentOS_ProjectContextTest PRIVATE include)
+    target_compile_features(AgentOS_ProjectContextTest PRIVATE cxx_std_20)
 endif()
 
 # --- llama.cpp ---

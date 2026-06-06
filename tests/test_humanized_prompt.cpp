@@ -91,7 +91,7 @@ int main(int argc, char** argv) {
 
         std::cout << "Resposta (" << result.tokens_out << " tokens, "
                   << result.duration_ms << "ms):\n";
-        std::cout << result.text.substr(0, 300) << "...\n\n";
+        std::cout << result.text << "\n\n";
 
         bool topicsOk = true;
         for (const auto& topic : prompt.requiredTopics) {

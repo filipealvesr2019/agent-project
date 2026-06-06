@@ -1,0 +1,34 @@
+JWT Authentication Implementation
+
+O JSON Web Token (JWT) e um padrao para autenticacao stateless.
+
+Estrutura do JWT:
+- Header: algoritmo (HS256, RS256) e tipo do token
+- Payload: claims como sub, iat, exp, role
+- Signature: assinatura do header + payload
+
+Implementacao em C++:
+
+class JWTAuth {
+public:
+    std::string generateToken(const std::string& userId, const std::string& role) {
+        std::string header = "{\"alg\":\"HS256\",\"typ\":\"JWT\"}";
+        std::string payload = "{\"sub\":\"" + userId + "\",\"role\":\"" + role + "\"}";
+        // Codificar em base64 e assinar com HMAC-SHA256
+        return base64Encode(header) + "." + base64Encode(payload) + ".signature";
+    }
+
+    bool validateToken(const std::string& token) {
+        // Verificar se o token tem 3 partes separadas por ponto
+        // Decodificar e validar a assinatura
+        // Verificar expiracao
+        return true;
+    }
+};
+
+Fluxo de autenticacao:
+1. Usuario faz login com usuario/senha
+2. Servidor valida credenciais e gera JWT
+3. Cliente armazena o token (localStorage/cookies)
+4. Cliente envia token no header Authorization: Bearer <token>
+5. Servidor valida o token em cada requisicao protegida

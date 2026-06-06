@@ -1,0 +1,34 @@
+Projeto: Bancada Modular de Eletronica
+
+Esta bancada modular e projetada para montagem e teste de circuitos eletronicos.
+
+Componentes necessarios:
+- 1x protoboard grande (830 pontos)
+- 1x fonte ajustavel 0-30V / 5A
+- 1x multimetro digital
+- 1x osciloscopio portatil
+- Jumper wires (macho-macho, macho-femea, femea-femea)
+- Resistores: 220R, 1k, 10k (kit)
+- Capacitores: 100nF, 10uF, 100uF
+- LEDs vermelho, verde, azul
+- Transistores BC547, BC557
+- CI 555, CI LM358, CI 7400
+- Potenciometro 10k linear
+
+Passos de montagem:
+1. Fixar a protoboard na base de madeira
+2. Instalar a fonte ao lado esquerdo
+3. Conectar os bornes da fonte a protoboard
+4. Organizar os componentes em caixas etiquetadas
+5. Testar cada modulo separadamente antes de integrar
+
+Esquema eletrico basico:
+- Fonte -> borne positivo (linha vermelha na protoboard)
+- Fonte -> borne negativo (linha azul na protoboard)
+- CI 555 configurado como astavel para gerar pulsos
+- LED com resistor limitador no pino 3 do 555
+
+Tensoes de operacao:
+- Vcc = 5V (para logicos TTL)
+- Vcc = 3.3V (para logicos CMOS)
+- Corrente maxima recomendada: 500mA
