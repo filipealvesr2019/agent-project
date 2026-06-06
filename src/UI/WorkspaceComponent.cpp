@@ -44,7 +44,7 @@ WorkspaceComponent::WorkspaceComponent() {
     EventBus::getInstance().subscribe(EventType::TaskFailed, callback);
 
     activeFileName_ = "plano-do-projeto.md";
-    activeFileContent_ = "# Novo Projeto\n\nAguardando instruções...";
+    activeFileContent_ = juce::String(juce::CharPointer_UTF8("# Novo Projeto\n\nAguardando instruções..."));
 }
 
 WorkspaceComponent::~WorkspaceComponent() {
