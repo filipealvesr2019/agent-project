@@ -7,6 +7,7 @@
 #include <thread>
 #include <memory>
 #include <iostream>
+#include "../EventBus/EventBus.h"
 
 namespace AgentOS {
 
@@ -37,6 +38,10 @@ public:
             std::lock_guard<std::mutex> lock(queueMutex_);
             requestQueue_.push(req);
         }
+        
+        AgentOS::Event e{AgentOS::EventType::PersonaRequestSent, personaId, "", prompt};
+        AgentOS::EventBus::getInstance().publish(e);
+
         condition_.notify_one();
 
         return future;
@@ -85,6 +90,9 @@ private:
             // Exemplo: invocação real (Llama/ONNX/API)
             std::cout << "[SharedModelPool] Executando Persona [" << req->personaId << "] usando [" << req->assignedModel << "]\n";
             std::string simulatedResponse = "Response from LLM to " + req->personaId;
+            
+            AgentOS::Event e{AgentOS::EventType::PersonaResponseReceived, req->personaId, "", simulatedResponse};
+            AgentOS::EventBus::getInstance().publish(e);
             
             req->promise.set_value(simulatedResponse);
         }
