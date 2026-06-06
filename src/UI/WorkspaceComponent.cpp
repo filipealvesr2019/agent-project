@@ -14,6 +14,8 @@ WorkspaceComponent::WorkspaceComponent() {
     const char* chevronDownSvg = R"(<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#8A91A8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>)";
     const char* treeFolderSvg = R"(<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#F59E0B" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"/></svg>)";
     const char* treeFileSvg = R"(<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#3B82F6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/></svg>)";
+    const char* filePlusSvg = R"(<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#8A91A8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 22h14a2 2 0 0 0 2-2V7l-5-5H6a2 2 0 0 0-2 2v4"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M3 15h6"/><path d="M6 12v6"/></svg>)";
+    const char* folderPlusSvg = R"(<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#8A91A8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 10v6"/><path d="M9 13h6"/><path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"/></svg>)";
     
     if (auto xml = juce::XmlDocument::parse(juce::String(paperclipSvg))) paperclipIcon_ = juce::Drawable::createFromSVG(*xml);
     if (auto xml = juce::XmlDocument::parse(juce::String(folderSvg))) folderBtnIcon_ = juce::Drawable::createFromSVG(*xml);
@@ -21,6 +23,8 @@ WorkspaceComponent::WorkspaceComponent() {
     if (auto xml = juce::XmlDocument::parse(juce::String(chevronDownSvg))) chevronDownIcon_ = juce::Drawable::createFromSVG(*xml);
     if (auto xml = juce::XmlDocument::parse(juce::String(treeFolderSvg))) treeFolderIcon_ = juce::Drawable::createFromSVG(*xml);
     if (auto xml = juce::XmlDocument::parse(juce::String(treeFileSvg))) treeFileIcon_ = juce::Drawable::createFromSVG(*xml);
+    if (auto xml = juce::XmlDocument::parse(juce::String(filePlusSvg))) filePlusIcon_ = juce::Drawable::createFromSVG(*xml);
+    if (auto xml = juce::XmlDocument::parse(juce::String(folderPlusSvg))) folderPlusIcon_ = juce::Drawable::createFromSVG(*xml);
     
     rootNode_ = std::make_shared<FileNode>(); // Workspace root node
     projectName_ = "WORKSPACE";
@@ -249,6 +253,12 @@ void WorkspaceComponent::drawExplorerPanel(juce::Graphics& g, juce::Rectangle<in
     g.setColour(juce::Colours::white);
     g.setFont(juce::Font(12.0f, juce::Font::bold));
     g.drawText(projectName_.toUpperCase(), content.getX(), y, content.getWidth(), 20, juce::Justification::centredLeft);
+    
+    filePlusBounds_ = juce::Rectangle<int>(content.getRight() - 40, y + 2, 16, 16);
+    folderPlusBounds_ = juce::Rectangle<int>(content.getRight() - 20, y + 2, 16, 16);
+    if (filePlusIcon_) filePlusIcon_->drawWithin(g, filePlusBounds_.toFloat(), juce::RectanglePlacement::centred, 1.0f);
+    if (folderPlusIcon_) folderPlusIcon_->drawWithin(g, folderPlusBounds_.toFloat(), juce::RectanglePlacement::centred, 1.0f);
+    
     y += 24;
     
     if (rootNode_) {
@@ -328,6 +338,15 @@ std::shared_ptr<FileNode> WorkspaceComponent::hitTestNode(std::shared_ptr<FileNo
 }
 
 void WorkspaceComponent::mouseDown(const juce::MouseEvent& e) {
+    if (filePlusBounds_.contains(e.getPosition())) {
+        btnAttachFile_.triggerClick();
+        return;
+    }
+    if (folderPlusBounds_.contains(e.getPosition())) {
+        btnAttachFolder_.triggerClick();
+        return;
+    }
+
     // Check Scrollbars first
     if (explorerContentHeight_ > explorerContentBounds_.getHeight()) {
         juce::Rectangle<int> scrollArea(explorerContentBounds_.getRight() - 16, explorerContentBounds_.getY(), 16, explorerContentBounds_.getHeight());
@@ -367,7 +386,29 @@ void WorkspaceComponent::mouseDown(const juce::MouseEvent& e) {
     }
 }
 
+bool WorkspaceComponent::isInterestedInDragSource(const juce::DragAndDropTarget::SourceDetails& dragSourceDetails) {
+    return true; // Aceitar drops em pastas
+}
+
+void WorkspaceComponent::itemDropped(const juce::DragAndDropTarget::SourceDetails& dragSourceDetails) {
+    // Apenas UI feedback por enquanto, permite drag & drop na area
+    repaint();
+}
+
 void WorkspaceComponent::mouseDrag(const juce::MouseEvent& e) {
+    if (!draggingExplorerScroll_ && !draggingEditorScroll_) {
+        // Iniciar Drag and Drop nativo se arrastar de um item
+        if (rootNode_ && explorerContentBounds_.contains(e.getMouseDownPosition())) {
+            for (auto& child : rootNode_->children) {
+                auto hit = hitTestNode(child, e.getMouseDownPosition());
+                if (hit && e.getDistanceFromDragStart() > 4) {
+                    startDragging("file_node", this);
+                    return;
+                }
+            }
+        }
+    }
+    
     if (draggingExplorerScroll_) {
         float ratio = (float)explorerContentHeight_ / (float)explorerContentBounds_.getHeight();
         int delta = (int)((e.getPosition().y - scrollDragStartY_) * ratio);
@@ -418,9 +459,9 @@ void WorkspaceComponent::drawFileTreeItem(juce::Graphics& g, int& y, int indent,
     
     if (isFolder) {
         if (isExpanded && chevronDownIcon_) {
-            chevronDownIcon_->drawWithin(g, juce::Rectangle<float>(x, y + 4, 16, 16), juce::RectanglePlacement::centred, 1.0f);
+            chevronDownIcon_->drawWithin(g, juce::Rectangle<float>(x + 3, y + 7, 10, 10), juce::RectanglePlacement::centred, 1.0f);
         } else if (!isExpanded && chevronRightIcon_) {
-            chevronRightIcon_->drawWithin(g, juce::Rectangle<float>(x, y + 4, 16, 16), juce::RectanglePlacement::centred, 1.0f);
+            chevronRightIcon_->drawWithin(g, juce::Rectangle<float>(x + 3, y + 7, 10, 10), juce::RectanglePlacement::centred, 1.0f);
         }
         x += 16;
     } else {

@@ -23,7 +23,7 @@ struct FileNode {
     juce::Rectangle<int> lastBounds;
 };
 
-class WorkspaceComponent : public juce::Component, public juce::Timer {
+class WorkspaceComponent : public juce::Component, public juce::Timer, public juce::DragAndDropContainer, public juce::DragAndDropTarget {
 public:
     WorkspaceComponent();
     ~WorkspaceComponent() override;
@@ -34,6 +34,9 @@ public:
     void mouseDrag(const juce::MouseEvent& e) override;
     void mouseUp(const juce::MouseEvent& e) override;
     void mouseWheelMove(const juce::MouseEvent& e, const juce::MouseWheelDetails& wheel) override;
+    
+    bool isInterestedInDragSource(const juce::DragAndDropTarget::SourceDetails& dragSourceDetails) override;
+    void itemDropped(const juce::DragAndDropTarget::SourceDetails& dragSourceDetails) override;
     
     void timerCallback() override;
 
@@ -70,6 +73,12 @@ private:
     std::unique_ptr<juce::Drawable> chevronDownIcon_;
     std::unique_ptr<juce::Drawable> treeFolderIcon_;
     std::unique_ptr<juce::Drawable> treeFileIcon_;
+    
+    std::unique_ptr<juce::Drawable> filePlusIcon_;
+    std::unique_ptr<juce::Drawable> folderPlusIcon_;
+    
+    juce::Rectangle<int> filePlusBounds_;
+    juce::Rectangle<int> folderPlusBounds_;
 
     juce::TextEditor promptInput_;
     juce::DrawableButton btnAttachFile_{"Attach File", juce::DrawableButton::ImageFitted};
