@@ -1,6 +1,10 @@
 #pragma once
 #include <juce_gui_basics/juce_gui_basics.h>
 #include <vector>
+#include <string>
+#include <atomic>
+#include "ProjectContext/LlamaEmbeddings.h"
+#include "ProjectContext/UniversalIndexer.h"
 
 namespace AgentOS {
 
@@ -194,6 +198,14 @@ private:
 
     juce::ComboBox modelSelector_;
     juce::File modelsDir_;
+
+    // === RAG Pipeline ===
+    LlamaEmbeddings      embeddingEngine_;       // nomic/bge embedding model
+    UniversalIndexer     semanticIndexer_;        // chunks + cosine search
+    std::string          loadedEmbedPath_;        // path of currently loaded embed model
+    std::string          indexedWorkspacePath_;   // last indexed workspace root
+    std::atomic<bool>    indexingInProgress_{false};
+    std::string          ragDebugInfo_;           // shown in chat for transparency
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(WorkspaceComponent)
 };

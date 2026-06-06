@@ -32,4 +32,6 @@ target_link_libraries(UI PUBLIC AgentOS_Icons
     OrganizationEngine
     ReasoningTimelineEngine
     Cognitive
+    ProjectContext
+    LocalRuntime
 )

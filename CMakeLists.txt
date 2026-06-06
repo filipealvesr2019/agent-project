@@ -59,6 +59,7 @@ add_subdirectory(src/ProjectManager)
 add_subdirectory(src/OrganizationEngine)
 add_subdirectory(src/ReasoningTimelineEngine)
 add_subdirectory(src/Cognitive)
+add_subdirectory(src/ProjectContext)
 
 # Executável Principal JUCE
 juce_add_binary_data(AgentOS_Icons
@@ -115,6 +116,7 @@ target_link_libraries(AgentOS PRIVATE
     ReasoningTimelineEngine
     ToolEngine
     Cognitive
+    ProjectContext
     sqlite
 )
 

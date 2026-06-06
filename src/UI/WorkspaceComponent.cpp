@@ -4,8 +4,11 @@
 #include "WorkflowEngine/WorkflowEngine.h"
 #include "UI/UI.h"
 #include "LocalRuntime/LlamaRuntime.h"
+#include "ProjectContext/PromptComposer.h"
+#include "ProjectContext/ContextChunk.h"
 #include <filesystem>
 #include <thread>
+#include <sstream>
 
 namespace AgentOS {
 
@@ -78,8 +81,59 @@ WorkspaceComponent::WorkspaceComponent() {
                 
                 auto node = std::make_shared<FileNode>();
                 node->file = dir;
-                node->isExpanded = false; // "a pasta tem que esta fechada"
+                node->isExpanded = false;
                 rootNode_->children.push_back(node);
+
+                // === RAG: index workspace in background ===
+                std::string rootPath = dir.getFullPathName().toStdString();
+                if (rootPath != indexedWorkspacePath_ && !indexingInProgress_.load()) {
+                    indexingInProgress_.store(true);
+                    indexedWorkspacePath_ = rootPath;
+                    semanticIndexer_.clear();
+                    ragDebugInfo_ = "[RAG] Indexando: " + rootPath;
+
+                    std::thread([this, rootPath]() {
+                        // Try to find and load an embedding model (nomic/bge gguf)
+                        if (loadedEmbedPath_.empty()) {
+                            auto exeDir = juce::File::getSpecialLocation(juce::File::currentExecutableFile).getParentDirectory();
+                            for (auto& candidate : {
+                                    exeDir.getChildFile("../../models"),
+                                    exeDir.getChildFile("../../../models"),
+                                    juce::File::getCurrentWorkingDirectory().getChildFile("models") })
+                            {
+                                if (candidate.isDirectory()) {
+                                    auto ggufFiles = candidate.findChildFiles(juce::File::findFiles, false, "*.gguf");
+                                    for (auto& f : ggufFiles) {
+                                        auto nm = f.getFileName().toLowerCase();
+                                        if (nm.contains("nomic") || nm.contains("bge") ||
+                                            nm.contains("e5") || nm.contains("embed")) {
+                                            if (embeddingEngine_.loadModel(f.getFullPathName().toStdString()))
+                                                loadedEmbedPath_ = f.getFullPathName().toStdString();
+                                            break;
+                                        }
+                                    }
+                                    if (!loadedEmbedPath_.empty()) break;
+                                }
+                            }
+                        }
+
+                        if (loadedEmbedPath_.empty()) {
+                            juce::MessageManager::callAsync([this] {
+                                ragDebugInfo_ = "[RAG] Nenhum modelo de embedding encontrado (nomic/bge/*.gguf). RAG desabilitado.";
+                            });
+                            indexingInProgress_.store(false);
+                            return;
+                        }
+
+                        semanticIndexer_.indexWorkspace(rootPath, embeddingEngine_);
+                        size_t total = semanticIndexer_.totalChunks();
+
+                        juce::MessageManager::callAsync([this, total, rootPath] {
+                            ragDebugInfo_ = "[RAG] " + std::to_string(total) + " chunks indexados de: " + rootPath;
+                        });
+                        indexingInProgress_.store(false);
+                    }).detach();
+                }
                 
                 repaint();
             }
@@ -169,17 +223,86 @@ WorkspaceComponent::WorkspaceComponent() {
                 return;
             }
 
-            // Build augmented prompt with system instructions
-            std::string augmentedPrompt =
-                "Você é um especialista em gestão de projetos e desenvolvimento de software. "
-                "Responda em português de forma detalhada, clara e bem estruturada.\n\n"
-                "Use markdown para organizar a resposta:\n"
-                "- Use ## para subtítulos\n"
-                "- Use **negrito** para pontos importantes\n"
-                "- Use - para listas\n"
-                "- Use ``` para blocos de código\n\n"
-                "Divida a resposta em seções lógicas quando apropriado.\n\n"
-                "Pergunta do usuário:\n" + promptStr;
+            // ================================================================
+            // RAG PIPELINE — Cursor/Windsurf style
+            // 1. Embed query
+            // 2. Retrieve top-K chunks from SemanticStore
+            // 3. Build prompt: system + <context> + question
+            // No domain detection. No roleForDomain. The model understands itself.
+            // ================================================================
+
+            std::string augmentedPrompt;
+            std::string debugBlock;
+
+            bool hasRAG = !loadedEmbedPath_.empty() &&
+                          !indexingInProgress_.load() &&
+                          semanticIndexer_.totalChunks() > 0;
+
+            if (hasRAG) {
+                // Embed the user question
+                auto queryEmb = embeddingEngine_.embed(promptStr);
+
+                std::vector<ContextChunk> chunks;
+                if (!queryEmb.empty()) {
+                    chunks = semanticIndexer_.retriever().retrieve(promptStr, embeddingEngine_, 20);
+                }
+
+                // Deduplicate source files for debug display
+                std::vector<std::string> usedFiles;
+                for (const auto& c : chunks) {
+                    bool found = false;
+                    for (const auto& f : usedFiles) if (f == c.source) { found = true; break; }
+                    if (!found) usedFiles.push_back(c.source);
+                }
+
+                // Build the RAG prompt via PromptComposer
+                augmentedPrompt = PromptComposer::build(promptStr, chunks);
+
+                // Estimate tokens (chars / 4)
+                size_t estTokens = augmentedPrompt.size() / 4;
+
+                // Debug block shown to user (transparency — like Cursor's "Context used")
+                std::ostringstream dbg;
+                dbg << "\n---\n";
+                dbg << "**[RAG DEBUG]**\n";
+                dbg << "Pergunta: " << promptStr << "\n\n";
+                dbg << "Chunks usados: " << chunks.size() << "\n";
+                dbg << "Arquivos:\n";
+                for (const auto& f : usedFiles) {
+                    // show only the filename part
+                    auto pos = f.find_last_of("/\\");
+                    dbg << "  - " << (pos != std::string::npos ? f.substr(pos+1) : f) << "\n";
+                }
+                dbg << "Tokens estimados: ~" << estTokens << "\n";
+                dbg << "---\n";
+                debugBlock = dbg.str();
+
+            } else {
+                // No embedding model / workspace not indexed — fall back to plain prompt
+                // Still tell the user what is happening
+                augmentedPrompt =
+                    "Voce e um assistente tecnico. Responda em portugues.\n\n"
+                    "Use markdown para organizar a resposta.\n\n"
+                    "Pergunta:\n" + promptStr;
+
+                std::ostringstream dbg;
+                dbg << "\n---\n";
+                dbg << "**[RAG DEBUG]** Sem indexação ativa.\n";
+                if (indexingInProgress_.load())
+                    dbg << "Indexação em andamento — tente novamente em instantes.\n";
+                else if (loadedEmbedPath_.empty())
+                    dbg << "Adicione um modelo de embedding (nomic/bge) à pasta models/.\n";
+                else
+                    dbg << "Abra uma pasta de projeto com o botão 📁 para indexar.\n";
+                dbg << "---\n";
+                debugBlock = dbg.str();
+            }
+
+            // Show debug block immediately in the chat
+            juce::MessageManager::callAsync([this, dbg = juce::String(debugBlock)] {
+                activeFileContent_ += dbg;
+                repaint();
+            });
 
             addTimelineEvent({"CEO", "CEO", "Gerando resposta...", "N/A",
                 juce::String::formatted("%02d:%02d:%02d",
@@ -189,7 +312,7 @@ WorkspaceComponent::WorkspaceComponent() {
                 "EXECUTANDO", 0, 0});
 
             // Stream the response token by token
-            llm.streamGenerate(augmentedPrompt, 1024,
+            llm.streamGenerate(augmentedPrompt, 2048,
                 [this, placeholderStart](const std::string& chunk) {
                     juce::MessageManager::callAsync([this, chunk = juce::String(chunk)] {
                         activeFileContent_ += chunk;
