@@ -7,17 +7,25 @@
 namespace AgentOS {
 
 WorkspaceComponent::WorkspaceComponent() {
-    // Carregar ícones do Lucide iguais aos do Home
+    // Carregar ícones do Lucide
     const char* paperclipSvg = R"(<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#8A91A8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"></path></svg>)";
     const char* folderSvg = R"(<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#8A91A8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>)";
+    const char* chevronRightSvg = R"(<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#8A91A8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg>)";
+    const char* chevronDownSvg = R"(<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#8A91A8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>)";
+    const char* treeFolderSvg = R"(<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#F59E0B" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"/></svg>)";
+    const char* treeFileSvg = R"(<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#3B82F6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/></svg>)";
     
-    if (auto xml = juce::XmlDocument::parse(juce::String(paperclipSvg))) {
-        paperclipIcon_ = juce::Drawable::createFromSVG(*xml);
-    }
-    if (auto xml = juce::XmlDocument::parse(juce::String(folderSvg))) {
-        folderIcon_ = juce::Drawable::createFromSVG(*xml);
-    }
+    if (auto xml = juce::XmlDocument::parse(juce::String(paperclipSvg))) paperclipIcon_ = juce::Drawable::createFromSVG(*xml);
+    if (auto xml = juce::XmlDocument::parse(juce::String(folderSvg))) folderBtnIcon_ = juce::Drawable::createFromSVG(*xml);
+    if (auto xml = juce::XmlDocument::parse(juce::String(chevronRightSvg))) chevronRightIcon_ = juce::Drawable::createFromSVG(*xml);
+    if (auto xml = juce::XmlDocument::parse(juce::String(chevronDownSvg))) chevronDownIcon_ = juce::Drawable::createFromSVG(*xml);
+    if (auto xml = juce::XmlDocument::parse(juce::String(treeFolderSvg))) treeFolderIcon_ = juce::Drawable::createFromSVG(*xml);
+    if (auto xml = juce::XmlDocument::parse(juce::String(treeFileSvg))) treeFileIcon_ = juce::Drawable::createFromSVG(*xml);
     
+    rootNode_ = std::make_shared<FileNode>(); // Workspace root node
+    projectName_ = "WORKSPACE";
+    projectStatus_ = "Pronto";
+
     promptInput_.setMultiLine(true);
     promptInput_.setReturnKeyStartsNewLine(true);
     promptInput_.setColour(juce::TextEditor::backgroundColourId, juce::Colours::transparentBlack);
@@ -32,7 +40,7 @@ WorkspaceComponent::WorkspaceComponent() {
     addAndMakeVisible(btnSubmit_);
 
     if (paperclipIcon_) btnAttachFile_.setImages(paperclipIcon_.get(), nullptr, nullptr);
-    if (folderIcon_) btnAttachFolder_.setImages(folderIcon_.get(), nullptr, nullptr);
+    if (folderBtnIcon_) btnAttachFolder_.setImages(folderBtnIcon_.get(), nullptr, nullptr);
     addAndMakeVisible(btnAttachFile_);
     addAndMakeVisible(btnAttachFolder_);
 
@@ -43,6 +51,12 @@ WorkspaceComponent::WorkspaceComponent() {
             if (chooser.getResult().existsAsFile()) {
                 auto file = chooser.getResult();
                 updateActiveFile(file.getFileName(), file.loadFileAsString());
+                
+                auto node = std::make_shared<FileNode>();
+                node->file = file;
+                node->isExpanded = false;
+                rootNode_->children.push_back(node);
+                
                 repaint();
             }
         });
@@ -53,14 +67,12 @@ WorkspaceComponent::WorkspaceComponent() {
         auto flags = juce::FileBrowserComponent::openMode | juce::FileBrowserComponent::canSelectDirectories;
         fileChooser_->launchAsync(flags, [this](const juce::FileChooser& chooser) {
             if (chooser.getResult().isDirectory()) {
-                currentFolder_ = chooser.getResult();
-                projectName_ = currentFolder_.getFileName();
-                projectStatus_ = "Pasta aberta";
+                auto dir = chooser.getResult();
                 
-                rootNode_ = std::make_shared<FileNode>();
-                rootNode_->file = currentFolder_;
-                rootNode_->isExpanded = true;
-                populateNode(rootNode_);
+                auto node = std::make_shared<FileNode>();
+                node->file = dir;
+                node->isExpanded = false; // "a pasta tem que esta fechada"
+                rootNode_->children.push_back(node);
                 
                 repaint();
             }
@@ -326,32 +338,25 @@ void WorkspaceComponent::drawFileTreeItem(juce::Graphics& g, int& y, int indent,
     int x = itemBounds.getX() + 6;
     
     if (isFolder) {
-        g.setColour(juce::Colour(0xFF8A91A8));
-        juce::Path p;
-        if (isExpanded) {
-            p.addTriangle(x, y + 10, x + 8, y + 10, x + 4, y + 16);
-        } else {
-            p.addTriangle(x + 2, y + 8, x + 8, y + 12, x + 2, y + 16);
+        if (isExpanded && chevronDownIcon_) {
+            chevronDownIcon_->drawWithin(g, juce::Rectangle<float>(x, y + 4, 16, 16), juce::RectanglePlacement::centred, 1.0f);
+        } else if (!isExpanded && chevronRightIcon_) {
+            chevronRightIcon_->drawWithin(g, juce::Rectangle<float>(x, y + 4, 16, 16), juce::RectanglePlacement::centred, 1.0f);
         }
-        g.fillPath(p);
         x += 16;
     } else {
         x += 16; 
     }
     
     if (isFolder) {
-        g.setColour(juce::Colour(0xFFF59E0B)); 
-    } else if (name.endsWith(".tsx") || name.endsWith(".ts")) {
-        g.setColour(juce::Colour(0xFF3B82F6)); 
-    } else if (name.endsWith(".md")) {
-        g.setColour(juce::Colour(0xFF8B5CF6)); 
-    } else if (name.endsWith(".json")) {
-        g.setColour(juce::Colour(0xFF22C55E)); 
+        if (treeFolderIcon_) {
+            treeFolderIcon_->drawWithin(g, juce::Rectangle<float>(x, y + 4, 16, 16), juce::RectanglePlacement::centred, 1.0f);
+        }
     } else {
-        g.setColour(juce::Colour(0xFF8A91A8)); 
+        if (treeFileIcon_) {
+            treeFileIcon_->drawWithin(g, juce::Rectangle<float>(x, y + 4, 16, 16), juce::RectanglePlacement::centred, 1.0f);
+        }
     }
-    g.setFont(juce::Font(10.0f, juce::Font::bold));
-    g.drawText(isFolder ? "" : (name.endsWith(".tsx") ? "TS" : (name.endsWith(".md") ? "MD" : "{}")), x, y, 16, 24, juce::Justification::centred);
     
     x += 20;
     

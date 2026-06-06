@@ -61,7 +61,12 @@ private:
     std::shared_ptr<FileNode> rootNode_;
     
     std::unique_ptr<juce::Drawable> paperclipIcon_;
-    std::unique_ptr<juce::Drawable> folderIcon_;
+    std::unique_ptr<juce::Drawable> folderBtnIcon_;
+    
+    std::unique_ptr<juce::Drawable> chevronRightIcon_;
+    std::unique_ptr<juce::Drawable> chevronDownIcon_;
+    std::unique_ptr<juce::Drawable> treeFolderIcon_;
+    std::unique_ptr<juce::Drawable> treeFileIcon_;
 
     juce::TextEditor promptInput_;
     juce::DrawableButton btnAttachFile_{"Attach File", juce::DrawableButton::ImageFitted};
