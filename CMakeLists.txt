@@ -718,6 +718,7 @@ add_executable(AgentOS_PersonaEngineTest
 )
 target_include_directories(AgentOS_PersonaEngineTest PRIVATE include)
 target_compile_features(AgentOS_PersonaEngineTest PRIVATE cxx_std_20)
+target_link_libraries(AgentOS_PersonaEngineTest PRIVATE MemoryEngine)
 
 add_executable(AgentOS_PersonaStressTest
     tests/test_stress_persona.cpp
@@ -725,6 +726,7 @@ add_executable(AgentOS_PersonaStressTest
 )
 target_include_directories(AgentOS_PersonaStressTest PRIVATE include)
 target_compile_features(AgentOS_PersonaStressTest PRIVATE cxx_std_20)
+target_link_libraries(AgentOS_PersonaStressTest PRIVATE MemoryEngine)
 
 add_executable(AgentOS_HumanOverrideTest
     tests/test_human_override.cpp
@@ -732,6 +734,7 @@ add_executable(AgentOS_HumanOverrideTest
 )
 target_include_directories(AgentOS_HumanOverrideTest PRIVATE include)
 target_compile_features(AgentOS_HumanOverrideTest PRIVATE cxx_std_20)
+target_link_libraries(AgentOS_HumanOverrideTest PRIVATE MemoryEngine)
 
 add_executable(AgentOS_HierarchyTest
     tests/test_hierarchy.cpp
@@ -739,6 +742,7 @@ add_executable(AgentOS_HierarchyTest
 )
 target_include_directories(AgentOS_HierarchyTest PRIVATE include)
 target_compile_features(AgentOS_HierarchyTest PRIVATE cxx_std_20)
+target_link_libraries(AgentOS_HierarchyTest PRIVATE MemoryEngine)
 
 add_executable(AgentOS_RecursiveDelegationTest
     tests/test_recursive_delegation.cpp
@@ -746,6 +750,7 @@ add_executable(AgentOS_RecursiveDelegationTest
 )
 target_include_directories(AgentOS_RecursiveDelegationTest PRIVATE include)
 target_compile_features(AgentOS_RecursiveDelegationTest PRIVATE cxx_std_20)
+target_link_libraries(AgentOS_RecursiveDelegationTest PRIVATE MemoryEngine)
 
 
 

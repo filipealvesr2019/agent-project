@@ -5,6 +5,7 @@
 #include <algorithm>
 #include "LearningEngine/LearningProfile.h"
 #include "EventBus/EventBus.h"
+#include "MemoryEngine/MemoryEngine.h"
 #include <iostream>
 #include <string>
 
@@ -19,6 +20,12 @@ public:
 
     void initialize() {
         if (initialized_) return;
+        
+        auto savedProfiles = MemoryEngine::getInstance().loadLearningProfiles();
+        for (const auto& p : savedProfiles) {
+            profiles[p.agentId] = p;
+        }
+        
         EventBus::getInstance().subscribe(EventType::DecisionComputed, [this](const Event& e) {
             this->handleDecisionComputed(e);
         });
@@ -103,6 +110,8 @@ public:
                 if (input.decision.humanOverride && vote.option != finalReferenceAction) {
                     profile.overrideAdjustment += 0.2;
                 }
+                
+                MemoryEngine::getInstance().saveLearningProfile(profile);
             }
         }
     }

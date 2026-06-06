@@ -2,6 +2,7 @@
 #include "PersonaEngine/PersonaHierarchy.h"
 #include "LearningEngine/LearningEngine.h"
 #include "OrganizationEngine/DecisionRecord.h"
+#include "MemoryEngine/MemoryEngine.h"
 #include "EventBus/EventBus.h"
 #include <iostream>
 
@@ -61,6 +62,7 @@ void simulateLearningHistory() {
 
 int main() {
     std::cout << "--- Starting Persona Hierarchy & History Test ---\n\n";
+    AgentOS::MemoryEngine::getInstance().initDatabase();
     
     buildOrganization();
     simulateLearningHistory();

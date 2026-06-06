@@ -5,8 +5,9 @@
 #include <mutex>
 #include <condition_variable>
 #include <queue>
-#include <atomic>
 #include <map>
+#include "LearningEngine/LearningProfile.h"
+#include "PersonaEngine/PersonaRelationship.h"
 
 namespace AgentOS {
 
@@ -81,6 +82,13 @@ public:
     
     void updatePerformance(const AgentMetrics& metrics);
     AgentMetrics getPerformance(const std::string& agentName);
+
+    // Personas and Profiles (Fase 10.5.16)
+    void saveLearningProfile(const AgentLearningProfile& profile);
+    std::vector<AgentLearningProfile> loadLearningProfiles();
+
+    void saveHierarchyRelationship(const std::string& supervisorId, const std::string& subordinateId);
+    std::vector<PersonaRelationship> loadHierarchy();
 
 private:
     MemoryEngine(const std::string& dbPath);

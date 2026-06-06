@@ -44,9 +44,31 @@ bool MemoryEngine::initDatabase() {
         );
     )";
 
+    const char* sqlProfiles = R"(
+        CREATE TABLE IF NOT EXISTS AgentLearningProfiles(
+            agentId TEXT PRIMARY KEY,
+            reliabilityScore REAL,
+            decisionWeight REAL,
+            overrideAdjustment REAL,
+            totalVotes INTEGER,
+            correctVotes INTEGER,
+            wrongVotes INTEGER
+        );
+    )";
+
+    const char* sqlHierarchy = R"(
+        CREATE TABLE IF NOT EXISTS PersonaHierarchy(
+            supervisorId TEXT,
+            subordinateId TEXT,
+            PRIMARY KEY(supervisorId, subordinateId)
+        );
+    )";
+
     sqlite3_exec(db, sqlTasks, 0, 0, 0);
     sqlite3_exec(db, sqlFiles, 0, 0, 0);
     sqlite3_exec(db, sqlConv, 0, 0, 0);
+    sqlite3_exec(db, sqlProfiles, 0, 0, 0);
+    sqlite3_exec(db, sqlHierarchy, 0, 0, 0);
 
     sqlite3_close(db);
     
@@ -229,6 +251,64 @@ AgentMetrics MemoryEngine::getPerformance(const std::string& agentName) {
     AgentMetrics pm;
     pm.agentName = agentName;
     return pm;
+}
+
+void MemoryEngine::saveLearningProfile(const AgentLearningProfile& profile) {
+    std::string sql = "INSERT OR REPLACE INTO AgentLearningProfiles(agentId, reliabilityScore, decisionWeight, overrideAdjustment, totalVotes, correctVotes, wrongVotes) VALUES('" +
+                      profile.agentId + "', " + std::to_string(profile.reliabilityScore) + ", " +
+                      std::to_string(profile.decisionWeight) + ", " + std::to_string(profile.overrideAdjustment) + ", " +
+                      std::to_string(profile.totalVotes) + ", " + std::to_string(profile.correctVotes) + ", " + std::to_string(profile.wrongVotes) + ");";
+    queueSQL(sql);
+}
+
+std::vector<AgentLearningProfile> MemoryEngine::loadLearningProfiles() {
+    sqlite3* db;
+    sqlite3_open(m_dbPath.c_str(), &db);
+    sqlite3_stmt* stmt;
+    std::vector<AgentLearningProfile> profiles;
+
+    std::string sql = "SELECT agentId, reliabilityScore, decisionWeight, overrideAdjustment, totalVotes, correctVotes, wrongVotes FROM AgentLearningProfiles;";
+    if (sqlite3_prepare_v2(db, sql.c_str(), -1, &stmt, 0) == SQLITE_OK) {
+        while (sqlite3_step(stmt) == SQLITE_ROW) {
+            AgentLearningProfile p;
+            p.agentId = (const char*)sqlite3_column_text(stmt, 0);
+            p.reliabilityScore = sqlite3_column_double(stmt, 1);
+            p.decisionWeight = sqlite3_column_double(stmt, 2);
+            p.overrideAdjustment = sqlite3_column_double(stmt, 3);
+            p.totalVotes = sqlite3_column_int(stmt, 4);
+            p.correctVotes = sqlite3_column_int(stmt, 5);
+            p.wrongVotes = sqlite3_column_int(stmt, 6);
+            profiles.push_back(p);
+        }
+    }
+    sqlite3_finalize(stmt);
+    sqlite3_close(db);
+    return profiles;
+}
+
+void MemoryEngine::saveHierarchyRelationship(const std::string& supervisorId, const std::string& subordinateId) {
+    std::string sql = "INSERT OR IGNORE INTO PersonaHierarchy(supervisorId, subordinateId) VALUES('" + supervisorId + "', '" + subordinateId + "');";
+    queueSQL(sql);
+}
+
+std::vector<PersonaRelationship> MemoryEngine::loadHierarchy() {
+    sqlite3* db;
+    sqlite3_open(m_dbPath.c_str(), &db);
+    sqlite3_stmt* stmt;
+    std::vector<PersonaRelationship> rels;
+
+    std::string sql = "SELECT supervisorId, subordinateId FROM PersonaHierarchy;";
+    if (sqlite3_prepare_v2(db, sql.c_str(), -1, &stmt, 0) == SQLITE_OK) {
+        while (sqlite3_step(stmt) == SQLITE_ROW) {
+            PersonaRelationship r;
+            r.supervisorId = (const char*)sqlite3_column_text(stmt, 0);
+            r.subordinateId = (const char*)sqlite3_column_text(stmt, 1);
+            rels.push_back(r);
+        }
+    }
+    sqlite3_finalize(stmt);
+    sqlite3_close(db);
+    return rels;
 }
 
 } // namespace AgentOS
