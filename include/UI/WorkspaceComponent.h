@@ -118,7 +118,9 @@ private:
     // Drag & drop file tree state
     std::shared_ptr<FileNode> draggedNode_;
     std::shared_ptr<FileNode> dropTargetNode_;
-    bool isDraggingFileNode_ = false;
+    bool isDraggingFileNode_   = false;
+    bool dropToRoot_           = false; // drop na area vazia → volta pra raiz do workspace
+    bool dropIsParentEject_    = false; // drop sobre a pasta pai → ejetar para fora dela
     
     std::shared_ptr<FileNode> selectedNode_;       // last clicked node
     std::shared_ptr<FileNode> creationParentNode_; // folder where inline editor is injected

@@ -272,6 +272,15 @@ void WorkspaceComponent::drawExplorerPanel(juce::Graphics& g, juce::Rectangle<in
     if (filePlusIcon_) filePlusIcon_->drawWithin(g, filePlusBounds_.toFloat(), juce::RectanglePlacement::centred, 1.0f);
     if (folderPlusIcon_) folderPlusIcon_->drawWithin(g, folderPlusBounds_.toFloat(), juce::RectanglePlacement::centred, 1.0f);
     
+    // Highlight raiz como destino quando arrastar para a area vazia
+    if (dropToRoot_ && !dropTargetNode_) {
+        juce::Rectangle<int> rootHighlight(content.getX(), y - 24, content.getWidth(), 24);
+        g.setColour(juce::Colour(0xFF6D5DFE).withAlpha(0.25f));
+        g.fillRoundedRectangle(rootHighlight.toFloat(), 4.0f);
+        g.setColour(juce::Colour(0xFF6D5DFE));
+        g.drawRoundedRectangle(rootHighlight.toFloat(), 4.0f, 1.0f);
+    }
+    
     y += 24;
     
     if (rootNode_) {
@@ -356,10 +365,19 @@ void WorkspaceComponent::drawNode(juce::Graphics& g, std::shared_ptr<FileNode> n
     
     // Highlight drop target
     if (node == dropTargetNode_) {
-        g.setColour(juce::Colour(0xFF6D5DFE).withAlpha(0.3f));
-        g.fillRoundedRectangle(itemBounds.toFloat(), 4.0f);
-        g.setColour(juce::Colour(0xFF6D5DFE));
-        g.drawRoundedRectangle(itemBounds.toFloat(), 4.0f, 1.0f);
+        if (dropIsParentEject_) {
+            // Ambar: indica "ejetar para fora" (mover para o pai)
+            g.setColour(juce::Colour(0xFFF59E0B).withAlpha(0.25f));
+            g.fillRoundedRectangle(itemBounds.toFloat(), 4.0f);
+            g.setColour(juce::Colour(0xFFF59E0B));
+            g.drawRoundedRectangle(itemBounds.toFloat(), 4.0f, 1.0f);
+        } else {
+            // Roxo: indica "entrar na pasta"
+            g.setColour(juce::Colour(0xFF6D5DFE).withAlpha(0.3f));
+            g.fillRoundedRectangle(itemBounds.toFloat(), 4.0f);
+            g.setColour(juce::Colour(0xFF6D5DFE));
+            g.drawRoundedRectangle(itemBounds.toFloat(), 4.0f, 1.0f);
+        }
     }
     
     // Dim dragged node
@@ -654,14 +672,35 @@ void WorkspaceComponent::mouseDrag(const juce::MouseEvent& e) {
     
     if (isDraggingFileNode_ && rootNode_) {
         // Encontrar o no embaixo do cursor atual (candidato a destino)
+        // Busca recursiva em todos os nos visiveis (nao so top-level)
         dropTargetNode_ = nullptr;
-        for (auto& child : rootNode_->children) {
-            auto hit = hitTestNode(child, e.getPosition());
-            if (hit && hit != draggedNode_ && hit->file.isDirectory()) {
-                dropTargetNode_ = hit;
-                break;
+        std::function<std::shared_ptr<FileNode>(std::shared_ptr<FileNode>)> findDropTarget;
+        findDropTarget = [&](std::shared_ptr<FileNode> node) -> std::shared_ptr<FileNode> {
+            // Verifica se o cursor esta sobre este no e e uma pasta diferente do arrastado
+            if (node->lastBounds.contains(e.getPosition()) && node->file.isDirectory() && node != draggedNode_)
+                return node;
+            // Busca recursiva nos filhos visiveis
+            if (node->isExpanded) {
+                for (auto& child : node->children) {
+                    auto found = findDropTarget(child);
+                    if (found) return found;
+                }
             }
+            return nullptr;
+        };
+        for (auto& child : rootNode_->children) {
+            auto hit = findDropTarget(child);
+            if (hit) { dropTargetNode_ = hit; break; }
         }
+        // Detectar modo eject: draggedNode_ ja e filho direto de dropTargetNode_
+        dropIsParentEject_ = false;
+        if (dropTargetNode_) {
+            for (auto& c : dropTargetNode_->children)
+                if (c == draggedNode_) { dropIsParentEject_ = true; break; }
+        }
+        // Se o cursor esta na area do explorer mas nao sobre nenhuma pasta,
+        // sinaliza que o destino e a raiz do workspace
+        dropToRoot_ = (isDraggingFileNode_ && !dropTargetNode_ && explorerContentBounds_.contains(e.getPosition()));
         repaint();
     }
 }
@@ -670,20 +709,74 @@ void WorkspaceComponent::mouseUp(const juce::MouseEvent& e) {
     // Finalizar drag de arquivo/pasta
     if (isDraggingFileNode_ && draggedNode_) {
         if (dropTargetNode_ && dropTargetNode_->file.isDirectory() && dropTargetNode_ != draggedNode_) {
-            // Mover o arquivo/pasta fisicamente
-            juce::File dest = dropTargetNode_->file.getChildFile(draggedNode_->file.getFileName());
-            bool moved = draggedNode_->file.moveFileTo(dest);
-            if (moved) {
-                draggedNode_->file = dest;
-                // Remover da posicao original e adicionar ao destino
-                removeNodeFromParent(rootNode_, draggedNode_);
-                dropTargetNode_->isPopulated = false;
-                dropTargetNode_->isExpanded = true;
-                populateNode(dropTargetNode_);
+            if (dropIsParentEject_) {
+                // --- EJECT: mover para FORA de dropTargetNode_ (para o pai dela) ---
+                juce::File destDir = dropTargetNode_->file.getParentDirectory();
+                if (destDir.isDirectory()) {
+                    juce::File dest = destDir.getChildFile(draggedNode_->file.getFileName());
+                    bool moved = draggedNode_->file.moveFileTo(dest);
+                    if (moved) {
+                        draggedNode_->file = dest;
+                        // Remove o no de onde estava
+                        removeNodeFromParent(rootNode_, draggedNode_);
+                        // Atualiza dropTargetNode_ (ficou com um filho a menos)
+                        dropTargetNode_->isPopulated = false;
+                        populateNode(dropTargetNode_);
+                        // Adiciona ao avo (pai de dropTargetNode_)
+                        auto grandParent = findParentNode(rootNode_, dropTargetNode_);
+                        if (grandParent && grandParent != rootNode_) {
+                            // Avo e uma pasta real: repopula ela
+                            grandParent->isPopulated = false;
+                            populateNode(grandParent);
+                        } else {
+                            // Avo e a raiz virtual: adiciona direto nos filhos do rootNode_
+                            draggedNode_->isPopulated = false;
+                            if (draggedNode_->file.isDirectory()) populateNode(draggedNode_);
+                            rootNode_->children.push_back(draggedNode_);
+                        }
+                    }
+                }
+            } else {
+                // --- ENTER: mover para DENTRO de dropTargetNode_ ---
+                juce::File dest = dropTargetNode_->file.getChildFile(draggedNode_->file.getFileName());
+                bool moved = draggedNode_->file.moveFileTo(dest);
+                if (moved) {
+                    draggedNode_->file = dest;
+                    removeNodeFromParent(rootNode_, draggedNode_);
+                    dropTargetNode_->isPopulated = false;
+                    dropTargetNode_->isExpanded = true;
+                    populateNode(dropTargetNode_);
+                }
+            }
+        } else if (dropToRoot_ && !dropTargetNode_) {
+            // --- RAIZ: mover para o topo do workspace ---
+            bool alreadyAtRoot = false;
+            for (auto& c : rootNode_->children)
+                if (c == draggedNode_) { alreadyAtRoot = true; break; }
+
+            if (!alreadyAtRoot) {
+                // Descobre o diretorio pai real a partir dos irmaos ou do proprio no
+                juce::File rootDir;
+                for (auto& c : rootNode_->children)
+                    if (c->file.isDirectory() && c != draggedNode_) { rootDir = c->file.getParentDirectory(); break; }
+                if (!rootDir.isDirectory())
+                    rootDir = draggedNode_->file.getParentDirectory().getParentDirectory();
+
+                juce::File dest = rootDir.getChildFile(draggedNode_->file.getFileName());
+                bool moved = draggedNode_->file.moveFileTo(dest);
+                if (moved) {
+                    draggedNode_->file = dest;
+                    removeNodeFromParent(rootNode_, draggedNode_);
+                    draggedNode_->isPopulated = false;
+                    if (draggedNode_->file.isDirectory()) populateNode(draggedNode_);
+                    rootNode_->children.push_back(draggedNode_);
+                }
             }
         }
-        draggedNode_ = nullptr;
-        dropTargetNode_ = nullptr;
+        draggedNode_      = nullptr;
+        dropTargetNode_   = nullptr;
+        dropToRoot_       = false;
+        dropIsParentEject_ = false;
         isDraggingFileNode_ = false;
     }
     
