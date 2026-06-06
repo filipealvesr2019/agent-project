@@ -2,20 +2,9 @@
 #include <string>
 #include <vector>
 
-namespace AgentOS {
+#include "../SecurityEngine/AgentPermissions.h"
 
-enum class AgentRole {
-    CEO,
-    CTO,
-    CFO,
-    ProductManager,
-    Manager,
-    Worker,
-    Reviewer,
-    Tester,
-    Human,
-    System
-};
+namespace AgentOS {
 
 enum class PersonaStatus {
     Idle,

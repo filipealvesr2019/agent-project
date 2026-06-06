@@ -711,5 +711,13 @@ if(BUILD_COGNITIVE_TESTS)
     target_compile_features(AgentOS_FinalValidationSuite PRIVATE cxx_std_20)
 endif()
 
+# Phase 10.5 Persona Engine Test
+add_executable(AgentOS_PersonaEngineTest
+    tests/test_multi_persona_simulation.cpp
+    src/EventBus/EventBus.cpp
+)
+target_include_directories(AgentOS_PersonaEngineTest PRIVATE include)
+target_compile_features(AgentOS_PersonaEngineTest PRIVATE cxx_std_20)
+
 
 

@@ -8,9 +8,13 @@ namespace AgentOS {
 
 enum class AgentRole {
     CEO,
+    CTO,
+    CFO,
+    ProductManager,
     Manager,
     Worker,
     Reviewer,
+    Tester,
     Human,
     System,
     Unknown
