@@ -507,12 +507,11 @@ DashboardComponent::DashboardComponent() {
     workspace_ = std::make_unique<WorkspaceComponent>();
     
 
-    mainTabs_->addTab("Home", juce::Colour(0xFF050816), cognitiveDashboard_.get(), false);
+    mainTabs_->addTab("Workspace", juce::Colour(0xFF050816), workspace_.get(), false);
     mainTabs_->addTab("Organizacoes", juce::Colour(0xFF050816), mockOrganizacoes_.get(), false);
     mainTabs_->addTab("Projetos", juce::Colour(0xFF050816), projectPanel_.get(), false);
     mainTabs_->addTab("Equipe", juce::Colour(0xFF050816), agentList_.get(), false);
     mainTabs_->addTab("Chat", juce::Colour(0xFF050816), mockChat_.get(), false);
-    mainTabs_->addTab("Workspace", juce::Colour(0xFF050816), workspace_.get(), false);
     mainTabs_->addTab("Configuracoes", juce::Colour(0xFF050816), systemMonitor_.get(), false);
     
     mainTabs_->setCurrentTabIndex(0);
@@ -524,13 +523,12 @@ DashboardComponent::DashboardComponent() {
         
         auto t1 = juce::Time::getHighResolutionTicks();
         
-        if (name == "Home") mainTabs_->setCurrentTabIndex(0);
+        if (name == "Workspace") mainTabs_->setCurrentTabIndex(0);
         else if (name == "Organizacoes") mainTabs_->setCurrentTabIndex(1);
         else if (name == "Projetos") mainTabs_->setCurrentTabIndex(2);
         else if (name == "Equipe") mainTabs_->setCurrentTabIndex(3);
         else if (name == "Chat") mainTabs_->setCurrentTabIndex(4);
-        else if (name == "Workspace") mainTabs_->setCurrentTabIndex(5);
-        else if (name == "Configuracoes") mainTabs_->setCurrentTabIndex(6);
+        else if (name == "Configuracoes") mainTabs_->setCurrentTabIndex(5);
         
         auto t2 = juce::Time::getHighResolutionTicks();
         auto ms = juce::Time::highResolutionTicksToSeconds(t2 - t1) * 1000.0;

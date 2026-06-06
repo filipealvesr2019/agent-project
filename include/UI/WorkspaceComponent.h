@@ -43,11 +43,16 @@ private:
     juce::String activeFileName_;
     juce::String activeFileContent_;
     juce::String projectName_ = "Plataforma E-commerce";
-    juce::String projectStatus_ = "Em execucao";
+    juce::String projectStatus_ = "Inicializando projeto...";
     
+    std::unique_ptr<juce::Drawable> paperclipIcon_;
+    std::unique_ptr<juce::Drawable> folderIcon_;
+
     std::vector<TimelineEvent> timelineEvents_;
     float animationPhase_ = 0.0f;
     int eventBusSubscriptionId_ = -1;
+    
+    JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(WorkspaceComponent)
 };
 
 } // namespace AgentOS

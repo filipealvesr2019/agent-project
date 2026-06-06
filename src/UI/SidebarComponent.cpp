@@ -12,7 +12,7 @@ SidebarItemComponent::SidebarItemComponent(const juce::String& name, bool isSele
         const char* svgData = nullptr;
         int svgSize = 0;
 
-        if (name == "Home") { svgData = BinaryData::house_svg; svgSize = BinaryData::house_svgSize; }
+        if (name == "Workspace") { svgData = BinaryData::house_svg; svgSize = BinaryData::house_svgSize; }
         else if (name == "Organizacoes") { svgData = BinaryData::building2_svg; svgSize = BinaryData::building2_svgSize; }
         else if (name == "Projetos") { svgData = BinaryData::folderkanban_svg; svgSize = BinaryData::folderkanban_svgSize; }
         else if (name == "Equipe") { svgData = BinaryData::users_svg; svgSize = BinaryData::users_svgSize; }
@@ -114,17 +114,16 @@ void SidebarItemComponent::mouseUp(const juce::MouseEvent&) {
 
 SidebarComponent::SidebarComponent() {
     juce::StringArray mainItems = {
-        "Home",
+        "Workspace",
         "Organizacoes",
         "Projetos",
         "Equipe",
         "Chat",
-        "Workspace",
         "Configuracoes"
     };
 
     for (const auto& itemName : mainItems) {
-        auto item = std::make_unique<SidebarItemComponent>(itemName, itemName == "Home");
+        auto item = std::make_unique<SidebarItemComponent>(itemName, itemName == "Workspace");
         item->onClick = [this, name = itemName]() { selectItem(name); };
         addAndMakeVisible(item.get());
         items_.push_back(std::move(item));

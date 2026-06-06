@@ -6,6 +6,17 @@
 namespace AgentOS {
 
 WorkspaceComponent::WorkspaceComponent() {
+    // Carregar ícones do Lucide iguais aos do Home
+    const char* paperclipSvg = R"(<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#8A91A8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"></path></svg>)";
+    const char* folderSvg = R"(<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#8A91A8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>)";
+    
+    if (auto xml = juce::XmlDocument::parse(juce::String(paperclipSvg))) {
+        paperclipIcon_ = juce::Drawable::createFromSVG(*xml);
+    }
+    if (auto xml = juce::XmlDocument::parse(juce::String(folderSvg))) {
+        folderIcon_ = juce::Drawable::createFromSVG(*xml);
+    }
+
     startTimerHz(30); // 30 FPS for animation
 
     timelineEvents_.clear();
@@ -428,25 +439,13 @@ void WorkspaceComponent::drawPromptBar(juce::Graphics& g, juce::Rectangle<int> b
     
     auto bottomRow = bounds.removeFromBottom(50).withTrimmedBottom(10).withTrimmedLeft(16).withTrimmedRight(16);
     
-    // Left Icons (Simple outlines, no background)
+    // Left Icons (Lucide SVGs)
     auto drawPaperclip = [&](juce::Rectangle<int> area) {
-        g.setColour(juce::Colour(0xFF8A91A8));
-        juce::Path p;
-        p.addRoundedRectangle(area.getX() + 6, area.getY() + 8, 8, 16, 4);
-        g.strokePath(p, juce::PathStrokeType(1.5f));
+        if (paperclipIcon_) paperclipIcon_->drawWithin(g, area.toFloat(), juce::RectanglePlacement::centred, 1.0f);
     };
     
     auto drawFolder = [&](juce::Rectangle<int> area) {
-        g.setColour(juce::Colour(0xFF8A91A8));
-        juce::Path p;
-        p.startNewSubPath(area.getX() + 4, area.getY() + 10);
-        p.lineTo(area.getX() + 10, area.getY() + 10);
-        p.lineTo(area.getX() + 12, area.getY() + 14);
-        p.lineTo(area.getX() + 20, area.getY() + 14);
-        p.lineTo(area.getX() + 20, area.getY() + 24);
-        p.lineTo(area.getX() + 4, area.getY() + 24);
-        p.closeSubPath();
-        g.strokePath(p, juce::PathStrokeType(1.5f));
+        if (folderIcon_) folderIcon_->drawWithin(g, area.toFloat(), juce::RectanglePlacement::centred, 1.0f);
     };
     
     auto icon1 = bottomRow.removeFromLeft(24);
