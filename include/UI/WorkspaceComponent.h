@@ -63,6 +63,10 @@ private:
     void startInlineCreation(bool isFile);
     void commitInlineCreation();
     void cancelInlineCreation();
+    void startRenameNode(std::shared_ptr<FileNode> node);
+    void showContextMenu(std::shared_ptr<FileNode> node);
+    void deleteNode(std::shared_ptr<FileNode> node);
+    void pasteClipboard(std::shared_ptr<FileNode> destNode);
 
     juce::String activeFileName_;
     juce::String activeFileContent_;
@@ -108,12 +112,18 @@ private:
     int scrollDragStartY_ = 0;
     int scrollDragStartOffset_ = 0;
 
-    // Inline creation state (VSCode style)
-    bool isCreatingFile_ = false;
+    // Inline creation / rename state (VSCode style)
+    bool isCreatingFile_   = false;
     bool isCreatingFolder_ = false;
+    bool isRenamingNode_   = false;
+    std::shared_ptr<FileNode> renamingNode_;
     juce::TextEditor inlineNameEditor_;
     bool inlineEditorVisible_ = false;
-    int inlineEditorY_ = 0;
+    int  inlineEditorY_ = 0;
+
+    // Clipboard (copy / cut)
+    std::shared_ptr<FileNode> clipboardNode_;
+    bool clipboardIsCut_ = false;
     
     // Drag & drop file tree state
     std::shared_ptr<FileNode> draggedNode_;

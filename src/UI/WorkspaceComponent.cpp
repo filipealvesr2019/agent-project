@@ -432,12 +432,25 @@ std::shared_ptr<FileNode> WorkspaceComponent::hitTestNode(std::shared_ptr<FileNo
 }
 
 void WorkspaceComponent::mouseDown(const juce::MouseEvent& e) {
+    // Clicar fora do editor inline cancela a criacao/renomeacao
+    if (inlineEditorVisible_)
+        cancelInlineCreation();
+
+    // Botao direito → menu de contexto
+    if (e.mods.isRightButtonDown() && rootNode_ && explorerContentBounds_.contains(e.getPosition())) {
+        for (auto& child : rootNode_->children) {
+            auto hit = hitTestNode(child, e.getPosition());
+            if (hit) { selectedNode_ = hit; repaint(); showContextMenu(hit); return; }
+        }
+        return;
+    }
+
     if (filePlusBounds_.contains(e.getPosition())) {
-        startInlineCreation(true);  // Criar novo arquivo
+        startInlineCreation(true);
         return;
     }
     if (folderPlusBounds_.contains(e.getPosition())) {
-        startInlineCreation(false); // Criar nova pasta
+        startInlineCreation(false);
         return;
     }
 
@@ -562,6 +575,26 @@ void WorkspaceComponent::startInlineCreation(bool isFile) {
 
 
 void WorkspaceComponent::commitInlineCreation() {
+    // --- Modo Renomear ---
+    if (isRenamingNode_ && renamingNode_) {
+        auto newName  = inlineNameEditor_.getText().trim();
+        auto node     = renamingNode_;
+        auto oldName  = node->file.getFileName();
+        cancelInlineCreation();
+        if (!newName.isEmpty() && newName != oldName) {
+            juce::File newFile = node->file.getParentDirectory().getChildFile(newName);
+            if (node->file.moveFileTo(newFile)) {
+                node->file = newFile;
+                node->isPopulated = false;
+                if (newFile.isDirectory()) populateNode(node);
+                if (!newFile.isDirectory() && activeFileName_ == oldName)
+                    updateActiveFile(newFile.getFileName(), activeFileContent_);
+            }
+        }
+        repaint();
+        return;
+    }
+
     auto name = inlineNameEditor_.getText().trim();
     
     // Save state BEFORE cancelInlineCreation() zeros them out
@@ -628,8 +661,10 @@ void WorkspaceComponent::commitInlineCreation() {
 }
 
 void WorkspaceComponent::cancelInlineCreation() {
-    isCreatingFile_ = false;
+    isCreatingFile_   = false;
     isCreatingFolder_ = false;
+    isRenamingNode_   = false;
+    renamingNode_     = nullptr;
     inlineEditorVisible_ = false;
     inlineNameEditor_.setVisible(false);
     repaint();
@@ -1092,6 +1127,124 @@ void WorkspaceComponent::drawPendingChangesBar(juce::Graphics& g, juce::Rectangl
     g.setColour(juce::Colours::white);
     g.setFont(juce::Font(13.0f, juce::Font::bold));
     g.drawText("Rejeitar tudo", rejectBtn, juce::Justification::centred);
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Context-menu helpers
+// ─────────────────────────────────────────────────────────────────────────────
+
+void WorkspaceComponent::showContextMenu(std::shared_ptr<FileNode> node) {
+    juce::PopupMenu menu;
+    menu.addItem(1, "Renomear");
+    menu.addSeparator();
+    menu.addItem(2, "Copiar");
+    menu.addItem(3, "Recortar");
+    menu.addItem(4, "Colar", clipboardNode_ != nullptr);
+    menu.addSeparator();
+    menu.addItem(5, "Excluir");
+
+    menu.showMenuAsync(juce::PopupMenu::Options().withTargetComponent(this),
+        [this, node](int result) {
+            switch (result) {
+                case 1: startRenameNode(node); break;
+                case 2: clipboardNode_ = node; clipboardIsCut_ = false; break;
+                case 3: clipboardNode_ = node; clipboardIsCut_ = true;  break;
+                case 4: pasteClipboard(node); break;
+                case 5: deleteNode(node);     break;
+                default: break;
+            }
+        });
+}
+
+void WorkspaceComponent::startRenameNode(std::shared_ptr<FileNode> node) {
+    cancelInlineCreation();
+    isRenamingNode_    = true;
+    renamingNode_      = node;
+    inlineEditorVisible_ = true;
+
+    // Posicionar o editor sobre o texto do no (apos chevron + icone = +42px)
+    int textX = node->lastBounds.getX() + 42;
+    int textW = node->lastBounds.getRight() - textX - 6;
+    if (textW < 40) textW = 100;
+
+    inlineNameEditor_.setBounds(textX, node->lastBounds.getY() + 1, textW, 22);
+    inlineNameEditor_.setText(node->file.getFileName(), juce::dontSendNotification);
+    inlineNameEditor_.selectAll();
+    inlineNameEditor_.setVisible(true);
+    inlineNameEditor_.grabKeyboardFocus();
+    repaint();
+}
+
+void WorkspaceComponent::deleteNode(std::shared_ptr<FileNode> node) {
+    bool isDir   = node->file.isDirectory();
+    auto nodeName = node->file.getFileName();
+
+    auto* dialog = new juce::AlertWindow(
+        isDir ? "Excluir Pasta" : "Excluir Arquivo",
+        "Tem certeza que deseja excluir \"" + nodeName + "\"?\nEsta acao nao pode ser desfeita.",
+        juce::AlertWindow::WarningIcon);
+    dialog->addButton("Sim, Excluir", 1, juce::KeyPress(juce::KeyPress::returnKey));
+    dialog->addButton("Cancelar",     0, juce::KeyPress(juce::KeyPress::escapeKey));
+    dialog->enterModalState(true,
+        juce::ModalCallbackFunction::create([this, node, dialog](int r) {
+            delete dialog;
+            if (r == 1) {
+                bool ok = node->file.isDirectory()
+                    ? node->file.deleteRecursively()
+                    : node->file.deleteFile();
+                if (ok) {
+                    if (selectedNode_   == node) selectedNode_   = nullptr;
+                    if (clipboardNode_  == node) clipboardNode_  = nullptr;
+                    removeNodeFromParent(rootNode_, node);
+                    repaint();
+                }
+            }
+        }), true);
+}
+
+void WorkspaceComponent::pasteClipboard(std::shared_ptr<FileNode> destNode) {
+    if (!clipboardNode_) return;
+
+    // Determinar pasta de destino
+    juce::File destDir;
+    std::shared_ptr<FileNode> destFolder;
+    if (destNode->file.isDirectory()) {
+        destDir    = destNode->file;
+        destFolder = destNode;
+    } else {
+        destFolder = findParentNode(rootNode_, destNode);
+        destDir    = destFolder ? destFolder->file : juce::File();
+    }
+    if (!destDir.isDirectory()) return;
+
+    juce::File src  = clipboardNode_->file;
+    juce::File dest = destDir.getChildFile(src.getFileName());
+    if (src == dest) return;
+
+    bool ok = false;
+    if (clipboardIsCut_) {
+        ok = src.moveFileTo(dest);
+        if (ok) {
+            clipboardNode_->file = dest;
+            removeNodeFromParent(rootNode_, clipboardNode_);
+            clipboardNode_ = nullptr;
+        }
+    } else {
+        ok = src.isDirectory() ? src.copyDirectoryTo(dest) : src.copyFileTo(dest);
+    }
+
+    if (ok) {
+        if (destFolder && destFolder != rootNode_) {
+            destFolder->isPopulated = false;
+            destFolder->isExpanded  = true;
+            populateNode(destFolder);
+        } else {
+            auto newNode = std::make_shared<FileNode>();
+            newNode->file = dest;
+            rootNode_->children.push_back(newNode);
+        }
+    }
+    repaint();
 }
 
 } // namespace AgentOS
