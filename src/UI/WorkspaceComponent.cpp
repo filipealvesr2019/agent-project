@@ -201,14 +201,14 @@ void WorkspaceComponent::paint(juce::Graphics& g) {
     panelsArea.removeFromBottom(10); // gap
     
     int explorerW = 260;
-    auto explorerBounds = panelsArea.removeFromLeft(explorerW);
+    explorerBounds_ = panelsArea.removeFromLeft(explorerW);
     panelsArea.removeFromLeft(10); // gap
     
-    auto editorBounds = panelsArea;
+    editorBounds_ = panelsArea;
     
     // Allow explorer to scroll if too big (simplified via clipping in draw)
-    drawExplorerPanel(g, explorerBounds);
-    drawEditorPanel(g, editorBounds);
+    drawExplorerPanel(g, explorerBounds_);
+    drawEditorPanel(g, editorBounds_);
     drawTimelinePanel(g, timelineBounds);
     drawPromptBar(g, promptBarBounds_);
     
@@ -238,7 +238,13 @@ void WorkspaceComponent::drawExplorerPanel(juce::Graphics& g, juce::Rectangle<in
     
     content.removeFromTop(10);
     
-    int y = content.getY();
+    explorerContentBounds_ = content;
+    
+    g.saveState();
+    g.reduceClipRegion(explorerContentBounds_);
+    
+    int y = content.getY() - explorerScrollY_;
+    int startY = y;
     
     g.setColour(juce::Colours::white);
     g.setFont(juce::Font(12.0f, juce::Font::bold));
@@ -253,12 +259,23 @@ void WorkspaceComponent::drawExplorerPanel(juce::Graphics& g, juce::Rectangle<in
     } else {
         g.setColour(juce::Colour(0xFF8A91A8));
         g.setFont(juce::Font(12.0f));
+        g.drawText("Nenhuma pasta aberta", content.getX(), y, content.getWidth(), 20, juce::Justification::centredLeft);
+        y += 20;
     }
     
-    // Scrollbar puramente visual (mock)
-    juce::Rectangle<float> scrollBar(bounds.getRight() - 10.0f, bounds.getY() + 80.0f, 4.0f, bounds.getHeight() * 0.4f);
-    g.setColour(juce::Colour(0xFF282D3D));
-    g.fillRoundedRectangle(scrollBar, 2.0f);
+    explorerContentHeight_ = y - startY;
+    g.restoreState();
+    
+    // Functional Scrollbar (Thick and high contrast)
+    if (explorerContentHeight_ > explorerContentBounds_.getHeight()) {
+        float ratio = (float)explorerContentBounds_.getHeight() / (float)explorerContentHeight_;
+        float thumbHeight = std::max(30.0f, explorerContentBounds_.getHeight() * ratio);
+        float thumbY = explorerContentBounds_.getY() + ((float)explorerScrollY_ / (float)explorerContentHeight_) * explorerContentBounds_.getHeight();
+        
+        juce::Rectangle<float> scrollBar(explorerContentBounds_.getRight() - 10.0f, thumbY, 8.0f, thumbHeight);
+        g.setColour(juce::Colour(0xFF5C6580).withAlpha(draggingExplorerScroll_ ? 1.0f : 0.7f));
+        g.fillRoundedRectangle(scrollBar, 4.0f);
+    }
 }
 
 void WorkspaceComponent::populateNode(std::shared_ptr<FileNode> node) {
@@ -311,8 +328,29 @@ std::shared_ptr<FileNode> WorkspaceComponent::hitTestNode(std::shared_ptr<FileNo
 }
 
 void WorkspaceComponent::mouseDown(const juce::MouseEvent& e) {
-    if (rootNode_) {
-        // Hit test children of root
+    // Check Scrollbars first
+    if (explorerContentHeight_ > explorerContentBounds_.getHeight()) {
+        juce::Rectangle<int> scrollArea(explorerContentBounds_.getRight() - 16, explorerContentBounds_.getY(), 16, explorerContentBounds_.getHeight());
+        if (scrollArea.contains(e.getPosition())) {
+            draggingExplorerScroll_ = true;
+            scrollDragStartY_ = e.getPosition().y;
+            scrollDragStartOffset_ = explorerScrollY_;
+            repaint();
+            return;
+        }
+    }
+    if (editorContentHeight_ > editorContentBounds_.getHeight()) {
+        juce::Rectangle<int> scrollArea(editorContentBounds_.getRight() - 16, editorContentBounds_.getY(), 16, editorContentBounds_.getHeight());
+        if (scrollArea.contains(e.getPosition())) {
+            draggingEditorScroll_ = true;
+            scrollDragStartY_ = e.getPosition().y;
+            scrollDragStartOffset_ = editorScrollY_;
+            repaint();
+            return;
+        }
+    }
+
+    if (rootNode_ && explorerContentBounds_.contains(e.getPosition())) {
         for (auto& child : rootNode_->children) {
             auto hit = hitTestNode(child, e.getPosition());
             if (hit) {
@@ -320,11 +358,48 @@ void WorkspaceComponent::mouseDown(const juce::MouseEvent& e) {
                     hit->isExpanded = !hit->isExpanded;
                 } else {
                     updateActiveFile(hit->file.getFileName(), hit->file.loadFileAsString());
+                    editorScrollY_ = 0; // Reset scroll on new file
                 }
                 repaint();
                 return;
             }
         }
+    }
+}
+
+void WorkspaceComponent::mouseDrag(const juce::MouseEvent& e) {
+    if (draggingExplorerScroll_) {
+        float ratio = (float)explorerContentHeight_ / (float)explorerContentBounds_.getHeight();
+        int delta = (int)((e.getPosition().y - scrollDragStartY_) * ratio);
+        int maxScroll = std::max(0, explorerContentHeight_ - explorerContentBounds_.getHeight());
+        explorerScrollY_ = juce::jlimit(0, maxScroll, scrollDragStartOffset_ + delta);
+        repaint();
+    } else if (draggingEditorScroll_) {
+        float ratio = (float)editorContentHeight_ / (float)editorContentBounds_.getHeight();
+        int delta = (int)((e.getPosition().y - scrollDragStartY_) * ratio);
+        int maxScroll = std::max(0, editorContentHeight_ - editorContentBounds_.getHeight());
+        editorScrollY_ = juce::jlimit(0, maxScroll, scrollDragStartOffset_ + delta);
+        repaint();
+    }
+}
+
+void WorkspaceComponent::mouseUp(const juce::MouseEvent& e) {
+    draggingExplorerScroll_ = false;
+    draggingEditorScroll_ = false;
+    repaint();
+}
+
+void WorkspaceComponent::mouseWheelMove(const juce::MouseEvent& e, const juce::MouseWheelDetails& wheel) {
+    if (explorerBounds_.contains(e.getPosition())) {
+        explorerScrollY_ -= (int)(wheel.deltaY * 300.0f);
+        int maxScroll = std::max(0, explorerContentHeight_ - explorerContentBounds_.getHeight());
+        explorerScrollY_ = juce::jlimit(0, maxScroll, explorerScrollY_);
+        repaint();
+    } else if (editorBounds_.contains(e.getPosition())) {
+        editorScrollY_ -= (int)(wheel.deltaY * 300.0f);
+        int maxScroll = std::max(0, editorContentHeight_ - editorContentBounds_.getHeight());
+        editorScrollY_ = juce::jlimit(0, maxScroll, editorScrollY_);
+        repaint();
     }
 }
 
@@ -391,8 +466,13 @@ void WorkspaceComponent::drawEditorPanel(juce::Graphics& g, juce::Rectangle<int>
     g.drawText("TS  " + activeFileName_, tabsArea.withWidth(160), juce::Justification::centred);
     
     auto contentArea = bounds.reduced(24);
+    editorContentBounds_ = contentArea;
     
-    int y = contentArea.getY();
+    g.saveState();
+    g.reduceClipRegion(editorContentBounds_);
+    
+    int y = contentArea.getY() - editorScrollY_;
+    int startY = y;
     int lineHeight = 20;
     int lineNum = 1;
     
@@ -400,32 +480,43 @@ void WorkspaceComponent::drawEditorPanel(juce::Graphics& g, juce::Rectangle<int>
     lines.addLines(activeFileContent_);
     
     for (const auto& line : lines) {
-        g.setColour(juce::Colour(0xFF4A526A));
-        g.setFont(juce::Font("Consolas", 13.0f, juce::Font::plain));
-        g.drawText(juce::String(lineNum), contentArea.getX(), y, 30, lineHeight, juce::Justification::centredRight);
-        
-        juce::Colour textColor = juce::Colour(0xFFB0B6C9);
-        if (line.trimStart().startsWith("import") || line.trimStart().startsWith("export") || line.contains("const") || line.contains("return")) {
-            textColor = juce::Colour(0xFFC678DD); 
-        } else if (line.contains("<") && line.contains(">")) {
-            textColor = juce::Colour(0xFFE06C75); 
-        } else if (line.contains("'") || line.contains("\"")) {
-            textColor = juce::Colour(0xFF98C379); 
-        } else if (line.trimStart().startsWith("//")) {
-            textColor = juce::Colour(0xFF5C6370); 
+        if (y + lineHeight > contentArea.getY() && y < contentArea.getBottom()) {
+            g.setColour(juce::Colour(0xFF4A526A));
+            g.setFont(juce::Font("Consolas", 13.0f, juce::Font::plain));
+            g.drawText(juce::String(lineNum), contentArea.getX(), y, 30, lineHeight, juce::Justification::centredRight);
+            
+            juce::Colour textColor = juce::Colour(0xFFB0B6C9);
+            if (line.trimStart().startsWith("import") || line.trimStart().startsWith("export") || line.contains("const") || line.contains("return")) {
+                textColor = juce::Colour(0xFFC678DD); 
+            } else if (line.contains("<") && line.contains(">")) {
+                textColor = juce::Colour(0xFFE06C75); 
+            } else if (line.contains("'") || line.contains("\"")) {
+                textColor = juce::Colour(0xFF98C379); 
+            } else if (line.trimStart().startsWith("//")) {
+                textColor = juce::Colour(0xFF5C6370); 
+            }
+            
+            g.setColour(textColor);
+            g.drawText(line, contentArea.getX() + 40, y, contentArea.getWidth() - 40, lineHeight, juce::Justification::centredLeft);
         }
-        
-        g.setColour(textColor);
-        g.drawText(line, contentArea.getX() + 40, y, contentArea.getWidth() - 40, lineHeight, juce::Justification::centredLeft);
         
         y += lineHeight;
         lineNum++;
     }
     
-    // Scrollbar puramente visual (mock)
-    juce::Rectangle<float> scrollBar(bounds.getRight() - 10.0f, bounds.getY() + 50.0f, 4.0f, bounds.getHeight() * 0.3f);
-    g.setColour(juce::Colour(0xFF282D3D));
-    g.fillRoundedRectangle(scrollBar, 2.0f);
+    editorContentHeight_ = y - startY;
+    g.restoreState();
+    
+    // Functional Scrollbar (Thick and high contrast)
+    if (editorContentHeight_ > editorContentBounds_.getHeight()) {
+        float ratio = (float)editorContentBounds_.getHeight() / (float)editorContentHeight_;
+        float thumbHeight = std::max(30.0f, editorContentBounds_.getHeight() * ratio);
+        float thumbY = editorContentBounds_.getY() + ((float)editorScrollY_ / (float)editorContentHeight_) * editorContentBounds_.getHeight();
+        
+        juce::Rectangle<float> scrollBar(editorContentBounds_.getRight() - 10.0f, thumbY, 8.0f, thumbHeight);
+        g.setColour(juce::Colour(0xFF5C6580).withAlpha(draggingEditorScroll_ ? 1.0f : 0.7f));
+        g.fillRoundedRectangle(scrollBar, 4.0f);
+    }
 }
 
 void WorkspaceComponent::drawTimelinePanel(juce::Graphics& g, juce::Rectangle<int> bounds) {

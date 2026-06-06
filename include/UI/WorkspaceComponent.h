@@ -31,6 +31,9 @@ public:
     void paint(juce::Graphics&) override;
     void resized() override;
     void mouseDown(const juce::MouseEvent& e) override;
+    void mouseDrag(const juce::MouseEvent& e) override;
+    void mouseUp(const juce::MouseEvent& e) override;
+    void mouseWheelMove(const juce::MouseEvent& e, const juce::MouseWheelDetails& wheel) override;
     
     void timerCallback() override;
 
@@ -75,6 +78,21 @@ private:
     std::unique_ptr<juce::FileChooser> fileChooser_;
     
     juce::Rectangle<int> promptBarBounds_;
+
+    juce::Rectangle<int> explorerBounds_;
+    juce::Rectangle<int> explorerContentBounds_;
+    int explorerScrollY_ = 0;
+    int explorerContentHeight_ = 0;
+    
+    juce::Rectangle<int> editorBounds_;
+    juce::Rectangle<int> editorContentBounds_;
+    int editorScrollY_ = 0;
+    int editorContentHeight_ = 0;
+    
+    bool draggingExplorerScroll_ = false;
+    bool draggingEditorScroll_ = false;
+    int scrollDragStartY_ = 0;
+    int scrollDragStartOffset_ = 0;
 
     std::vector<TimelineEvent> timelineEvents_;
     float animationPhase_ = 0.0f;
