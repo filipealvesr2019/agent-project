@@ -442,6 +442,7 @@ void WorkspaceComponent::mouseDown(const juce::MouseEvent& e) {
             auto hit = hitTestNode(child, e.getPosition());
             if (hit) { selectedNode_ = hit; repaint(); showContextMenu(hit, e.getScreenPosition()); return; }
         }
+        showRootContextMenu(e.getScreenPosition());
         return;
     }
 
@@ -1156,6 +1157,63 @@ void WorkspaceComponent::showContextMenu(std::shared_ptr<FileNode> node, juce::P
                 case 3: clipboardNode_ = node; clipboardIsCut_ = true;  break;
                 case 4: pasteClipboard(node); break;
                 case 5: deleteNode(node);     break;
+                default: break;
+            }
+        });
+}
+
+void WorkspaceComponent::showRootContextMenu(juce::Point<int> screenPos) {
+    juce::PopupMenu menu;
+    menu.addItem(1, "Novo Arquivo");
+    menu.addItem(2, "Nova Pasta");
+    menu.addSeparator();
+    menu.addItem(3, "Colar", clipboardNode_ != nullptr);
+
+    menu.setLookAndFeel(&darkMenuLaf_);
+    menu.showMenuAsync(
+        juce::PopupMenu::Options()
+            .withTargetScreenArea(juce::Rectangle<int>(screenPos.x, screenPos.y, 1, 1))
+            .withMinimumWidth(150),
+        [this](int result) {
+            switch (result) {
+                case 1: startInlineCreation(true);  break;
+                case 2: startInlineCreation(false); break;
+                case 3: {
+                    if (clipboardNode_) {
+                        juce::File destDir;
+                        for (auto& c : rootNode_->children)
+                            if (c->file.isDirectory() && c != clipboardNode_) {
+                                destDir = c->file.getParentDirectory(); break;
+                            }
+                        if (!destDir.isDirectory())
+                            destDir = clipboardNode_->file.getParentDirectory().getParentDirectory();
+                        if (destDir.isDirectory()) {
+                            juce::File dest = destDir.getChildFile(clipboardNode_->file.getFileName());
+                            if (dest != clipboardNode_->file) {
+                                bool ok = false;
+                                if (clipboardIsCut_) {
+                                    ok = clipboardNode_->file.moveFileTo(dest);
+                                    if (ok) {
+                                        clipboardNode_->file = dest;
+                                        removeNodeFromParent(rootNode_, clipboardNode_);
+                                        clipboardNode_ = nullptr;
+                                    }
+                                } else {
+                                    ok = clipboardNode_->file.isDirectory()
+                                        ? clipboardNode_->file.copyDirectoryTo(dest)
+                                        : clipboardNode_->file.copyFileTo(dest);
+                                }
+                                if (ok) {
+                                    auto newNode = std::make_shared<FileNode>();
+                                    newNode->file = dest;
+                                    rootNode_->children.push_back(newNode);
+                                    repaint();
+                                }
+                            }
+                        }
+                    }
+                    break;
+                }
                 default: break;
             }
         });

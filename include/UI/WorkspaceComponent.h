@@ -114,6 +114,7 @@ private:
     void cancelInlineCreation();
     void startRenameNode(std::shared_ptr<FileNode> node);
     void showContextMenu(std::shared_ptr<FileNode> node, juce::Point<int> screenPos);
+    void showRootContextMenu(juce::Point<int> screenPos);
     void deleteNode(std::shared_ptr<FileNode> node);
     void pasteClipboard(std::shared_ptr<FileNode> destNode);
 
