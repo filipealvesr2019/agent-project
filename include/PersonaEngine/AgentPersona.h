@@ -35,6 +35,10 @@ struct AgentPersona {
     
     std::vector<PersonaGoal> goals;
     
+    // Organograma / Hierarquia (Fase 10.5.11)
+    std::string parentPersonaId; // Quem é o chefe desta persona
+    std::vector<std::string> childrenPersonaIds; // Quem são os subordinados
+    
     // Status da persona para a UI e logs (Phase 10.5.2)
     PersonaStatus currentStatus = PersonaStatus::Offline;
     

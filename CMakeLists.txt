@@ -719,5 +719,13 @@ add_executable(AgentOS_PersonaEngineTest
 target_include_directories(AgentOS_PersonaEngineTest PRIVATE include)
 target_compile_features(AgentOS_PersonaEngineTest PRIVATE cxx_std_20)
 
+add_executable(AgentOS_PersonaStressTest
+    tests/test_stress_persona.cpp
+    src/EventBus/EventBus.cpp
+)
+target_include_directories(AgentOS_PersonaStressTest PRIVATE include)
+target_compile_features(AgentOS_PersonaStressTest PRIVATE cxx_std_20)
+
+
 
 
