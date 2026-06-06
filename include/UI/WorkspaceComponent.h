@@ -58,6 +58,11 @@ private:
     void populateNode(std::shared_ptr<FileNode> node);
     void drawNode(juce::Graphics& g, std::shared_ptr<FileNode> node, int& y, int indent);
     std::shared_ptr<FileNode> hitTestNode(std::shared_ptr<FileNode> node, const juce::Point<int>& pos);
+    std::shared_ptr<FileNode> findParentNode(std::shared_ptr<FileNode> root, std::shared_ptr<FileNode> target);
+    bool removeNodeFromParent(std::shared_ptr<FileNode> root, std::shared_ptr<FileNode> target);
+    void startInlineCreation(bool isFile);
+    void commitInlineCreation();
+    void cancelInlineCreation();
 
     juce::String activeFileName_;
     juce::String activeFileContent_;
@@ -102,6 +107,18 @@ private:
     bool draggingEditorScroll_ = false;
     int scrollDragStartY_ = 0;
     int scrollDragStartOffset_ = 0;
+
+    // Inline creation state (VSCode style)
+    bool isCreatingFile_ = false;
+    bool isCreatingFolder_ = false;
+    juce::TextEditor inlineNameEditor_;
+    bool inlineEditorVisible_ = false;
+    int inlineEditorY_ = 0;
+    
+    // Drag & drop file tree state
+    std::shared_ptr<FileNode> draggedNode_;
+    std::shared_ptr<FileNode> dropTargetNode_;
+    bool isDraggingFileNode_ = false;
 
     std::vector<TimelineEvent> timelineEvents_;
     float animationPhase_ = 0.0f;

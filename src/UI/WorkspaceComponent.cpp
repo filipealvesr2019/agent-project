@@ -83,6 +83,19 @@ WorkspaceComponent::WorkspaceComponent() {
         });
     };
 
+    // Setup inline name editor (VSCode style)
+    inlineNameEditor_.setMultiLine(false);
+    inlineNameEditor_.setReturnKeyStartsNewLine(false);
+    inlineNameEditor_.setColour(juce::TextEditor::backgroundColourId, juce::Colour(0xFF1E2433));
+    inlineNameEditor_.setColour(juce::TextEditor::outlineColourId, juce::Colour(0xFF6D5DFE));
+    inlineNameEditor_.setColour(juce::TextEditor::focusedOutlineColourId, juce::Colour(0xFF6D5DFE));
+    inlineNameEditor_.setColour(juce::TextEditor::textColourId, juce::Colours::white);
+    inlineNameEditor_.setFont(juce::Font(13.0f));
+    inlineNameEditor_.setVisible(false);
+    addChildComponent(inlineNameEditor_);
+    inlineNameEditor_.onReturnKey = [this] { commitInlineCreation(); };
+    inlineNameEditor_.onEscapeKey = [this] { cancelInlineCreation(); };
+
     startTimerHz(30); // 30 FPS for animation
 
     timelineEvents_.clear();
@@ -317,6 +330,20 @@ void WorkspaceComponent::drawNode(juce::Graphics& g, std::shared_ptr<FileNode> n
     drawFileTreeItem(g, y, indent, node->file.getFileName(), isFolder, node->isExpanded, isActive, &itemBounds);
     node->lastBounds = itemBounds;
     
+    // Highlight drop target
+    if (node == dropTargetNode_) {
+        g.setColour(juce::Colour(0xFF6D5DFE).withAlpha(0.3f));
+        g.fillRoundedRectangle(itemBounds.toFloat(), 4.0f);
+        g.setColour(juce::Colour(0xFF6D5DFE));
+        g.drawRoundedRectangle(itemBounds.toFloat(), 4.0f, 1.0f);
+    }
+    
+    // Dim dragged node
+    if (node == draggedNode_ && isDraggingFileNode_) {
+        g.setColour(juce::Colour(0xFF161A25).withAlpha(0.5f));
+        g.fillRoundedRectangle(itemBounds.toFloat(), 4.0f);
+    }
+    
     if (isFolder && node->isExpanded) {
         if (!node->isPopulated) populateNode(node);
         for (auto& child : node->children) {
@@ -339,11 +366,11 @@ std::shared_ptr<FileNode> WorkspaceComponent::hitTestNode(std::shared_ptr<FileNo
 
 void WorkspaceComponent::mouseDown(const juce::MouseEvent& e) {
     if (filePlusBounds_.contains(e.getPosition())) {
-        btnAttachFile_.triggerClick();
+        startInlineCreation(true);  // Criar novo arquivo
         return;
     }
     if (folderPlusBounds_.contains(e.getPosition())) {
-        btnAttachFolder_.triggerClick();
+        startInlineCreation(false); // Criar nova pasta
         return;
     }
 
@@ -387,44 +414,189 @@ void WorkspaceComponent::mouseDown(const juce::MouseEvent& e) {
 }
 
 bool WorkspaceComponent::isInterestedInDragSource(const juce::DragAndDropTarget::SourceDetails& dragSourceDetails) {
-    return true; // Aceitar drops em pastas
+    return false; // Gerenciamos drag interno manualmente
 }
 
 void WorkspaceComponent::itemDropped(const juce::DragAndDropTarget::SourceDetails& dragSourceDetails) {
-    // Apenas UI feedback por enquanto, permite drag & drop na area
+    // Não usado - drag interno gerenciado manualmente
+}
+
+std::shared_ptr<FileNode> WorkspaceComponent::findParentNode(std::shared_ptr<FileNode> root, std::shared_ptr<FileNode> target) {
+    for (auto& child : root->children) {
+        if (child == target) return root;
+        if (child->file.isDirectory() || child->isExpanded) {
+            auto found = findParentNode(child, target);
+            if (found) return found;
+        }
+    }
+    return nullptr;
+}
+
+bool WorkspaceComponent::removeNodeFromParent(std::shared_ptr<FileNode> root, std::shared_ptr<FileNode> target) {
+    auto& vec = root->children;
+    auto it = std::find(vec.begin(), vec.end(), target);
+    if (it != vec.end()) {
+        vec.erase(it);
+        return true;
+    }
+    for (auto& child : vec) {
+        if (removeNodeFromParent(child, target)) return true;
+    }
+    return false;
+}
+
+void WorkspaceComponent::startInlineCreation(bool isFile) {
+    if (!rootNode_) return;
+    cancelInlineCreation(); // fechar qualquer editor anterior
+    isCreatingFile_ = isFile;
+    isCreatingFolder_ = !isFile;
+    // Posicionar o editor abaixo do titulo WORKSPACE
+    inlineEditorY_ = explorerContentBounds_.getY() + 24 - explorerScrollY_;
+    inlineNameEditor_.setBounds(explorerContentBounds_.getX() + 20, inlineEditorY_,
+                                explorerContentBounds_.getWidth() - 30, 22);
+    inlineNameEditor_.setText("");
+    inlineNameEditor_.setVisible(true);
+    inlineEditorVisible_ = true;
+    inlineNameEditor_.grabKeyboardFocus();
     repaint();
 }
 
-void WorkspaceComponent::mouseDrag(const juce::MouseEvent& e) {
-    if (!draggingExplorerScroll_ && !draggingEditorScroll_) {
-        // Iniciar Drag and Drop nativo se arrastar de um item
-        if (rootNode_ && explorerContentBounds_.contains(e.getMouseDownPosition())) {
-            for (auto& child : rootNode_->children) {
-                auto hit = hitTestNode(child, e.getMouseDownPosition());
-                if (hit && e.getDistanceFromDragStart() > 4) {
-                    startDragging("file_node", this);
-                    return;
+void WorkspaceComponent::commitInlineCreation() {
+    auto name = inlineNameEditor_.getText().trim();
+    if (name.isNotEmpty() && rootNode_) {
+        // Determine destination: selected folder, or root
+        juce::File destDir;
+        if (currentFolder_.isDirectory())
+            destDir = currentFolder_;
+        else if (!rootNode_->children.empty() && rootNode_->children[0]->file.isDirectory())
+            destDir = rootNode_->children[0]->file;
+        else
+            destDir = juce::File::getSpecialLocation(juce::File::userDocumentsDirectory);
+
+        juce::File newEntry = destDir.getChildFile(name);
+        bool ok = false;
+        if (isCreatingFile_) {
+            if (!newEntry.existsAsFile()) ok = newEntry.create();
+            if (ok) {
+                auto node = std::make_shared<FileNode>();
+                node->file = newEntry;
+                // Add to the first expanded folder child, or root
+                bool added = false;
+                for (auto& child : rootNode_->children) {
+                    if (child->file == destDir) {
+                        child->isPopulated = false; // force re-populate
+                        child->isExpanded = true;
+                        populateNode(child);
+                        added = true;
+                        break;
+                    }
+                }
+                if (!added) rootNode_->children.push_back(node);
+                updateActiveFile(newEntry.getFileName(), "");
+            }
+        } else {
+            ok = newEntry.createDirectory();
+            if (ok) {
+                bool added = false;
+                for (auto& child : rootNode_->children) {
+                    if (child->file == destDir) {
+                        child->isPopulated = false;
+                        child->isExpanded = true;
+                        populateNode(child);
+                        added = true;
+                        break;
+                    }
+                }
+                if (!added) {
+                    auto node = std::make_shared<FileNode>();
+                    node->file = newEntry;
+                    rootNode_->children.push_back(node);
                 }
             }
         }
     }
-    
+    cancelInlineCreation();
+    repaint();
+}
+
+void WorkspaceComponent::cancelInlineCreation() {
+    isCreatingFile_ = false;
+    isCreatingFolder_ = false;
+    inlineEditorVisible_ = false;
+    inlineNameEditor_.setVisible(false);
+    repaint();
+}
+
+void WorkspaceComponent::mouseDrag(const juce::MouseEvent& e) {
+    // Drag de scrollbar: tem prioridade
     if (draggingExplorerScroll_) {
         float ratio = (float)explorerContentHeight_ / (float)explorerContentBounds_.getHeight();
         int delta = (int)((e.getPosition().y - scrollDragStartY_) * ratio);
         int maxScroll = std::max(0, explorerContentHeight_ - explorerContentBounds_.getHeight());
         explorerScrollY_ = juce::jlimit(0, maxScroll, scrollDragStartOffset_ + delta);
         repaint();
-    } else if (draggingEditorScroll_) {
+        return;
+    }
+    if (draggingEditorScroll_) {
         float ratio = (float)editorContentHeight_ / (float)editorContentBounds_.getHeight();
         int delta = (int)((e.getPosition().y - scrollDragStartY_) * ratio);
         int maxScroll = std::max(0, editorContentHeight_ - editorContentBounds_.getHeight());
         editorScrollY_ = juce::jlimit(0, maxScroll, scrollDragStartOffset_ + delta);
         repaint();
+        return;
+    }
+    
+    // Drag de arquivo/pasta na arvore
+    if (!isDraggingFileNode_ && e.getDistanceFromDragStart() > 6
+        && explorerContentBounds_.contains(e.getMouseDownPosition())) {
+        // Descobrir qual no estava sob o clique inicial
+        if (rootNode_) {
+            for (auto& child : rootNode_->children) {
+                auto hit = hitTestNode(child, e.getMouseDownPosition());
+                if (hit) {
+                    draggedNode_ = hit;
+                    isDraggingFileNode_ = true;
+                    break;
+                }
+            }
+        }
+    }
+    
+    if (isDraggingFileNode_ && rootNode_) {
+        // Encontrar o no embaixo do cursor atual (candidato a destino)
+        dropTargetNode_ = nullptr;
+        for (auto& child : rootNode_->children) {
+            auto hit = hitTestNode(child, e.getPosition());
+            if (hit && hit != draggedNode_ && hit->file.isDirectory()) {
+                dropTargetNode_ = hit;
+                break;
+            }
+        }
+        repaint();
     }
 }
 
 void WorkspaceComponent::mouseUp(const juce::MouseEvent& e) {
+    // Finalizar drag de arquivo/pasta
+    if (isDraggingFileNode_ && draggedNode_) {
+        if (dropTargetNode_ && dropTargetNode_->file.isDirectory() && dropTargetNode_ != draggedNode_) {
+            // Mover o arquivo/pasta fisicamente
+            juce::File dest = dropTargetNode_->file.getChildFile(draggedNode_->file.getFileName());
+            bool moved = draggedNode_->file.moveFileTo(dest);
+            if (moved) {
+                draggedNode_->file = dest;
+                // Remover da posicao original e adicionar ao destino
+                removeNodeFromParent(rootNode_, draggedNode_);
+                dropTargetNode_->isPopulated = false;
+                dropTargetNode_->isExpanded = true;
+                populateNode(dropTargetNode_);
+            }
+        }
+        draggedNode_ = nullptr;
+        dropTargetNode_ = nullptr;
+        isDraggingFileNode_ = false;
+    }
+    
     draggingExplorerScroll_ = false;
     draggingEditorScroll_ = false;
     repaint();
