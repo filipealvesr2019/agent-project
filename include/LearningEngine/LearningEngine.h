@@ -88,11 +88,14 @@ public:
                 if (agentId == "SYSTEM" || agentId.find("H_") == 0) continue;
 
                 auto& profile = getProfile(agentId);
+                profile.totalVotes++;
 
                 if (vote.option == finalReferenceAction) {
+                    profile.correctVotes++;
                     profile.reliabilityScore = std::min(profile.reliabilityScore + 0.05, 1.0);
                     profile.decisionWeight = std::min(profile.decisionWeight + 0.02, 1.0);
                 } else {
+                    profile.wrongVotes++;
                     profile.reliabilityScore *= 0.85;  
                     profile.decisionWeight *= 0.90;
                 }

@@ -733,6 +733,13 @@ add_executable(AgentOS_HumanOverrideTest
 target_include_directories(AgentOS_HumanOverrideTest PRIVATE include)
 target_compile_features(AgentOS_HumanOverrideTest PRIVATE cxx_std_20)
 
+add_executable(AgentOS_HierarchyTest
+    tests/test_hierarchy.cpp
+    src/EventBus/EventBus.cpp
+)
+target_include_directories(AgentOS_HierarchyTest PRIVATE include)
+target_compile_features(AgentOS_HierarchyTest PRIVATE cxx_std_20)
+
 
 
 
