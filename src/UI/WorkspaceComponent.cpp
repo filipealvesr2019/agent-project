@@ -3,8 +3,9 @@
 #include "EventBus/EventBus.h"
 #include "WorkflowEngine/WorkflowEngine.h"
 #include "UI/UI.h"
-#include "PersonaEngine/SharedModelPool.h"
-#include "MemoryEngine/MemoryEngine.h"
+#include "LocalRuntime/LlamaRuntime.h"
+#include <filesystem>
+#include <thread>
 
 namespace AgentOS {
 
@@ -85,6 +86,37 @@ WorkspaceComponent::WorkspaceComponent() {
         });
     };
 
+    // Populate model selector — search models/ relative to exe and cwd
+    modelSelector_.setEditableText(false);
+    modelSelector_.setTextWhenNoChoicesAvailable("Nenhum modelo encontrado");
+    modelSelector_.setColour(juce::ComboBox::backgroundColourId, juce::Colour(0xFF1E2433));
+    modelSelector_.setColour(juce::ComboBox::textColourId, juce::Colour(0xFFB0B6C9));
+    modelSelector_.setColour(juce::ComboBox::outlineColourId, juce::Colour(0xFF2D3348));
+    modelSelector_.setColour(juce::ComboBox::buttonColourId, juce::Colour(0xFF4338CA));
+    modelSelector_.setColour(juce::ComboBox::arrowColourId, juce::Colour(0xFF8A91A8));
+    {
+        auto exeDir = juce::File::getSpecialLocation(juce::File::currentExecutableFile).getParentDirectory();
+        for (auto& candidate : { exeDir.getChildFile("../../models"), exeDir.getChildFile("../../../models"),
+                                 juce::File::getCurrentWorkingDirectory().getChildFile("models") })
+        {
+            modelsDir_ = candidate;
+            if (modelsDir_.isDirectory()) break;
+        }
+        if (modelsDir_.isDirectory()) {
+            auto ggufFiles = modelsDir_.findChildFiles(juce::File::findFiles, false, "*.gguf");
+            ggufFiles.sort();
+            int defaultIdx = -1;
+            for (int i = 0; i < ggufFiles.size(); ++i) {
+                auto name = ggufFiles[i].getFileName();
+                modelSelector_.addItem(name, i + 1);
+                if (name.contains("Phi-3") || name.contains("phi-3")) defaultIdx = i;
+            }
+            if (defaultIdx == -1 && ggufFiles.size() > 0) defaultIdx = 0;
+            if (defaultIdx >= 0) modelSelector_.setSelectedId(defaultIdx + 1);
+        }
+    }
+    addAndMakeVisible(modelSelector_);
+
     btnSubmit_.onClick = [this] {
         auto prompt = promptInput_.getText().trim();
         if (prompt.isEmpty()) return;
@@ -92,34 +124,87 @@ WorkspaceComponent::WorkspaceComponent() {
         promptInput_.setText("");
 
         auto now = juce::Time::getCurrentTime();
-        auto timeStr = juce::String::formatted("%02d:%02d:%02d", now.getHours(), now.getMinutes(), now.getSeconds());
+        auto ts = juce::String::formatted("%02d:%02d:%02d", now.getHours(), now.getMinutes(), now.getSeconds());
 
-        activeFileContent_ += "\n\n## Voce:\n" + prompt + "\n\n## CEO:\nProcessando...\n";
+        activeFileContent_ += "\n\n## Voce:\n" + prompt + "\n\n## CEO:\n";
+        int placeholderStart = activeFileContent_.length();
+        activeFileContent_ += "\n";
         repaint();
 
-        TimelineEvent te{"CEO", "CEO", prompt, "N/A", timeStr, "EXECUTANDO", 0, 0};
-        addTimelineEvent(te);
+        addTimelineEvent({"CEO", "CEO", "Recebi sua solicitação. Processando...", "N/A", ts, "EXECUTANDO", 0, 0});
 
-        auto future = SharedModelPool::getInstance().enqueuePrompt("CEO", prompt.toStdString());
+        // Get selected model path from combo box
+        int selectedId = modelSelector_.getSelectedId();
+        std::string modelPath;
+        if (selectedId > 0) {
+            auto selectedName = modelSelector_.getItemText(selectedId - 1);
+            auto modelFile = modelsDir_.getChildFile(selectedName);
+            if (modelFile.existsAsFile())
+                modelPath = modelFile.getFullPathName().toStdString();
+        }
 
-        std::thread([this, future = std::move(future), promptStr = prompt.toStdString()]() mutable {
-            std::string response = future.get();
+        std::thread([this, promptStr = prompt.toStdString(), placeholderStart, modelPath]() {
+            static AgentOS::LlamaRuntime llm;
+            static std::string loadedPath;
+            bool modelOk = false;
 
-            juce::MessageManager::callAsync([this, response = juce::String(response), promptStr] {
-                int idx = activeFileContent_.lastIndexOf("Processando...");
-                if (idx != -1)
-                    activeFileContent_ = activeFileContent_.substring(0, idx) + response + "\n";
+            if (!modelPath.empty() && std::filesystem::exists(modelPath)) {
+                if (modelPath != loadedPath) {
+                    modelOk = llm.loadModel(modelPath);
+                    if (modelOk) loadedPath = modelPath;
+                } else {
+                    modelOk = true;
+                }
+            }
 
-                auto now2 = juce::Time::getCurrentTime();
-                auto ts = juce::String::formatted("%02d:%02d:%02d", now2.getHours(), now2.getMinutes(), now2.getSeconds());
-                TimelineEvent te2{"CEO", "CEO", response.substring(0, 120), "N/A", ts, "CONCLUIDO", 0, 0};
-                addTimelineEvent(te2);
-
-                MemoryEngine::getInstance().addConversation({
-                    "CEO", promptStr, response.toStdString(),
-                    juce::Time::getCurrentTime().toISO8601(true).toStdString()
+            if (!modelOk) {
+                juce::MessageManager::callAsync([this] {
+                    activeFileContent_ += "Nenhum modelo GGUF encontrado em 'models/'.\n"
+                                          "Coloque um modelo .gguf na pasta models/ e tente novamente.\n";
+                    auto now2 = juce::Time::getCurrentTime();
+                    auto ts2 = juce::String::formatted("%02d:%02d:%02d", now2.getHours(), now2.getMinutes(), now2.getSeconds());
+                    addTimelineEvent({"CEO", "CEO", "Erro: modelo não encontrado.", "N/A", ts2, "ERRO", 0, 0});
+                    repaint();
                 });
+                return;
+            }
 
+            // Build augmented prompt with system instructions
+            std::string augmentedPrompt =
+                "Você é um especialista em gestão de projetos e desenvolvimento de software. "
+                "Responda em português de forma detalhada, clara e bem estruturada.\n\n"
+                "Use markdown para organizar a resposta:\n"
+                "- Use ## para subtítulos\n"
+                "- Use **negrito** para pontos importantes\n"
+                "- Use - para listas\n"
+                "- Use ``` para blocos de código\n\n"
+                "Divida a resposta em seções lógicas quando apropriado.\n\n"
+                "Pergunta do usuário:\n" + promptStr;
+
+            addTimelineEvent({"CEO", "CEO", "Gerando resposta...", "N/A",
+                juce::String::formatted("%02d:%02d:%02d",
+                    juce::Time::getCurrentTime().getHours(),
+                    juce::Time::getCurrentTime().getMinutes(),
+                    juce::Time::getCurrentTime().getSeconds()),
+                "EXECUTANDO", 0, 0});
+
+            // Stream the response token by token
+            llm.streamGenerate(augmentedPrompt, 1024,
+                [this, placeholderStart](const std::string& chunk) {
+                    juce::MessageManager::callAsync([this, chunk = juce::String(chunk)] {
+                        activeFileContent_ += chunk;
+                        repaint();
+                    });
+                }
+            );
+
+            auto endTime = juce::Time::getCurrentTime();
+            auto tsEnd = juce::String::formatted("%02d:%02d:%02d",
+                endTime.getHours(), endTime.getMinutes(), endTime.getSeconds());
+
+            juce::MessageManager::callAsync([this, tsEnd] {
+                activeFileContent_ += "\n";
+                addTimelineEvent({"CEO", "CEO", "Resposta concluída.", "N/A", tsEnd, "CONCLUIDO", 0, 0});
                 repaint();
             });
         }).detach();
@@ -1108,7 +1193,11 @@ void WorkspaceComponent::resized() {
     btnAttachFile_.setBounds(bottomRow.removeFromLeft(24));
     bottomRow.removeFromLeft(8);
     btnAttachFolder_.setBounds(bottomRow.removeFromLeft(24));
-    
+    bottomRow.removeFromLeft(12);
+
+    modelSelector_.setBounds(bottomRow.removeFromLeft(240).reduced(0, 5));
+    bottomRow.removeFromLeft(12);
+
     btnSubmit_.setBounds(bottomRow.removeFromRight(150));
 }
 

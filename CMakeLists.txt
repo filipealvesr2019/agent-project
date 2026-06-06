@@ -577,6 +577,18 @@ if(BUILD_REAL_INFERENCE_TEST)
     target_compile_features(AgentOS_RealInferenceTest PRIVATE cxx_std_20)
 endif()
 
+# Humanized Prompt Test
+option(BUILD_HUMANIZED_PROMPT_TEST "Build AgentOS Humanized Prompt Test" OFF)
+if(BUILD_HUMANIZED_PROMPT_TEST)
+    add_executable(AgentOS_HumanizedPromptTest
+        tests/test_humanized_prompt.cpp
+        src/LocalRuntime/LlamaRuntime.cpp
+    )
+    target_include_directories(AgentOS_HumanizedPromptTest PRIVATE include)
+    target_link_libraries(AgentOS_HumanizedPromptTest PRIVATE llama)
+    target_compile_features(AgentOS_HumanizedPromptTest PRIVATE cxx_std_20)
+endif()
+
 # --- llama.cpp ---
 set(LLAMA_BUILD_TESTS OFF CACHE BOOL "Disable llama tests")
 set(LLAMA_BUILD_EXAMPLES OFF CACHE BOOL "Disable llama examples")

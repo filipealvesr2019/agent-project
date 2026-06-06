@@ -57,6 +57,94 @@ bool LlamaRuntime::loadModel(const std::string& ggufPath, bool isEmbedding) {
     return true;
 }
 
+GenerationResult LlamaRuntime::streamGenerate(const std::string& prompt, int32_t maxTokens, StreamCallback onChunk) {
+    GenerationResult res;
+    res.tokens_out = 0;
+    res.duration_ms = 0;
+    res.ok = false;
+
+    if (!ctx_ || !model_) {
+        res.text = "Error: Model not loaded";
+        return res;
+    }
+
+    llama_memory_clear(llama_get_memory(ctx_), true);
+
+    const llama_vocab* vocab = llama_model_get_vocab(model_);
+
+    std::vector<llama_token> tokens(prompt.size() + 128);
+    int32_t n_tokens = llama_tokenize(vocab, prompt.c_str(), prompt.length(), tokens.data(), tokens.size(), true, true);
+    if (n_tokens < 0) {
+        tokens.resize(-n_tokens);
+        n_tokens = llama_tokenize(vocab, prompt.c_str(), prompt.length(), tokens.data(), tokens.size(), true, true);
+    }
+    tokens.resize(n_tokens);
+
+    llama_batch batch = llama_batch_init(512, 0, 1);
+    batch.n_tokens = n_tokens;
+    for (int i = 0; i < n_tokens; i++) {
+        batch.token[i] = tokens[i];
+        batch.pos[i] = i;
+        batch.n_seq_id[i] = 1;
+        batch.seq_id[i][0] = 0;
+        batch.logits[i] = (i == n_tokens - 1 ? 1 : 0);
+    }
+
+    if (llama_decode(ctx_, batch) != 0) {
+        llama_batch_free(batch);
+        res.text = "Error: llama_decode failed on prompt";
+        return res;
+    }
+
+    int32_t n_past = n_tokens;
+
+    auto sparams = llama_sampler_chain_default_params();
+    llama_sampler* smpl = llama_sampler_chain_init(sparams);
+    llama_sampler_chain_add(smpl, llama_sampler_init_greedy());
+
+    auto start_time = std::chrono::high_resolution_clock::now();
+
+    for (int i = 0; i < maxTokens; i++) {
+        llama_token id = llama_sampler_sample(smpl, ctx_, -1);
+        llama_sampler_accept(smpl, id);
+
+        if (llama_vocab_is_eog(vocab, id)) {
+            break;
+        }
+
+        char buf[128];
+        int n = llama_token_to_piece(vocab, id, buf, sizeof(buf), 0, true);
+        if (n >= 0) {
+            std::string chunk(buf, n);
+            res.text += chunk;
+            if (onChunk) onChunk(chunk);
+        }
+
+        res.tokens_out++;
+
+        batch.n_tokens = 1;
+        batch.token[0] = id;
+        batch.pos[0] = n_past;
+        batch.n_seq_id[0] = 1;
+        batch.seq_id[0][0] = 0;
+        batch.logits[0] = 1;
+        n_past++;
+
+        if (llama_decode(ctx_, batch) != 0) {
+            res.text += "\n[Error during decode]";
+            break;
+        }
+    }
+
+    auto end_time = std::chrono::high_resolution_clock::now();
+    res.duration_ms = std::chrono::duration_cast<std::chrono::milliseconds>(end_time - start_time).count();
+    res.ok = true;
+
+    llama_batch_free(batch);
+    llama_sampler_free(smpl);
+    return res;
+}
+
 std::string LlamaRuntime::generate(const std::string& prompt) {
     auto res = generateWithStats(prompt, 256);
     return res.text;

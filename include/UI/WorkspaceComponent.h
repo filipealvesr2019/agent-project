@@ -191,7 +191,10 @@ private:
     std::vector<TimelineEvent> timelineEvents_;
     float animationPhase_ = 0.0f;
     int eventBusSubscriptionId_ = -1;
-    
+
+    juce::ComboBox modelSelector_;
+    juce::File modelsDir_;
+
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(WorkspaceComponent)
 };
 
