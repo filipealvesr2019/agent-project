@@ -15,6 +15,7 @@ struct DecisionRecord {
     bool humanOverride = false;
     std::string humanReason;
     std::string timestamp;
+    double consolidatedScore = 0.0;
 };
 
 } // namespace AgentOS

@@ -4,6 +4,9 @@
 #include <vector>
 #include <algorithm>
 #include "LearningEngine/LearningProfile.h"
+#include "EventBus/EventBus.h"
+#include <iostream>
+#include <string>
 
 namespace AgentOS {
 
@@ -12,6 +15,53 @@ public:
     static LearningEngine& getInstance() {
         static LearningEngine instance;
         return instance;
+    }
+
+    void initialize() {
+        if (initialized_) return;
+        EventBus::getInstance().subscribe(EventType::DecisionComputed, [this](const Event& e) {
+            this->handleDecisionComputed(e);
+        });
+        initialized_ = true;
+    }
+
+    void handleDecisionComputed(const Event& e) {
+        std::vector<std::string> participants;
+        std::string payload = e.payload;
+        size_t pStart = payload.find("\"participants\": [");
+        if (pStart != std::string::npos) {
+            size_t pEnd = payload.find("]", pStart);
+            std::string parts = payload.substr(pStart + 17, pEnd - pStart - 17);
+            
+            size_t pos = 0;
+            while ((pos = parts.find("\"")) != std::string::npos) {
+                size_t endQuote = parts.find("\"", pos + 1);
+                if (endQuote != std::string::npos) {
+                    participants.push_back(parts.substr(pos + 1, endQuote - pos - 1));
+                    parts.erase(0, endQuote + 1);
+                } else {
+                    break;
+                }
+            }
+        }
+        
+        bool humanOverride = payload.find("\"humanOverride\": true") != std::string::npos;
+        
+        DecisionRecord mockDecision;
+        mockDecision.participants = participants;
+        mockDecision.humanOverride = humanOverride;
+
+        ValidationRecord mockValidation;
+        mockValidation.passed = true;
+
+        LearningInput input;
+        input.decision = mockDecision;
+        input.validation = mockValidation;
+        
+        std::vector<LearningInput> inputs = {input};
+        processLearningCycle(inputs);
+        
+        std::cout << "[LearningEngine] Processed feedback for " << participants.size() << " personas.\n";
     }
 
     void processLearningCycle(const std::vector<LearningInput>& inputs) {
@@ -54,6 +104,7 @@ public:
 private:
     LearningEngine() = default;
     std::map<std::string, AgentLearningProfile> profiles;
+    bool initialized_ = false;
 };
 
 } // namespace AgentOS

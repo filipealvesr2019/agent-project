@@ -2,6 +2,7 @@
 #include "AgentPersona.h"
 #include "PersonaRegistry.h"
 #include "../EventBus/EventBus.h"
+#include "../OrganizationEngine/DecisionRecord.h"
 #include <string>
 #include <vector>
 #include <mutex>
@@ -13,13 +14,6 @@ struct PersonaDecision {
     AgentPersona persona;
     std::string suggestedAction; // Ex: parsed from JSON payload
     double confidenceScore;
-};
-
-struct DecisionRecord {
-    std::string finalAction;
-    double consolidatedScore;
-    std::string justification;
-    bool humanOverride = false;
 };
 
 // Fase 10.5.7: Decision Integration
@@ -67,11 +61,12 @@ public:
             double impact = pd.confidenceScore * pd.persona.decisionWeight;
             finalDecision.consolidatedScore += impact;
             concatJustifications += "[" + pd.persona.id + "]: " + pd.suggestedAction + " | ";
+            finalDecision.participants.push_back(pd.persona.id);
         }
         
         finalDecision.justification = concatJustifications;
         // Mock de escolha da melhor ação
-        finalDecision.finalAction = pendingDecisions_.empty() ? "None" : pendingDecisions_.front().suggestedAction;
+        finalDecision.winningOption = pendingDecisions_.empty() ? "None" : pendingDecisions_.front().suggestedAction;
         
         // Limpa para a próxima rodada
         pendingDecisions_.clear();
@@ -99,7 +94,16 @@ private:
             DecisionRecord record = computeDecision();
             
             // Simulação de serialização
-            std::string serializedRecord = "{ \"action\": \"" + record.finalAction + "\", \"score\": " + std::to_string(record.consolidatedScore) + " }";
+            // No teste passaremos o JSON com dados necessários
+            std::string serializedRecord = "{ \"action\": \"" + record.winningOption + "\", \"score\": " + std::to_string(record.consolidatedScore);
+            
+            // Incluir participantes no JSON para o Learning Engine mock
+            serializedRecord += ", \"participants\": [";
+            for (size_t i = 0; i < record.participants.size(); ++i) {
+                serializedRecord += "\"" + record.participants[i] + "\"";
+                if (i < record.participants.size() - 1) serializedRecord += ", ";
+            }
+            serializedRecord += "], \"humanOverride\": false }";
 
             EventBus::getInstance().publish(Event{EventType::DecisionComputed, "DecisionEngine", "", serializedRecord});
             std::cout << "[DecisionEngine] DecisionComputed emitted! Score: " << record.consolidatedScore << "\n";
