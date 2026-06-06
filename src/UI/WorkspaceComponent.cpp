@@ -124,7 +124,7 @@ void WorkspaceComponent::paint(juce::Graphics& g) {
     auto timelineBounds = panelsArea.removeFromRight(timelineW);
     panelsArea.removeFromRight(10); // gap
     
-    auto promptBarBounds = panelsArea.removeFromBottom(60);
+    auto promptBarBounds = panelsArea.removeFromBottom(110);
     panelsArea.removeFromBottom(10); // gap
     
     int explorerW = 260;
@@ -421,48 +421,62 @@ void WorkspaceComponent::drawPromptBar(juce::Graphics& g, juce::Rectangle<int> b
     g.setColour(juce::Colour(0xFF161A25));
     g.fillRoundedRectangle(bounds.toFloat(), 12.0f);
     
-    bounds.reduce(16, 0);
-    
-    // Left Icons
-    auto icon1 = bounds.removeFromLeft(30).withSizeKeepingCentre(24, 24);
-    auto icon2 = bounds.removeFromLeft(30).withSizeKeepingCentre(24, 24);
-    auto icon3 = bounds.removeFromLeft(30).withSizeKeepingCentre(24, 24);
-    
-    g.setColour(juce::Colour(0xFF8A91A8));
-    g.setFont(juce::Font(16.0f, juce::Font::bold));
-    g.drawText("O", icon1, juce::Justification::centred); // placeholder for attach
-    g.drawText("@", icon2, juce::Justification::centred);
-    g.drawText("#", icon3, juce::Justification::centred);
-    
-    bounds.removeFromLeft(10);
-    
-    // Right Section
-    auto sendBtn = bounds.removeFromRight(100).withSizeKeepingCentre(100, 40);
-    bounds.removeFromRight(10);
-    auto agentDropdown = bounds.removeFromRight(140).withSizeKeepingCentre(140, 40);
-    
-    // Send Button
-    g.setColour(juce::Colour(0xFF6D5DFE));
-    g.fillRoundedRectangle(sendBtn.toFloat(), 8.0f);
-    g.setColour(juce::Colours::white);
-    g.setFont(juce::Font(14.0f, juce::Font::bold));
-    g.drawText("Enviar", sendBtn, juce::Justification::centred);
-    
-    // Agent Dropdown
-    g.setColour(juce::Colour(0xFF1E2433));
-    g.fillRoundedRectangle(agentDropdown.toFloat(), 8.0f);
-    g.setColour(juce::Colour(0xFF282D3D));
-    g.drawRoundedRectangle(agentDropdown.toFloat(), 8.0f, 1.0f);
-    g.setColour(juce::Colours::white);
-    g.setFont(juce::Font(13.0f, juce::Font::bold));
-    g.drawText("CEO Agent", agentDropdown, juce::Justification::centred);
-    
-    bounds.removeFromRight(10);
-    
-    // Text Input Placeholder
+    auto textArea = bounds.removeFromTop(40).withTrimmedTop(16).withTrimmedLeft(16);
     g.setColour(juce::Colour(0xFF8A91A8));
     g.setFont(juce::Font(14.0f));
-    g.drawText(juce::String(juce::CharPointer_UTF8("Digite uma tarefa ou solicitacao para o CEO Agent...")), bounds, juce::Justification::centredLeft);
+    g.drawText("Descreva o que voce quer que o CEO planeje e execute...", textArea, juce::Justification::topLeft);
+    
+    auto bottomRow = bounds.removeFromBottom(50).withTrimmedBottom(10).withTrimmedLeft(16).withTrimmedRight(16);
+    
+    // Left Icons (Simple outlines, no background)
+    auto drawPaperclip = [&](juce::Rectangle<int> area) {
+        g.setColour(juce::Colour(0xFF8A91A8));
+        juce::Path p;
+        p.addRoundedRectangle(area.getX() + 6, area.getY() + 8, 8, 16, 4);
+        g.strokePath(p, juce::PathStrokeType(1.5f));
+    };
+    
+    auto drawFolder = [&](juce::Rectangle<int> area) {
+        g.setColour(juce::Colour(0xFF8A91A8));
+        juce::Path p;
+        p.startNewSubPath(area.getX() + 4, area.getY() + 10);
+        p.lineTo(area.getX() + 10, area.getY() + 10);
+        p.lineTo(area.getX() + 12, area.getY() + 14);
+        p.lineTo(area.getX() + 20, area.getY() + 14);
+        p.lineTo(area.getX() + 20, area.getY() + 24);
+        p.lineTo(area.getX() + 4, area.getY() + 24);
+        p.closeSubPath();
+        g.strokePath(p, juce::PathStrokeType(1.5f));
+    };
+    
+    auto icon1 = bottomRow.removeFromLeft(24);
+    bottomRow.removeFromLeft(8); // gap
+    auto icon2 = bottomRow.removeFromLeft(24);
+    
+    drawPaperclip(icon1);
+    drawFolder(icon2);
+    
+    // Right Section
+    auto sendBtn = bottomRow.removeFromRight(150);
+    
+    // Send Button
+    g.setColour(juce::Colour(0xFF4338CA)); // Indigo/purple
+    g.fillRoundedRectangle(sendBtn.toFloat(), 6.0f);
+    g.setColour(juce::Colours::white);
+    g.setFont(juce::Font(14.0f, juce::Font::bold));
+    
+    // Draw paper plane
+    juce::Path plane;
+    float px = sendBtn.getX() + 16;
+    float py = sendBtn.getY() + 10;
+    plane.startNewSubPath(px, py + 8);
+    plane.lineTo(px + 12, py);
+    plane.lineTo(px + 4, py + 16);
+    plane.lineTo(px + 4, py + 8);
+    plane.closeSubPath();
+    g.strokePath(plane, juce::PathStrokeType(1.5f));
+    
+    g.drawText("Enviar para o CEO", sendBtn.withTrimmedLeft(20), juce::Justification::centred);
 }
 
 void WorkspaceComponent::drawPendingChangesBar(juce::Graphics& g, juce::Rectangle<int> bounds) {
@@ -484,20 +498,24 @@ void WorkspaceComponent::drawPendingChangesBar(juce::Graphics& g, juce::Rectangl
     
     bounds.removeFromLeft(12); // gap
     
-    // Text
-    auto textArea = bounds.removeFromLeft(300);
-    g.setColour(juce::Colours::white);
-    g.setFont(juce::Font(14.0f, juce::Font::bold));
-    g.drawText(juce::String(juce::CharPointer_UTF8("3 alteracoes pendentes")), textArea.removeFromTop(bounds.getHeight() / 2).withTrimmedBottom(-10), juce::Justification::bottomLeft);
-    
-    g.setColour(juce::Colour(0xFF8A91A8));
-    g.setFont(juce::Font(12.0f));
-    g.drawText("Dashboard.tsx, users.routes.ts, login.tsx", textArea, juce::Justification::topLeft);
-    
     // Right Buttons
     auto acceptBtn = bounds.removeFromRight(120).withSizeKeepingCentre(120, 36);
     bounds.removeFromRight(10);
     auto rejectBtn = bounds.removeFromRight(120).withSizeKeepingCentre(120, 36);
+    
+    // Text
+    auto textArea = bounds; // uses remaining space
+    auto topText = textArea.removeFromTop(textArea.getHeight() / 2);
+    topText.translate(0, 4);
+    g.setColour(juce::Colours::white);
+    g.setFont(juce::Font(14.0f, juce::Font::bold));
+    g.drawText(juce::String(juce::CharPointer_UTF8("3 alterações pendentes")), topText, juce::Justification::bottomLeft);
+    
+    auto bottomText = textArea;
+    bottomText.translate(0, -4);
+    g.setColour(juce::Colour(0xFF8A91A8));
+    g.setFont(juce::Font(12.0f));
+    g.drawText("Dashboard.tsx, users.routes.ts, login.tsx", bottomText, juce::Justification::topLeft);
     
     // Accept Button
     g.setColour(juce::Colour(0xFF6D5DFE));
