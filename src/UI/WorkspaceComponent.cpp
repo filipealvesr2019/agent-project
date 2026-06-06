@@ -214,7 +214,7 @@ void WorkspaceComponent::paint(juce::Graphics& g) {
     
     // Check if we are showing changes bar
     if (UI::getInstance().getPendingChangesCount() > 0) {
-        auto changesBarBounds = editorBounds.removeFromBottom(60);
+        auto changesBarBounds = editorBounds_.removeFromBottom(60);
         drawPendingChangesBar(g, changesBarBounds);
     }
 }
