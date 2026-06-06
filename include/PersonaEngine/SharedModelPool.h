@@ -89,7 +89,7 @@ private:
 
             // Exemplo: invocação real (Llama/ONNX/API)
             std::cout << "[SharedModelPool] Executando Persona [" << req->personaId << "] usando [" << req->assignedModel << "]\n";
-            std::string simulatedResponse = "[LLM Output] Persona: " + req->personaId + " | Prompt Echo: " + req->prompt;
+            std::string simulatedResponse = req->personaId + " está executando a tarefa: \"" + req->prompt + "\" de forma detalhada e profissional.";
             
             AgentOS::Event e{AgentOS::EventType::PersonaResponseReceived, req->personaId, "", simulatedResponse};
             AgentOS::EventBus::getInstance().publish(e);
