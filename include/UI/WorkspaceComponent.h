@@ -15,6 +15,14 @@ struct TimelineEvent {
     int linesRemoved = 0;
 };
 
+struct FileNode {
+    juce::File file;
+    bool isExpanded = false;
+    bool isPopulated = false;
+    std::vector<std::shared_ptr<FileNode>> children;
+    juce::Rectangle<int> lastBounds;
+};
+
 class WorkspaceComponent : public juce::Component, public juce::Timer {
 public:
     WorkspaceComponent();
@@ -22,6 +30,7 @@ public:
 
     void paint(juce::Graphics&) override;
     void resized() override;
+    void mouseDown(const juce::MouseEvent& e) override;
     
     void timerCallback() override;
 
@@ -37,15 +46,19 @@ private:
     void drawPromptBar(juce::Graphics& g, juce::Rectangle<int> bounds);
     void drawPendingChangesBar(juce::Graphics& g, juce::Rectangle<int> bounds);
     
-    void drawFileTreeItem(juce::Graphics& g, int& y, int indent, const juce::String& name, bool isFolder, bool isExpanded, bool isActive = false);
+    void drawFileTreeItem(juce::Graphics& g, int& y, int indent, const juce::String& name, bool isFolder, bool isExpanded, bool isActive = false, juce::Rectangle<int>* outBounds = nullptr);
     void drawTimelineItem(juce::Graphics& g, juce::Rectangle<int>& bounds, const TimelineEvent& ev, bool isFirst);
+
+    void populateNode(std::shared_ptr<FileNode> node);
+    void drawNode(juce::Graphics& g, std::shared_ptr<FileNode> node, int& y, int indent);
+    std::shared_ptr<FileNode> hitTestNode(std::shared_ptr<FileNode> node, const juce::Point<int>& pos);
 
     juce::String activeFileName_;
     juce::String activeFileContent_;
     juce::String projectName_ = "Plataforma E-commerce";
     juce::String projectStatus_ = "Inicializando projeto...";
     juce::File currentFolder_;
-    juce::Array<juce::File> currentFolderChildren_;
+    std::shared_ptr<FileNode> rootNode_;
     
     std::unique_ptr<juce::Drawable> paperclipIcon_;
     std::unique_ptr<juce::Drawable> folderIcon_;

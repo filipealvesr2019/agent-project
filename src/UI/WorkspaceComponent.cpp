@@ -57,12 +57,10 @@ WorkspaceComponent::WorkspaceComponent() {
                 projectName_ = currentFolder_.getFileName();
                 projectStatus_ = "Pasta aberta";
                 
-                currentFolderChildren_ = currentFolder_.findChildFiles(juce::File::findFilesAndDirectories, false);
-                std::sort(currentFolderChildren_.begin(), currentFolderChildren_.end(), [](const juce::File& a, const juce::File& b) {
-                    if (a.isDirectory() && !b.isDirectory()) return true;
-                    if (!a.isDirectory() && b.isDirectory()) return false;
-                    return a.getFileName().compareIgnoreCase(b.getFileName()) < 0;
-                });
+                rootNode_ = std::make_shared<FileNode>();
+                rootNode_->file = currentFolder_;
+                rootNode_->isExpanded = true;
+                populateNode(rootNode_);
                 
                 repaint();
             }
@@ -196,6 +194,7 @@ void WorkspaceComponent::paint(juce::Graphics& g) {
     
     auto editorBounds = panelsArea;
     
+    // Allow explorer to scroll if too big (simplified via clipping in draw)
     drawExplorerPanel(g, explorerBounds);
     drawEditorPanel(g, editorBounds);
     drawTimelinePanel(g, timelineBounds);
@@ -234,12 +233,10 @@ void WorkspaceComponent::drawExplorerPanel(juce::Graphics& g, juce::Rectangle<in
     g.drawText(projectName_.toUpperCase(), content.getX(), y, content.getWidth(), 20, juce::Justification::centredLeft);
     y += 24;
     
-    if (currentFolder_.exists() && currentFolder_.isDirectory()) {
-        for (const auto& child : currentFolderChildren_) {
-            bool isFolder = child.isDirectory();
-            bool isActive = (child.getFileName() == activeFileName_);
-            // isExpanded = false por padrao (pastas fechadas)
-            drawFileTreeItem(g, y, 0, child.getFileName(), isFolder, false, isActive);
+    if (rootNode_) {
+        // Draw the children of the root node (we don't draw the root itself as an item)
+        for (auto& child : rootNode_->children) {
+            drawNode(g, child, y, 0);
         }
     } else {
         g.setColour(juce::Colour(0xFF8A91A8));
@@ -248,8 +245,76 @@ void WorkspaceComponent::drawExplorerPanel(juce::Graphics& g, juce::Rectangle<in
     }
 }
 
-void WorkspaceComponent::drawFileTreeItem(juce::Graphics& g, int& y, int indent, const juce::String& name, bool isFolder, bool isExpanded, bool isActive) {
+void WorkspaceComponent::populateNode(std::shared_ptr<FileNode> node) {
+    if (!node->file.isDirectory()) return;
+    
+    auto children = node->file.findChildFiles(juce::File::findFilesAndDirectories, false);
+    
+    // Sort: folders first, then files
+    std::sort(children.begin(), children.end(), [](const juce::File& a, const juce::File& b) {
+        if (a.isDirectory() && !b.isDirectory()) return true;
+        if (!a.isDirectory() && b.isDirectory()) return false;
+        return a.getFileName().compareIgnoreCase(b.getFileName()) < 0;
+    });
+
+    node->children.clear();
+    for (const auto& childFile : children) {
+        auto childNode = std::make_shared<FileNode>();
+        childNode->file = childFile;
+        node->children.push_back(childNode);
+    }
+    node->isPopulated = true;
+}
+
+void WorkspaceComponent::drawNode(juce::Graphics& g, std::shared_ptr<FileNode> node, int& y, int indent) {
+    bool isFolder = node->file.isDirectory();
+    bool isActive = (!isFolder && node->file.getFileName() == activeFileName_);
+    
+    juce::Rectangle<int> itemBounds;
+    drawFileTreeItem(g, y, indent, node->file.getFileName(), isFolder, node->isExpanded, isActive, &itemBounds);
+    node->lastBounds = itemBounds;
+    
+    if (isFolder && node->isExpanded) {
+        if (!node->isPopulated) populateNode(node);
+        for (auto& child : node->children) {
+            drawNode(g, child, y, indent + 1);
+        }
+    }
+}
+
+std::shared_ptr<FileNode> WorkspaceComponent::hitTestNode(std::shared_ptr<FileNode> node, const juce::Point<int>& pos) {
+    if (node->lastBounds.contains(pos)) return node;
+    
+    if (node->isExpanded) {
+        for (auto& child : node->children) {
+            auto hit = hitTestNode(child, pos);
+            if (hit) return hit;
+        }
+    }
+    return nullptr;
+}
+
+void WorkspaceComponent::mouseDown(const juce::MouseEvent& e) {
+    if (rootNode_) {
+        // Hit test children of root
+        for (auto& child : rootNode_->children) {
+            auto hit = hitTestNode(child, e.getPosition());
+            if (hit) {
+                if (hit->file.isDirectory()) {
+                    hit->isExpanded = !hit->isExpanded;
+                } else {
+                    updateActiveFile(hit->file.getFileName(), hit->file.loadFileAsString());
+                }
+                repaint();
+                return;
+            }
+        }
+    }
+}
+
+void WorkspaceComponent::drawFileTreeItem(juce::Graphics& g, int& y, int indent, const juce::String& name, bool isFolder, bool isExpanded, bool isActive, juce::Rectangle<int>* outBounds) {
     juce::Rectangle<int> itemBounds(16 + indent * 16, y, 220 - indent * 16, 24);
+    if (outBounds) *outBounds = itemBounds;
     
     if (isActive) {
         g.setColour(juce::Colour(0xFF2D324A));
