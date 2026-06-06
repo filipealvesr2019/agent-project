@@ -760,6 +760,14 @@ target_include_directories(AgentOS_DecisionIntegrationTest PRIVATE include)
 target_compile_features(AgentOS_DecisionIntegrationTest PRIVATE cxx_std_20)
 target_link_libraries(AgentOS_DecisionIntegrationTest PRIVATE MemoryEngine)
 
+add_executable(AgentOS_PromptResponseTest
+    tests/test_prompt_response.cpp
+    src/EventBus/EventBus.cpp
+)
+target_include_directories(AgentOS_PromptResponseTest PRIVATE include)
+target_compile_features(AgentOS_PromptResponseTest PRIVATE cxx_std_20)
+target_link_libraries(AgentOS_PromptResponseTest PRIVATE MemoryEngine)
+
 
 
 
