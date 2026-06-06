@@ -395,7 +395,7 @@ int main() {
         for (const auto& d : decisions) {
             if (d.winningOption == "GRAPHQL" || d.winningOption == "REST") {
                 foundGraphqlOrRest = true;
-                CHECK(d.participants.size() == 4);
+                CHECK(d.votes.size() == 4);
                 CHECK(d.problem == "Conflict resolution");
             }
         }
@@ -819,8 +819,8 @@ int main() {
         
         LearningInput input;
         input.decision.id = "DEC_TEST_101";
-        input.decision.participants.push_back("CTO_1");
-        input.decision.participants.push_back("H_1"); // human
+        input.decision.votes.push_back({"CTO_1", "", 1.0});
+        input.decision.votes.push_back({"H_1", "", 1.0}); // human
         input.decision.humanOverride = true; // Human vetoed
         
         input.validation.passed = true; // Data was technically valid, but strategically overridden
