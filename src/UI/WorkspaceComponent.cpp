@@ -275,7 +275,19 @@ void WorkspaceComponent::drawExplorerPanel(juce::Graphics& g, juce::Rectangle<in
     y += 24;
     
     if (rootNode_) {
-        // Draw the children of the root node (we don't draw the root itself as an item)
+        // If creating at root level (no folder selected), inject editor here first
+        if (inlineEditorVisible_ && creationParentNode_ == rootNode_) {
+            int editorX = content.getX() + 20;
+            int editorWidth = content.getWidth() - 36;
+            if (isCreatingFile_ && treeFileIcon_)
+                treeFileIcon_->drawWithin(g, juce::Rectangle<float>(editorX - 18.0f, y + 3.0f, 14.0f, 14.0f), juce::RectanglePlacement::centred, 1.0f);
+            else if (isCreatingFolder_ && treeFolderIcon_)
+                treeFolderIcon_->drawWithin(g, juce::Rectangle<float>(editorX - 18.0f, y + 3.0f, 14.0f, 14.0f), juce::RectanglePlacement::centred, 1.0f);
+            inlineNameEditor_.setBounds(editorX, y, editorWidth, 22);
+            y += 24;
+        }
+        
+        // Draw the children of the root node
         for (auto& child : rootNode_->children) {
             drawNode(g, child, y, 0);
         }
@@ -325,10 +337,17 @@ void WorkspaceComponent::populateNode(std::shared_ptr<FileNode> node) {
 void WorkspaceComponent::drawNode(juce::Graphics& g, std::shared_ptr<FileNode> node, int& y, int indent) {
     bool isFolder = node->file.isDirectory();
     bool isActive = (!isFolder && node->file.getFileName() == activeFileName_);
+    bool isSelected = (node == selectedNode_);
     
     juce::Rectangle<int> itemBounds;
     drawFileTreeItem(g, y, indent, node->file.getFileName(), isFolder, node->isExpanded, isActive, &itemBounds);
     node->lastBounds = itemBounds;
+    
+    // Selection highlight (light)
+    if (isSelected && !isActive) {
+        g.setColour(juce::Colour(0xFF232840));
+        g.fillRoundedRectangle(itemBounds.toFloat(), 4.0f);
+    }
     
     // Highlight drop target
     if (node == dropTargetNode_) {
@@ -346,10 +365,31 @@ void WorkspaceComponent::drawNode(juce::Graphics& g, std::shared_ptr<FileNode> n
     
     if (isFolder && node->isExpanded) {
         if (!node->isPopulated) populateNode(node);
+        
+        // === INLINE EDITOR INJECTION ===
+        // If this folder is the creation parent, show the editor as the first child
+        if (inlineEditorVisible_ && node == creationParentNode_) {
+            int editorX = explorerContentBounds_.getX() + (indent + 1) * 16 + 20;
+            int editorWidth = explorerContentBounds_.getRight() - editorX - 16;
+            int editorY = y; // current y is right at the top of children
+            
+            // Draw icon before the editor (file or folder)
+            if (isCreatingFile_ && treeFileIcon_)
+                treeFileIcon_->drawWithin(g, juce::Rectangle<float>(editorX - 18.0f, editorY + 3.0f, 14.0f, 14.0f), juce::RectanglePlacement::centred, 1.0f);
+            else if (isCreatingFolder_ && treeFolderIcon_)
+                treeFolderIcon_->drawWithin(g, juce::Rectangle<float>(editorX - 18.0f, editorY + 3.0f, 14.0f, 14.0f), juce::RectanglePlacement::centred, 1.0f);
+            
+            inlineNameEditor_.setBounds(editorX, editorY, editorWidth, 22);
+            y += 24;
+        }
+        
         for (auto& child : node->children) {
             drawNode(g, child, y, indent + 1);
         }
     }
+    
+    // If this is root and creation parent is root, inject at top of root children
+    if (node == rootNode_) return; // handled externally
 }
 
 std::shared_ptr<FileNode> WorkspaceComponent::hitTestNode(std::shared_ptr<FileNode> node, const juce::Point<int>& pos) {
@@ -400,11 +440,13 @@ void WorkspaceComponent::mouseDown(const juce::MouseEvent& e) {
         for (auto& child : rootNode_->children) {
             auto hit = hitTestNode(child, e.getPosition());
             if (hit) {
+                selectedNode_ = hit; // Track selection
                 if (hit->file.isDirectory()) {
                     hit->isExpanded = !hit->isExpanded;
+                    if (!hit->isPopulated && hit->isExpanded) populateNode(hit);
                 } else {
                     updateActiveFile(hit->file.getFileName(), hit->file.loadFileAsString());
-                    editorScrollY_ = 0; // Reset scroll on new file
+                    editorScrollY_ = 0;
                 }
                 repaint();
                 return;
@@ -447,13 +489,43 @@ bool WorkspaceComponent::removeNodeFromParent(std::shared_ptr<FileNode> root, st
 
 void WorkspaceComponent::startInlineCreation(bool isFile) {
     if (!rootNode_) return;
-    cancelInlineCreation(); // fechar qualquer editor anterior
+    cancelInlineCreation();
     isCreatingFile_ = isFile;
     isCreatingFolder_ = !isFile;
-    // Posicionar o editor abaixo do titulo WORKSPACE
-    inlineEditorY_ = explorerContentBounds_.getY() + 24 - explorerScrollY_;
-    inlineNameEditor_.setBounds(explorerContentBounds_.getX() + 20, inlineEditorY_,
-                                explorerContentBounds_.getWidth() - 30, 22);
+    
+    // Determine parent: if selected is a folder use it, else find its parent
+    if (selectedNode_ && selectedNode_->file.isDirectory()) {
+        creationParentNode_ = selectedNode_;
+        creationIndent_ = 1;
+    } else if (selectedNode_) {
+        auto parent = findParentNode(rootNode_, selectedNode_);
+        creationParentNode_ = parent ? parent : rootNode_;
+        creationIndent_ = 1;
+    } else {
+        creationParentNode_ = rootNode_;
+        creationIndent_ = 0;
+    }
+    
+    // Expand the parent so the inline editor is visible
+    if (creationParentNode_ && creationParentNode_ != rootNode_) {
+        creationParentNode_->isExpanded = true;
+        if (!creationParentNode_->isPopulated) populateNode(creationParentNode_);
+    }
+    
+    // === Immediately set editor bounds using last known layout ===
+    // This ensures the widget is visible right away without waiting for paint()
+    int indent = (creationParentNode_ == rootNode_) ? 0 : creationIndent_;
+    int editorX = explorerContentBounds_.getX() + indent * 16 + 20;
+    int editorWidth = explorerContentBounds_.getRight() - editorX - 20;
+    
+    // Y position: after WORKSPACE title (24px) from the content top, adjusted for scroll
+    // For simplicity, place it just after the header row. The paint() will refine this.
+    int editorY = explorerContentBounds_.getY() - explorerScrollY_ + 24;
+    
+    if (editorWidth > 40 && explorerContentBounds_.getWidth() > 0) {
+        inlineNameEditor_.setBounds(editorX, editorY, editorWidth, 22);
+    }
+    
     inlineNameEditor_.setText("");
     inlineNameEditor_.setVisible(true);
     inlineEditorVisible_ = true;
@@ -461,61 +533,70 @@ void WorkspaceComponent::startInlineCreation(bool isFile) {
     repaint();
 }
 
+
 void WorkspaceComponent::commitInlineCreation() {
     auto name = inlineNameEditor_.getText().trim();
-    if (name.isNotEmpty() && rootNode_) {
-        // Determine destination: selected folder, or root
-        juce::File destDir;
-        if (currentFolder_.isDirectory())
-            destDir = currentFolder_;
-        else if (!rootNode_->children.empty() && rootNode_->children[0]->file.isDirectory())
-            destDir = rootNode_->children[0]->file;
-        else
-            destDir = juce::File::getSpecialLocation(juce::File::userDocumentsDirectory);
+    
+    // Save state BEFORE cancelInlineCreation() zeros them out
+    bool creatingFile = isCreatingFile_;
+    auto parentNode   = creationParentNode_;
+    
+    cancelInlineCreation(); // clears isCreatingFile_, inlineEditorVisible_, etc.
+    
+    if (name.isEmpty() || !parentNode) { repaint(); return; }
 
-        juce::File newEntry = destDir.getChildFile(name);
-        bool ok = false;
-        if (isCreatingFile_) {
-            if (!newEntry.existsAsFile()) ok = newEntry.create();
-            if (ok) {
+    // --- Determine real destination dir and the FileNode that owns it ---
+    juce::File destDir;
+    std::shared_ptr<FileNode> destNode;
+
+    if (parentNode == rootNode_) {
+        // Find the first top-level folder already in workspace
+        for (auto& c : rootNode_->children) {
+            if (c->file.isDirectory()) { destDir = c->file; destNode = c; break; }
+        }
+        // Fallback: use the app's working directory (e.g. f:\agent project)
+        if (!destDir.isDirectory()) {
+            destDir  = juce::File::getCurrentWorkingDirectory();
+            destNode = rootNode_; // items will be added directly to workspace root
+        }
+    } else {
+        destDir  = parentNode->file;
+        destNode = parentNode;
+    }
+
+    if (!destDir.isDirectory()) { repaint(); return; } // nowhere to create
+
+    juce::File newEntry = destDir.getChildFile(name);
+    bool ok = false;
+
+    if (creatingFile) {
+        ok = newEntry.existsAsFile() || (bool)newEntry.create();
+    } else {
+        ok = newEntry.isDirectory()  || (bool)newEntry.createDirectory();
+    }
+
+    if (ok) {
+        if (destNode && destNode != rootNode_) {
+            // Refresh the folder that received the new item
+            destNode->isPopulated = false;
+            destNode->isExpanded  = true;
+            populateNode(destNode);
+        } else {
+            // Add directly as a child of the workspace root
+            // (only if not already there)
+            bool already = false;
+            for (auto& c : rootNode_->children)
+                if (c->file == newEntry) { already = true; break; }
+            if (!already) {
                 auto node = std::make_shared<FileNode>();
                 node->file = newEntry;
-                // Add to the first expanded folder child, or root
-                bool added = false;
-                for (auto& child : rootNode_->children) {
-                    if (child->file == destDir) {
-                        child->isPopulated = false; // force re-populate
-                        child->isExpanded = true;
-                        populateNode(child);
-                        added = true;
-                        break;
-                    }
-                }
-                if (!added) rootNode_->children.push_back(node);
-                updateActiveFile(newEntry.getFileName(), "");
-            }
-        } else {
-            ok = newEntry.createDirectory();
-            if (ok) {
-                bool added = false;
-                for (auto& child : rootNode_->children) {
-                    if (child->file == destDir) {
-                        child->isPopulated = false;
-                        child->isExpanded = true;
-                        populateNode(child);
-                        added = true;
-                        break;
-                    }
-                }
-                if (!added) {
-                    auto node = std::make_shared<FileNode>();
-                    node->file = newEntry;
-                    rootNode_->children.push_back(node);
-                }
+                rootNode_->children.push_back(node);
             }
         }
+        if (creatingFile)
+            updateActiveFile(newEntry.getFileName(), newEntry.loadFileAsString());
     }
-    cancelInlineCreation();
+
     repaint();
 }
 

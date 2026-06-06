@@ -119,6 +119,10 @@ private:
     std::shared_ptr<FileNode> draggedNode_;
     std::shared_ptr<FileNode> dropTargetNode_;
     bool isDraggingFileNode_ = false;
+    
+    std::shared_ptr<FileNode> selectedNode_;       // last clicked node
+    std::shared_ptr<FileNode> creationParentNode_; // folder where inline editor is injected
+    int creationIndent_ = 0;                       // indentation level for the inline editor
 
     std::vector<TimelineEvent> timelineEvents_;
     float animationPhase_ = 0.0f;
