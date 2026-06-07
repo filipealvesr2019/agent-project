@@ -115,10 +115,12 @@ WorkspaceComponent::WorkspaceComponent() {
                             for (auto& candidate : {
                                     exeDir.getChildFile("../../models"),
                                     exeDir.getChildFile("../../../models"),
-                                    juce::File::getCurrentWorkingDirectory().getChildFile("models") })
+                                    exeDir.getChildFile("../../../embeddings"),
+                                    juce::File::getCurrentWorkingDirectory().getChildFile("models"),
+                                    juce::File::getCurrentWorkingDirectory().getChildFile("embeddings") })
                             {
                                 if (candidate.isDirectory()) {
-                                    auto ggufFiles = candidate.findChildFiles(juce::File::findFiles, false, "*.gguf");
+                                    auto ggufFiles = candidate.findChildFiles(juce::File::findFiles, true, "*.gguf");
                                     for (auto& f : ggufFiles) {
                                         auto nm = f.getFileName().toLowerCase();
                                         if (nm.contains("nomic") || nm.contains("bge") ||
@@ -136,8 +138,10 @@ WorkspaceComponent::WorkspaceComponent() {
                         }
 
                         if (loadedEmbedPath_.empty()) {
-                            chatAppend("❌ Nenhum modelo de embedding encontrado. RAG desabilitado.\n");
+                            chatAppend("❌ Nenhum modelo de embedding encontrado.\n");
+                            chatAppend("Coloque um modelo .gguf com nomic/bge/embed no nome dentro da pasta models/ e tente novamente.\n");
                             indexingInProgress_.store(false);
+                            pendingQuestion_.clear();
                             return;
                         }
 
@@ -555,6 +559,18 @@ void WorkspaceComponent::chatAppend(const std::string& text) {
 void WorkspaceComponent::processQuestion(const std::string& prompt,
                                           int placeholderStart,
                                           const std::string& modelPath) {
+
+    // Se há workspace carregado mas embedding não está pronto, avisa e NÃO gera resposta
+    if (!indexedWorkspacePath_.empty() && loadedEmbedPath_.empty()) {
+        chatAppend("❌ Não posso responder sobre o workspace ainda.\n"
+                   "Preciso de um modelo de embeddings (.gguf com nomic/bge/embed) na pasta models/.\n");
+        juce::MessageManager::callAsync([this] {
+            isProcessing_ = false;
+            btnSubmit_.setEnabled(true);
+        });
+        return;
+    }
+
     std::thread([this, prompt, placeholderStart, modelPath]() {
         static AgentOS::LlamaRuntime llm;
         static std::string loadedPath;
