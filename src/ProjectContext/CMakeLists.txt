@@ -13,6 +13,7 @@ add_library(ProjectContext STATIC
     TextChunker.cpp
     UniversalIndexer.cpp
     CodeGraph.cpp
+    IntentRouter.cpp
     Reranker.cpp
 )
 target_include_directories(ProjectContext PUBLIC ${CMAKE_SOURCE_DIR}/include)

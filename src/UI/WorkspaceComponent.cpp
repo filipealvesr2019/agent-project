@@ -378,7 +378,7 @@ WorkspaceComponent::WorkspaceComponent() {
                                 ContextChunk precisionChunk;
                                 precisionChunk.source = sym.file;
                                 precisionChunk.content = snippet;
-                                precisionChunk.score = 1.0f;
+                                precisionChunk.relevanceScore = 1.0;
                                 // Insert at front — highest priority
                                 finalChunks.insert(finalChunks.begin(), precisionChunk);
 
