@@ -149,6 +149,13 @@ WorkspaceComponent::WorkspaceComponent() {
                         // Build module/project summaries (heuristic fallback, no LLM yet)
                         buildModuleAndProjectSummaries(nullptr);
 
+                        // Feed workspace context to IntentRouter for adaptive intent labels
+                        if (summaryStoreOpen_) {
+                            auto proj = summaryStore_.getProject();
+                            auto mods = summaryStore_.getAllModules();
+                            intentRouter_.setWorkspaceContext(proj, mods);
+                        }
+
                         juce::MessageManager::callAsync([this, total, rootPath] {
                             ragDebugInfo_ = "[RAG] " + std::to_string(total) + " chunks indexados de: " + rootPath;
                         });
@@ -657,6 +664,11 @@ bool WorkspaceComponent::processSummaryQueue(LlamaRuntime& llm) {
         // Queue complete — rebuild module + project summaries with LLM data
         summaryBuilding_.store(false);
         buildModuleAndProjectSummaries(&llm);
+        if (summaryStoreOpen_) {
+            auto proj = summaryStore_.getProject();
+            auto mods = summaryStore_.getAllModules();
+            intentRouter_.setWorkspaceContext(proj, mods);
+        }
         ragDebugInfo_ = "[Summaries] " + std::to_string(summaryTotal_)
                       + " resumos concluidos.";
         return false;
