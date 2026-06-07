@@ -110,6 +110,7 @@ WorkspaceComponent::WorkspaceComponent() {
                     std::thread([this, rootPath]() {
                         // Try to find and load an embedding model (nomic/bge gguf)
                         if (loadedEmbedPath_.empty()) {
+                            chatAppend("🔍 Procurando modelo de embeddings...\n");
                             auto exeDir = juce::File::getSpecialLocation(juce::File::currentExecutableFile).getParentDirectory();
                             for (auto& candidate : {
                                     exeDir.getChildFile("../../models"),
@@ -135,20 +136,23 @@ WorkspaceComponent::WorkspaceComponent() {
                         }
 
                         if (loadedEmbedPath_.empty()) {
-                            juce::MessageManager::callAsync([this] {
-                                ragDebugInfo_ = "[RAG] Nenhum modelo de embedding encontrado (nomic/bge/*.gguf). RAG desabilitado.";
-                            });
+                            chatAppend("❌ Nenhum modelo de embedding encontrado. RAG desabilitado.\n");
                             indexingInProgress_.store(false);
                             return;
                         }
+
+                        chatAppend("✓ Modelo de embeddings carregado.\n");
 
                         // Wire up hierarchical summary store (heuristic fallback during index,
                         // LLM upgrade happens lazily when generation model is loaded)
                         if (summaryStoreOpen_)
                             semanticIndexer_.setSummaryGenerator(&summaryStore_, nullptr);
 
+                        chatAppend("📂 Escaneando arquivos do workspace...\n");
                         semanticIndexer_.indexWorkspace(rootPath, embeddingEngine_);
                         size_t total = semanticIndexer_.totalChunks();
+
+                        chatAppend("✓ " + std::to_string(total) + " chunks gerados.\n");
 
                         // Build persistent symbol index (SQLite-backed)
                         symbolIndexStore_.close();
@@ -175,6 +179,7 @@ WorkspaceComponent::WorkspaceComponent() {
                         }
 
                         // Build module/project summaries (heuristic fallback, no LLM yet)
+                        chatAppend("🧩 Identificando módulos e dependências...\n");
                         buildModuleAndProjectSummaries(nullptr);
 
                         // Feed workspace context to IntentRouter for adaptive intent labels
@@ -184,10 +189,21 @@ WorkspaceComponent::WorkspaceComponent() {
                             intentRouter_.setWorkspaceContext(proj, mods);
                         }
 
+                        indexingInProgress_.store(false);
+
                         juce::MessageManager::callAsync([this, total, rootPath] {
                             ragDebugInfo_ = "[RAG] " + std::to_string(total) + " chunks indexados de: " + rootPath;
                         });
-                        indexingInProgress_.store(false);
+
+                        // Se há pergunta pendente, responde agora que a indexação terminou
+                        if (!pendingQuestion_.empty()) {
+                            chatAppend("✅ Workspace analisado. Preparando resposta...\n");
+                            std::string q = pendingQuestion_;
+                            int ps = pendingPlaceholderStart_;
+                            std::string mp = pendingModelPath_;
+                            pendingQuestion_.clear();
+                            processQuestion(q, ps, mp);
+                        }
                     }).detach();
                 }
                 
@@ -264,240 +280,21 @@ WorkspaceComponent::WorkspaceComponent() {
                 modelPath = modelFile.getFullPathName().toStdString();
         }
 
-        std::thread([this, promptStr = prompt.toStdString(), placeholderStart, modelPath]() {
-            static AgentOS::LlamaRuntime llm;
-            static std::string loadedPath;
-            bool modelOk = false;
+        // Se o workspace está sendo indexado, não responde ainda — guarda pergunta e mostra progresso
+        if (indexingInProgress_.load() && !indexedWorkspacePath_.empty()) {
+            pendingQuestion_ = prompt.toStdString();
+            pendingPlaceholderStart_ = placeholderStart;
+            pendingModelPath_ = modelPath;
+            isProcessing_ = false;
+            btnSubmit_.setEnabled(true);
 
-            if (!modelPath.empty() && std::filesystem::exists(modelPath)) {
-                if (modelPath != loadedPath) {
-                    modelOk = llm.loadModel(modelPath);
-                    if (modelOk) loadedPath = modelPath;
-                } else {
-                    modelOk = true;
-                }
-            }
+            chatAppend("🧠 Recebi sua pergunta. Estou analisando o workspace antes de responder...\n");
+            chatAppend("⏳ Escaneando estrutura do projeto...\n");
+            return; // não chama processQuestion — a indexação vai disparar quando terminar
+        }
 
-            // Start background summary queue (non-blocking) once model is loaded.
-            // The queue upgrades heuristic summaries to LLM in background while
-            // the user can already chat.  First prompt uses heuristic summaries.
-            if (modelOk && summaryStoreOpen_ && !summaryBuilding_.load()) {
-                startSummaryBuildQueue(llm);
-            }
-
-            if (!modelOk) {
-                juce::MessageManager::callAsync([this] {
-                    activeFileContent_ += "Nenhum modelo GGUF encontrado em 'models/'.\n"
-                                          "Coloque um modelo .gguf na pasta models/ e tente novamente.\n";
-                    auto now2 = juce::Time::getCurrentTime();
-                    auto ts2 = juce::String::formatted("%02d:%02d:%02d", now2.getHours(), now2.getMinutes(), now2.getSeconds());
-                    addTimelineEvent({"CEO", "CEO", "Erro: modelo não encontrado.", "N/A", ts2, "ERRO", 0, 0});
-                    repaint();
-                });
-                return;
-            }
-
-            // ================================================================
-            // RAG PIPELINE v3 — Search-first, no intent routing
-            //
-            // 1. Vector search (always) → top candidates
-            // 2. Reranker → top chunks
-            // 3. SymbolIndex enhance (if structural patterns detected)
-            // 4. Group by file → attach FileSummaries + ModuleSummaries
-            // 5. Always include ProjectSummary
-            // 6. PromptComposer
-            // ================================================================
-
-            std::string augmentedPrompt;
-            std::string debugBlock;
-            std::ostringstream dbg;
-            dbg << "\n---\n";
-
-            bool hasRAG = !loadedEmbedPath_.empty() &&
-                          !indexingInProgress_.load() &&
-                          semanticIndexer_.totalChunks() > 0;
-
-            // IntentRouter kept as metadata advisor only — no routing decision
-            ContextLevel intent = ContextLevel::General;
-            if (hasRAG) intent = intentRouter_.classify(promptStr);
-            dbg << "**[RAG — Advisor]** intent=" << IntentRouter::levelName(intent) << "\n";
-
-            std::vector<ContextChunk> finalChunks;
-            std::vector<FileSummary>  fileSummaries;
-            std::vector<ModuleSummary> moduleSummaries;
-            ProjectSummary projectSummary;
-            std::vector<std::string> usedFiles;
-
-            if (summaryStoreOpen_) {
-                projectSummary = summaryStore_.getProject();
-            }
-
-            // ── Step 1 + 2: Vector search + reranker ─────────────────────
-            if (hasRAG) {
-                int numCandidates = 50;
-                int numResults    = 12;
-
-                auto candidates = semanticIndexer_.retriever()
-                    .retrieve(promptStr, embeddingEngine_, numCandidates);
-                static const Reranker reranker;
-                finalChunks = reranker.rerank(promptStr, candidates, numResults);
-            }
-
-            // Collect unique files from chunks
-            for (const auto& c : finalChunks) {
-                bool found = false;
-                for (const auto& f : usedFiles) if (f == c.source) { found = true; break; }
-                if (!found) usedFiles.push_back(c.source);
-            }
-
-            // ── Step 3: SymbolIndex enhance (structural signal, not routing) ──
-            bool hasSymbolPattern =
-                promptStr.find("::") != std::string::npos ||
-                promptStr.find("()") != std::string::npos;
-            if (!hasSymbolPattern && summaryStoreOpen_) {
-                // Also check for camelCase/snake_case tokens
-                std::string tok;
-                for (char c : promptStr) {
-                    if (std::isalnum(static_cast<unsigned char>(c)) || c == '_') {
-                        tok += c;
-                    } else {
-                        if (tok.size() > 6) {
-                            bool camel = false;
-                            for (size_t i = 1; i < tok.size(); ++i)
-                                if (std::islower(static_cast<unsigned char>(tok[i-1])) && std::isupper(static_cast<unsigned char>(tok[i]))) { camel = true; break; }
-                            if (camel || tok.find('_') != std::string::npos) {
-                                hasSymbolPattern = true;
-                                break;
-                            }
-                        }
-                        tok.clear();
-                    }
-                }
-            }
-
-            if (hasSymbolPattern && symbolIndexStore_.isOpen()) {
-                auto symbols = symbolIndexStore_.findSymbols(promptStr);
-                if (!symbols.empty()) {
-                    dbg << "  SymbolIndex: " << symbols.size() << " matches\n";
-
-                    for (const auto& sym : symbols) {
-                        // Avoid re-reading a file we already have
-                        bool found = false;
-                        for (const auto& f : usedFiles) if (f == sym.file) { found = true; break; }
-                        if (!found) usedFiles.push_back(sym.file);
-
-                        // Read ±15 lines around the symbol
-                        std::ifstream fs(sym.file);
-                        if (fs.is_open()) {
-                            std::vector<std::string> lines;
-                            std::string line;
-                            while (std::getline(fs, line)) lines.push_back(line);
-                            fs.close();
-
-                            if (!lines.empty()) {
-                                size_t start = (sym.line > 15) ? sym.line - 15 : 1;
-                                size_t end   = std::min(start + 30, lines.size());
-                                std::string snippet;
-                                for (size_t l = start; l <= end; ++l)
-                                    snippet += std::to_string(l) + ": " + lines[l-1] + "\n";
-
-                                ContextChunk precisionChunk;
-                                precisionChunk.source = sym.file;
-                                precisionChunk.content = snippet;
-                                precisionChunk.relevanceScore = 1.0;
-                                // Insert at front — highest priority
-                                finalChunks.insert(finalChunks.begin(), precisionChunk);
-
-                                dbg << "  Precisao: " << sym.name
-                                    << " (" << sym.file << ":" << sym.line << ")\n";
-                                if (finalChunks.size() >= 15) break; // budget cap
-                            }
-                        }
-                    }
-                }
-            }
-
-            // ── Step 4: Attach summaries for matched files ──────────────
-            if (summaryStoreOpen_) {
-                fileSummaries = summaryStore_.getAll(usedFiles);
-
-                // Filter modules: only include modules that have files in context
-                moduleSummaries.clear();
-                auto allMods = summaryStore_.getAllModules();
-                for (const auto& mod : allMods) {
-                    for (const auto& f : usedFiles) {
-                        // Module name = top-level directory name
-                        std::string path = f;
-                        size_t pos = path.find_first_of("/\\");
-                        if (pos != std::string::npos) {
-                            std::string topDir = path.substr(0, pos);
-                            if (topDir == mod.moduleName) {
-                                moduleSummaries.push_back(mod);
-                                break;
-                            }
-                        }
-                    }
-                }
-                dbg << "  Modulos no contexto: " << moduleSummaries.size() << "/" << allMods.size() << "\n";
-            }
-
-            // ── Step 5 + 6: Compose (ProjectSummary sempre incluso) ─────
-            augmentedPrompt = PromptComposer::build(promptStr, finalChunks,
-                projectSummary, moduleSummaries, fileSummaries);
-
-            // Debug block
-            {
-                dbg << "Contexto: " << finalChunks.size() << " chunks, "
-                    << fileSummaries.size() << " arquivos, "
-                    << moduleSummaries.size() << " modulos\n";
-                if (!usedFiles.empty()) {
-                    dbg << "Arquivos no contexto:\n";
-                    for (const auto& f : usedFiles) {
-                        auto pos = f.find_last_of("/\\");
-                        dbg << "  - " << (pos != std::string::npos ? f.substr(pos+1) : f) << "\n";
-                    }
-                }
-                size_t estTokens = (augmentedPrompt.size() / 4) + 1;
-                dbg << "Tokens no prompt: ~" << estTokens << "\n";
-                dbg << "---\n";
-                debugBlock = dbg.str();
-            }
-
-            // Show debug block immediately in the chat
-            juce::MessageManager::callAsync([this, dbg = juce::String(debugBlock)] {
-                activeFileContent_ += dbg;
-                repaint();
-            });
-
-            addTimelineEvent({"CEO", "CEO", "Gerando resposta...", "N/A",
-                juce::String::formatted("%02d:%02d:%02d",
-                    juce::Time::getCurrentTime().getHours(),
-                    juce::Time::getCurrentTime().getMinutes(),
-                    juce::Time::getCurrentTime().getSeconds()),
-                "EXECUTANDO", 0, 0});
-
-            // Stream the response token by token
-            llm.streamGenerate(augmentedPrompt, 2048,
-                [this, placeholderStart](const std::string& chunk) {
-                    juce::MessageManager::callAsync([this, chunk = juce::String(chunk)] {
-                        activeFileContent_ += chunk;
-                        repaint();
-                    });
-                }
-            );
-
-            auto endTime = juce::Time::getCurrentTime();
-            auto tsEnd = juce::String::formatted("%02d:%02d:%02d",
-                endTime.getHours(), endTime.getMinutes(), endTime.getSeconds());
-
-            juce::MessageManager::callAsync([this, tsEnd] {
-                activeFileContent_ += "\n";
-                addTimelineEvent({"CEO", "CEO", "Resposta concluída.", "N/A", tsEnd, "CONCLUIDO", 0, 0});
-                isProcessing_ = false;
-                btnSubmit_.setEnabled(true);
-                repaint();
-            });
-        }).detach();
+        // Indexação já terminou (ou não há workspace) → responde agora
+        processQuestion(prompt.toStdString(), placeholderStart, modelPath);
     };
 
     // Setup inline name editor (VSCode style)
@@ -738,6 +535,235 @@ void WorkspaceComponent::buildModuleAndProjectSummaries(LlamaRuntime* llm) {
     std::cerr << "[WorkspaceComponent] Built " << modules.size()
               << " module summaries + project summary ("
               << proj.architecture.size() << " chars)\n";
+}
+
+// ================================================================
+// Chat helpers
+// ================================================================
+
+void WorkspaceComponent::chatAppend(const std::string& text) {
+    juce::MessageManager::callAsync([this, text = juce::String(text)] {
+        activeFileContent_ += text;
+        repaint();
+    });
+}
+
+// ================================================================
+// Process question (RAG pipeline + LLM generation)
+// ================================================================
+
+void WorkspaceComponent::processQuestion(const std::string& prompt,
+                                          int placeholderStart,
+                                          const std::string& modelPath) {
+    std::thread([this, prompt, placeholderStart, modelPath]() {
+        static AgentOS::LlamaRuntime llm;
+        static std::string loadedPath;
+        bool modelOk = false;
+
+        if (!modelPath.empty() && std::filesystem::exists(modelPath)) {
+            if (modelPath != loadedPath) {
+                modelOk = llm.loadModel(modelPath);
+                if (modelOk) loadedPath = modelPath;
+            } else {
+                modelOk = true;
+            }
+        }
+
+        if (modelOk && summaryStoreOpen_ && !summaryBuilding_.load()) {
+            startSummaryBuildQueue(llm);
+        }
+
+        if (!modelOk) {
+            juce::MessageManager::callAsync([this] {
+                activeFileContent_ += "Nenhum modelo GGUF encontrado em 'models/'.\n"
+                                      "Coloque um modelo .gguf na pasta models/ e tente novamente.\n";
+                auto now2 = juce::Time::getCurrentTime();
+                auto ts2 = juce::String::formatted("%02d:%02d:%02d", now2.getHours(), now2.getMinutes(), now2.getSeconds());
+                addTimelineEvent({"CEO", "CEO", "Erro: modelo não encontrado.", "N/A", ts2, "ERRO", 0, 0});
+                isProcessing_ = false;
+                btnSubmit_.setEnabled(true);
+                repaint();
+            });
+            return;
+        }
+
+        // ── RAG PIPELINE ────────────────────────────────────────────────
+        std::string augmentedPrompt;
+        std::string debugBlock;
+        std::ostringstream dbg;
+        dbg << "\n---\n";
+
+        bool hasModel = !loadedEmbedPath_.empty();
+        bool idle     = !indexingInProgress_.load();
+        size_t nChunks = semanticIndexer_.totalChunks();
+        bool hasRAG = hasModel && idle && nChunks > 0;
+
+        if (!hasModel)
+            dbg << "**[RAG]** Nenhum modelo de embedding carregado.\n";
+        else if (!idle)
+            dbg << "**[RAG]** Ainda indexando (" << nChunks << " chunks ate agora)...\n";
+        else if (nChunks == 0)
+            dbg << "**[RAG]** Workspace vazio ou extensões não suportadas.\n";
+
+        ContextLevel intent = ContextLevel::General;
+        if (hasRAG) intent = intentRouter_.classify(prompt);
+        if (hasModel) dbg << "**[RAG — Advisor]** intent=" << IntentRouter::levelName(intent) << "\n";
+
+        std::vector<ContextChunk> finalChunks;
+        std::vector<FileSummary>  fileSummaries;
+        std::vector<ModuleSummary> moduleSummaries;
+        ProjectSummary projectSummary;
+        std::vector<std::string> usedFiles;
+
+        if (summaryStoreOpen_) {
+            projectSummary = summaryStore_.getProject();
+        }
+
+        if (hasRAG) {
+            int numCandidates = 50;
+            int numResults    = 12;
+            auto candidates = semanticIndexer_.retriever()
+                .retrieve(prompt, embeddingEngine_, numCandidates);
+            static const Reranker reranker;
+            finalChunks = reranker.rerank(prompt, candidates, numResults);
+        }
+
+        for (const auto& c : finalChunks) {
+            bool found = false;
+            for (const auto& f : usedFiles) if (f == c.source) { found = true; break; }
+            if (!found) usedFiles.push_back(c.source);
+        }
+
+        bool hasSymbolPattern =
+            prompt.find("::") != std::string::npos ||
+            prompt.find("()") != std::string::npos;
+        if (!hasSymbolPattern && summaryStoreOpen_) {
+            std::string tok;
+            for (char c : prompt) {
+                if (std::isalnum(static_cast<unsigned char>(c)) || c == '_') {
+                    tok += c;
+                } else {
+                    if (tok.size() > 6) {
+                        bool camel = false;
+                        for (size_t i = 1; i < tok.size(); ++i)
+                            if (std::islower(static_cast<unsigned char>(tok[i-1])) && std::isupper(static_cast<unsigned char>(tok[i]))) { camel = true; break; }
+                        if (camel || tok.find('_') != std::string::npos) {
+                            hasSymbolPattern = true;
+                            break;
+                        }
+                    }
+                    tok.clear();
+                }
+            }
+        }
+
+        if (hasSymbolPattern && symbolIndexStore_.isOpen()) {
+            auto symbols = symbolIndexStore_.findSymbols(prompt);
+            if (!symbols.empty()) {
+                dbg << "  SymbolIndex: " << symbols.size() << " matches\n";
+                for (const auto& sym : symbols) {
+                    bool found = false;
+                    for (const auto& f : usedFiles) if (f == sym.file) { found = true; break; }
+                    if (!found) usedFiles.push_back(sym.file);
+                    std::ifstream fs(sym.file);
+                    if (fs.is_open()) {
+                        std::vector<std::string> lines;
+                        std::string line;
+                        while (std::getline(fs, line)) lines.push_back(line);
+                        fs.close();
+                        if (!lines.empty()) {
+                            size_t start = (sym.line > 15) ? sym.line - 15 : 1;
+                            size_t end   = std::min(start + 30, lines.size());
+                            std::string snippet;
+                            for (size_t l = start; l <= end; ++l)
+                                snippet += std::to_string(l) + ": " + lines[l-1] + "\n";
+                            ContextChunk precisionChunk;
+                            precisionChunk.source = sym.file;
+                            precisionChunk.content = snippet;
+                            precisionChunk.relevanceScore = 1.0;
+                            finalChunks.insert(finalChunks.begin(), precisionChunk);
+                            dbg << "  Precisao: " << sym.name
+                                << " (" << sym.file << ":" << sym.line << ")\n";
+                            if (finalChunks.size() >= 15) break;
+                        }
+                    }
+                }
+            }
+        }
+
+        if (summaryStoreOpen_) {
+            fileSummaries = summaryStore_.getAll(usedFiles);
+            moduleSummaries.clear();
+            auto allMods = summaryStore_.getAllModules();
+            for (const auto& mod : allMods) {
+                for (const auto& f : usedFiles) {
+                    std::string path = f;
+                    size_t pos = path.find_first_of("/\\");
+                    if (pos != std::string::npos) {
+                        std::string topDir = path.substr(0, pos);
+                        if (topDir == mod.moduleName) {
+                            moduleSummaries.push_back(mod);
+                            break;
+                        }
+                    }
+                }
+            }
+            dbg << "  Modulos no contexto: " << moduleSummaries.size() << "/" << allMods.size() << "\n";
+        }
+
+        augmentedPrompt = PromptComposer::build(prompt, finalChunks,
+            projectSummary, moduleSummaries, fileSummaries);
+
+        {
+            dbg << "Contexto: " << finalChunks.size() << " chunks, "
+                << fileSummaries.size() << " arquivos, "
+                << moduleSummaries.size() << " modulos\n";
+            if (!usedFiles.empty()) {
+                dbg << "Arquivos no contexto:\n";
+                for (const auto& f : usedFiles) {
+                    auto pos = f.find_last_of("/\\");
+                    dbg << "  - " << (pos != std::string::npos ? f.substr(pos+1) : f) << "\n";
+                }
+            }
+            size_t estTokens = (augmentedPrompt.size() / 4) + 1;
+            dbg << "Tokens no prompt: ~" << estTokens << "\n";
+            dbg << "---\n";
+            debugBlock = dbg.str();
+        }
+
+        juce::MessageManager::callAsync([this, dbg = juce::String(debugBlock)] {
+            activeFileContent_ += dbg;
+            repaint();
+        });
+
+        addTimelineEvent({"CEO", "CEO", "Gerando resposta...", "N/A",
+            juce::String::formatted("%02d:%02d:%02d",
+                juce::Time::getCurrentTime().getHours(),
+                juce::Time::getCurrentTime().getMinutes(),
+                juce::Time::getCurrentTime().getSeconds()),
+            "EXECUTANDO", 0, 0});
+
+        llm.streamGenerate(augmentedPrompt, 2048,
+            [this, placeholderStart](const std::string& chunk) {
+                juce::MessageManager::callAsync([this, chunk = juce::String(chunk)] {
+                    activeFileContent_ += chunk;
+                    repaint();
+                });
+            }
+        );
+
+        auto endTime = juce::Time::getCurrentTime();
+        auto tsEnd = juce::String::formatted("%02d:%02d:%02d",
+            endTime.getHours(), endTime.getMinutes(), endTime.getSeconds());
+
+        juce::MessageManager::callAsync([this, tsEnd] {
+            activeFileContent_ += "\n";
+            addTimelineEvent({"CEO", "CEO", "Resposta concluída.", "N/A", tsEnd, "CONCLUIDO", 0, 0});
+            isProcessing_ = false;
+            btnSubmit_.setEnabled(true);
+            repaint();
+        });
+    }).detach();
 }
 
 // ================================================================

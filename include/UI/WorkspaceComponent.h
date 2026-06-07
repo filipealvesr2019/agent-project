@@ -222,6 +222,18 @@ private:
     void                 ensureSummaryStore(const std::string& workspaceRoot);
     void                 buildModuleAndProjectSummaries(LlamaRuntime* llm);
 
+    // Responde a uma pergunta (usado tanto imediatamente quanto após indexação)
+    void processQuestion(const std::string& prompt, int placeholderStart,
+                         const std::string& modelPath);
+
+    // Adiciona mensagem de progresso ao chat (chamado de qualquer thread via callAsync)
+    void chatAppend(const std::string& text);
+
+    // Pergunta pendente (aguardando indexação terminar)
+    std::string          pendingQuestion_;
+    int                  pendingPlaceholderStart_ = 0;
+    std::string          pendingModelPath_;
+
     // ── Background summary queue ─────────────────────────────────────
     // Instead of blocking the first prompt with a synchronous LLM pass,
     // we queue files and upgrade them one at a time in a background thread.
