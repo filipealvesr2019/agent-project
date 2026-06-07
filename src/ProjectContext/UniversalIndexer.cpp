@@ -1,5 +1,7 @@
 #include "ProjectContext/UniversalIndexer.h"
 #include "ProjectContext/FileScanner.h"
+#include "ProjectContext/FileSummarizer.h"
+#include "LocalRuntime/LlamaRuntime.h"
 #include <iostream>
 #include <filesystem>
 #include <fstream>
@@ -22,6 +24,24 @@ static const std::set<std::string> supportedExts = {
     ".py", ".ts", ".js", ".rs", ".java"
 };
 
+UniversalIndexer::UniversalIndexer() {}
+
+UniversalIndexer::~UniversalIndexer() {}
+
+void UniversalIndexer::setSummaryGenerator(FileSummaryStore* store, LlamaRuntime* llm) {
+    summaryStore_ = store;
+    summaryLlm_   = llm;
+}
+
+static uint64_t getFileModTime(const std::string& path) {
+    try {
+        if (fs::exists(path))
+            return static_cast<uint64_t>(
+                fs::last_write_time(path).time_since_epoch().count());
+    } catch (...) {}
+    return 0;
+}
+
 void UniversalIndexer::indexFile(const std::string& filePath, EmbeddingEngine& engine) {
     // Read file content
     std::ifstream f(filePath);
@@ -29,6 +49,18 @@ void UniversalIndexer::indexFile(const std::string& filePath, EmbeddingEngine& e
     std::string content((std::istreambuf_iterator<char>(f)),
                          std::istreambuf_iterator<char>());
     if (content.empty()) return;
+
+    // --- Hierarchical summary generation (Phase 1: FileSummary) ---
+    // Always generate summary on index (heuristic fallback when no LLM).
+    // FileSummarizer handles cache lookup: skips if modTime unchanged,
+    // generates heuristic summary if LLM is null, LLM summary otherwise.
+    if (summaryStore_) {
+        uint64_t modTime = getFileModTime(filePath);
+        if (modTime > 0) {
+            FileSummarizer summarizer(*summaryStore_);
+            summarizer.summarize(filePath, content, modTime, summaryLlm_);
+        }
+    }
 
     // Embed + chunk (incremental guard is inside ContextRetriever)
     retriever_.indexFile(filePath, content, engine);

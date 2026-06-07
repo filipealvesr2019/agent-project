@@ -5,6 +5,9 @@
 #include <atomic>
 #include "ProjectContext/LlamaEmbeddings.h"
 #include "ProjectContext/UniversalIndexer.h"
+#include "ProjectContext/FileSummaryStore.h"
+#include "ProjectContext/FileSummarizer.h"
+#include "LocalRuntime/LlamaRuntime.h"
 
 namespace AgentOS {
 
@@ -206,6 +209,14 @@ private:
     std::string          indexedWorkspacePath_;   // last indexed workspace root
     std::atomic<bool>    indexingInProgress_{false};
     std::string          ragDebugInfo_;           // shown in chat for transparency
+
+    // === Hierarchical Summaries ===
+    FileSummaryStore     summaryStore_;
+    bool                 summaryStoreOpen_ = false;
+    bool                 summariesUpgraded_ = false;
+    void                 ensureSummaryStore(const std::string& workspaceRoot);
+    void                 upgradeSummariesWithLLM(LlamaRuntime& llm);
+    void                 buildModuleAndProjectSummaries(LlamaRuntime* llm);
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(WorkspaceComponent)
 };

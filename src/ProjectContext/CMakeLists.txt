@@ -3,6 +3,8 @@ add_library(ProjectContext STATIC
     ContextRetriever.cpp
     EmbeddingEngine.cpp
     FileScanner.cpp
+    FileSummarizer.cpp
+    FileSummaryStore.cpp
     LlamaEmbeddings.cpp
     ProjectScanner.cpp
     PromptComposer.cpp
@@ -14,4 +16,5 @@ add_library(ProjectContext STATIC
     Reranker.cpp
 )
 target_include_directories(ProjectContext PUBLIC ${CMAKE_SOURCE_DIR}/include)
-target_link_libraries(ProjectContext PUBLIC llama)
+target_link_libraries(ProjectContext PUBLIC llama sqlite)
+target_link_libraries(ProjectContext PRIVATE LocalRuntime)

@@ -7,7 +7,10 @@
 #include "ProjectContext/PromptComposer.h"
 #include "ProjectContext/ContextChunk.h"
 #include "ProjectContext/Reranker.h"
+#include "ProjectContext/FileSummaryStore.h"
+#include "ProjectContext/FileSummarizer.h"
 #include <filesystem>
+#include <fstream>
 #include <thread>
 #include <sstream>
 
@@ -90,6 +93,9 @@ WorkspaceComponent::WorkspaceComponent() {
                 if (rootPath != indexedWorkspacePath_ && !indexingInProgress_.load()) {
                     indexingInProgress_.store(true);
                     indexedWorkspacePath_ = rootPath;
+                    summaryStore_.close();
+                    summariesUpgraded_ = false;
+                    ensureSummaryStore(rootPath);
                     semanticIndexer_.clear();
                     ragDebugInfo_ = "[RAG] Indexando: " + rootPath;
 
@@ -126,8 +132,16 @@ WorkspaceComponent::WorkspaceComponent() {
                             return;
                         }
 
+                        // Wire up hierarchical summary store (heuristic fallback during index,
+                        // LLM upgrade happens lazily when generation model is loaded)
+                        if (summaryStoreOpen_)
+                            semanticIndexer_.setSummaryGenerator(&summaryStore_, nullptr);
+
                         semanticIndexer_.indexWorkspace(rootPath, embeddingEngine_);
                         size_t total = semanticIndexer_.totalChunks();
+
+                        // Build module/project summaries (heuristic fallback, no LLM yet)
+                        buildModuleAndProjectSummaries(nullptr);
 
                         juce::MessageManager::callAsync([this, total, rootPath] {
                             ragDebugInfo_ = "[RAG] " + std::to_string(total) + " chunks indexados de: " + rootPath;
@@ -172,6 +186,14 @@ WorkspaceComponent::WorkspaceComponent() {
     }
     addAndMakeVisible(modelSelector_);
 
+    // ================================================================
+    // Hierarchical summary store — SQLite-backed file summaries
+    // ================================================================
+
+    // ================================================================
+    // Submit button — RAG pipeline + LLM generation
+    // ================================================================
+
     btnSubmit_.onClick = [this] {
         auto prompt = promptInput_.getText().trim();
         if (prompt.isEmpty()) return;
@@ -210,6 +232,14 @@ WorkspaceComponent::WorkspaceComponent() {
                 } else {
                     modelOk = true;
                 }
+            }
+
+            // Upgrade heuristic summaries to LLM summaries (once per workspace load)
+            if (modelOk && summaryStoreOpen_ && !summariesUpgraded_) {
+                summariesUpgraded_ = true;
+                upgradeSummariesWithLLM(llm);
+                // Rebuild module + project summaries with LLM-generated file summaries
+                buildModuleAndProjectSummaries(&llm);
             }
 
             if (!modelOk) {
@@ -297,8 +327,25 @@ WorkspaceComponent::WorkspaceComponent() {
                     if (!found) usedFiles.push_back(c.source);
                 }
 
-                // Build the final prompt
-                augmentedPrompt = PromptComposer::build(promptStr, chunks);
+                // Build the final prompt with hierarchical context
+                if (summaryStoreOpen_) {
+                    // Fetch summaries for files referenced in selected chunks
+                    std::vector<std::string> filePaths;
+                    for (const auto& c : chunks) {
+                        bool found = false;
+                        for (const auto& f : filePaths) if (f == c.source) { found = true; break; }
+                        if (!found) filePaths.push_back(c.source);
+                    }
+                    auto fileSummaries = summaryStore_.getAll(filePaths);
+                    auto moduleSummaries = summaryStore_.getAllModules();
+                    auto projectSummary = summaryStore_.getProject();
+
+                    augmentedPrompt = PromptComposer::build(
+                        promptStr, chunks,
+                        projectSummary, moduleSummaries, fileSummaries);
+                } else {
+                    augmentedPrompt = PromptComposer::build(promptStr, chunks);
+                }
 
                 size_t estTokens = augmentedPrompt.size() / 4;
 
@@ -430,6 +477,7 @@ WorkspaceComponent::WorkspaceComponent() {
 
 WorkspaceComponent::~WorkspaceComponent() {
     stopTimer();
+    summaryStore_.close();
 }
 
 void WorkspaceComponent::timerCallback() {
@@ -470,6 +518,102 @@ void WorkspaceComponent::setProjectInfo(const juce::String& projectName, const j
     }
     
     repaint();
+}
+
+// ================================================================
+// Hierarchical summary store management
+// ================================================================
+
+void WorkspaceComponent::ensureSummaryStore(const std::string& workspaceRoot) {
+    if (summaryStoreOpen_) return;
+    // Store DB inside the workspace folder as a hidden file
+    std::string dbPath = workspaceRoot + "/.agent_summaries.db";
+    summaryStoreOpen_ = summaryStore_.open(dbPath);
+    if (summaryStoreOpen_) {
+        // Purge stale entries for files that no longer exist
+        summaryStore_.purge(workspaceRoot);
+    }
+}
+
+// ================================================================
+// Build Module + Project summaries from individual file summaries
+// ================================================================
+
+void WorkspaceComponent::buildModuleAndProjectSummaries(LlamaRuntime* llm) {
+    if (!summaryStoreOpen_ || indexedWorkspacePath_.empty()) return;
+
+    FileSummarizer summarizer(summaryStore_);
+
+    // Build module summaries from top-level directories
+    auto modules = summarizer.buildAllModuleSummaries(indexedWorkspacePath_, llm);
+    if (modules.empty()) {
+        std::cerr << "[WorkspaceComponent] No module summaries generated\n";
+        return;
+    }
+
+    // Build project summary from module summaries
+    auto proj = summarizer.buildProjectSummary(indexedWorkspacePath_, modules, llm);
+
+    std::cerr << "[WorkspaceComponent] Built " << modules.size()
+              << " module summaries + project summary ("
+              << proj.architecture.size() << " chars)\n";
+}
+
+void WorkspaceComponent::upgradeSummariesWithLLM(LlamaRuntime& llm) {
+    if (!summaryStoreOpen_) return;
+
+    // Get all indexed files from the indexer's retriever
+    // (we need to iterate files that have heuristic summaries but not LLM ones)
+    // For now: use the code graph node list as the source of truth for indexed files
+    const auto& graph = semanticIndexer_.codeGraph();
+    // Not directly accessible — we iterate by checking mod times against store
+    // Practical approach: let the next indexWorkspace call regenerate with LLM
+    // Or: iterate all files in the workspace and check cache status
+
+    // Simple approach: iterate the indexed workspace directory,
+    // regenerate summaries for any file whose summary is a heuristic (non-JSON)
+    if (indexedWorkspacePath_.empty()) return;
+
+    FileSummarizer summarizer(summaryStore_);
+    size_t upgraded = 0;
+    size_t skipped  = 0;
+
+    try {
+        for (auto& entry : std::filesystem::recursive_directory_iterator(indexedWorkspacePath_)) {
+            if (!entry.is_regular_file()) continue;
+            auto path = entry.path().string();
+            // Check if summary exists and whether it looks like a heuristic
+            uint64_t modTime = 0;
+            try {
+                modTime = static_cast<uint64_t>(
+                    entry.last_write_time().time_since_epoch().count());
+            } catch (...) { continue; }
+
+            // Only upgrade if file hasn't been summarized by LLM yet
+            if (summaryStore_.isCached(path, modTime)) {
+                std::string existing = summaryStore_.get(path);
+                // Heuristic summaries start with plain text, LLM summaries start with '{'
+                if (!existing.empty() && (existing[0] == '{' || existing[0] == '['))
+                { ++skipped; continue; }
+            }
+
+            // Read file content for LLM summary
+            std::ifstream f(path);
+            if (!f.is_open()) continue;
+            std::string content((std::istreambuf_iterator<char>(f)),
+                                 std::istreambuf_iterator<char>());
+            if (content.empty()) continue;
+
+            summarizer.summarize(path, content, modTime, &llm);
+            ++upgraded;
+        }
+    } catch (...) {}
+
+    if (upgraded > 0) {
+        ragDebugInfo_ = "[Summaries] " + std::to_string(upgraded)
+                      + " resumos atualizados com LLM"
+                      + (skipped > 0 ? " (" + std::to_string(skipped) + " ja ok)" : "");
+    }
 }
 
 void WorkspaceComponent::paint(juce::Graphics& g) {
