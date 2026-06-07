@@ -94,7 +94,8 @@ WorkspaceComponent::WorkspaceComponent() {
                     indexingInProgress_.store(true);
                     indexedWorkspacePath_ = rootPath;
                     summaryStore_.close();
-                    summariesUpgraded_ = false;
+                    summaryBuilding_.store(false);
+                    summaryQueue_.clear();
                     ensureSummaryStore(rootPath);
                     semanticIndexer_.clear();
                     ragDebugInfo_ = "[RAG] Indexando: " + rootPath;
@@ -234,12 +235,11 @@ WorkspaceComponent::WorkspaceComponent() {
                 }
             }
 
-            // Upgrade heuristic summaries to LLM summaries (once per workspace load)
-            if (modelOk && summaryStoreOpen_ && !summariesUpgraded_) {
-                summariesUpgraded_ = true;
-                upgradeSummariesWithLLM(llm);
-                // Rebuild module + project summaries with LLM-generated file summaries
-                buildModuleAndProjectSummaries(&llm);
+            // Start background summary queue (non-blocking) once model is loaded.
+            // The queue upgrades heuristic summaries to LLM in background while
+            // the user can already chat.  First prompt uses heuristic summaries.
+            if (modelOk && summaryStoreOpen_ && !summaryBuilding_.load()) {
+                startSummaryBuildQueue(llm);
             }
 
             if (!modelOk) {
@@ -559,61 +559,94 @@ void WorkspaceComponent::buildModuleAndProjectSummaries(LlamaRuntime* llm) {
               << proj.architecture.size() << " chars)\n";
 }
 
-void WorkspaceComponent::upgradeSummariesWithLLM(LlamaRuntime& llm) {
-    if (!summaryStoreOpen_) return;
+// ================================================================
+// Background summary queue
+// ================================================================
 
-    // Get all indexed files from the indexer's retriever
-    // (we need to iterate files that have heuristic summaries but not LLM ones)
-    // For now: use the code graph node list as the source of truth for indexed files
-    const auto& graph = semanticIndexer_.codeGraph();
-    // Not directly accessible — we iterate by checking mod times against store
-    // Practical approach: let the next indexWorkspace call regenerate with LLM
-    // Or: iterate all files in the workspace and check cache status
+void WorkspaceComponent::startSummaryBuildQueue(LlamaRuntime& llm) {
+    if (!summaryStoreOpen_ || indexedWorkspacePath_.empty()) return;
 
-    // Simple approach: iterate the indexed workspace directory,
-    // regenerate summaries for any file whose summary is a heuristic (non-JSON)
-    if (indexedWorkspacePath_.empty()) return;
-
-    FileSummarizer summarizer(summaryStore_);
-    size_t upgraded = 0;
-    size_t skipped  = 0;
+    // Populate queue: all indexed files whose summary is heuristic (non-JSON)
+    summaryQueue_.clear();
+    summaryQueueIdx_ = 0;
+    summaryTotal_ = 0;
 
     try {
         for (auto& entry : std::filesystem::recursive_directory_iterator(indexedWorkspacePath_)) {
             if (!entry.is_regular_file()) continue;
             auto path = entry.path().string();
-            // Check if summary exists and whether it looks like a heuristic
+
             uint64_t modTime = 0;
             try {
                 modTime = static_cast<uint64_t>(
                     entry.last_write_time().time_since_epoch().count());
             } catch (...) { continue; }
 
-            // Only upgrade if file hasn't been summarized by LLM yet
+            // Skip if already has an LLM-generated summary
             if (summaryStore_.isCached(path, modTime)) {
                 std::string existing = summaryStore_.get(path);
-                // Heuristic summaries start with plain text, LLM summaries start with '{'
                 if (!existing.empty() && (existing[0] == '{' || existing[0] == '['))
-                { ++skipped; continue; }
+                    continue;
             }
 
-            // Read file content for LLM summary
-            std::ifstream f(path);
-            if (!f.is_open()) continue;
-            std::string content((std::istreambuf_iterator<char>(f)),
-                                 std::istreambuf_iterator<char>());
-            if (content.empty()) continue;
-
-            summarizer.summarize(path, content, modTime, &llm);
-            ++upgraded;
+            summaryQueue_.push_back(path);
         }
     } catch (...) {}
 
-    if (upgraded > 0) {
-        ragDebugInfo_ = "[Summaries] " + std::to_string(upgraded)
-                      + " resumos atualizados com LLM"
-                      + (skipped > 0 ? " (" + std::to_string(skipped) + " ja ok)" : "");
+    summaryTotal_ = summaryQueue_.size();
+    if (summaryTotal_ == 0) return;
+
+    summaryBuilding_.store(true);
+    ragDebugInfo_ = "[Summaries] " + std::to_string(summaryTotal_) + " resumos pendentes (background)...";
+
+    // Launch background thread — processes queue one item at a time.
+    // The LlamaRuntime reference is stable (static inside submit lambda).
+    std::thread([this, &llm]() {
+        while (summaryBuilding_.load()) {
+            if (!processSummaryQueue(llm)) break;
+        }
+    }).detach();
+}
+
+bool WorkspaceComponent::processSummaryQueue(LlamaRuntime& llm) {
+    if (summaryQueueIdx_ >= summaryQueue_.size()) {
+        // Queue complete — rebuild module + project summaries with LLM data
+        summaryBuilding_.store(false);
+        buildModuleAndProjectSummaries(&llm);
+        ragDebugInfo_ = "[Summaries] " + std::to_string(summaryTotal_)
+                      + " resumos concluidos.";
+        return false;
     }
+
+    // Process next file
+    std::string path = summaryQueue_[summaryQueueIdx_];
+    ++summaryQueueIdx_;
+
+    uint64_t modTime = 0;
+    try {
+        if (std::filesystem::exists(path))
+            modTime = static_cast<uint64_t>(
+                std::filesystem::last_write_time(path).time_since_epoch().count());
+    } catch (...) { return true; }
+
+    if (modTime == 0) return true;
+
+    std::ifstream f(path);
+    if (!f.is_open()) return true;
+    std::string content((std::istreambuf_iterator<char>(f)),
+                         std::istreambuf_iterator<char>());
+    if (content.empty()) return true;
+
+    FileSummarizer summarizer(summaryStore_);
+    summarizer.summarize(path, content, modTime, &llm);
+
+    // Update progress periodically
+    if (summaryQueueIdx_ % 10 == 0 || summaryQueueIdx_ == summaryTotal_) {
+        ragDebugInfo_ = "[Summaries] " + std::to_string(summaryQueueIdx_)
+                      + "/" + std::to_string(summaryTotal_) + " resumos...";
+    }
+
+    return true;
 }
 
 void WorkspaceComponent::paint(juce::Graphics& g) {

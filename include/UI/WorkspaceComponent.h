@@ -213,10 +213,18 @@ private:
     // === Hierarchical Summaries ===
     FileSummaryStore     summaryStore_;
     bool                 summaryStoreOpen_ = false;
-    bool                 summariesUpgraded_ = false;
     void                 ensureSummaryStore(const std::string& workspaceRoot);
-    void                 upgradeSummariesWithLLM(LlamaRuntime& llm);
     void                 buildModuleAndProjectSummaries(LlamaRuntime* llm);
+
+    // ── Background summary queue ─────────────────────────────────────
+    // Instead of blocking the first prompt with a synchronous LLM pass,
+    // we queue files and upgrade them one at a time in a background thread.
+    std::vector<std::string> summaryQueue_;
+    size_t                   summaryQueueIdx_ = 0;
+    size_t                   summaryTotal_    = 0;
+    std::atomic<bool>        summaryBuilding_{false};
+    void                     startSummaryBuildQueue(LlamaRuntime& llm);
+    bool                     processSummaryQueue(LlamaRuntime& llm); // returns true if more work
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(WorkspaceComponent)
 };
