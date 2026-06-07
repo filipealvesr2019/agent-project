@@ -260,11 +260,14 @@ WorkspaceComponent::WorkspaceComponent() {
             }
 
             // ================================================================
-            // RAG PIPELINE v2 — Intent-aware
-            // 0. Classify query → ContextLevel
-            // 1. Based on level: select summaries, symbols, or chunks
-            // 2. ContextBudgetManager allocates tokens per level
-            // 3. PromptComposer builds hierarchical prompt
+            // RAG PIPELINE v3 — Search-first, no intent routing
+            //
+            // 1. Vector search (always) → top candidates
+            // 2. Reranker → top chunks
+            // 3. SymbolIndex enhance (if structural patterns detected)
+            // 4. Group by file → attach FileSummaries + ModuleSummaries
+            // 5. Always include ProjectSummary
+            // 6. PromptComposer
             // ================================================================
 
             std::string augmentedPrompt;
@@ -276,12 +279,11 @@ WorkspaceComponent::WorkspaceComponent() {
                           !indexingInProgress_.load() &&
                           semanticIndexer_.totalChunks() > 0;
 
-            static const ContextBudgetManager budgetManager;
+            // IntentRouter kept as metadata advisor only — no routing decision
             ContextLevel intent = ContextLevel::General;
             if (hasRAG) intent = intentRouter_.classify(promptStr);
+            dbg << "**[RAG — Advisor]** intent=" << IntentRouter::levelName(intent) << "\n";
 
-            // Flag to track whether we did vector search (for Symbol/File levels)
-            bool usedVectorSearch = false;
             std::vector<ContextChunk> finalChunks;
             std::vector<FileSummary>  fileSummaries;
             std::vector<ModuleSummary> moduleSummaries;
@@ -289,199 +291,132 @@ WorkspaceComponent::WorkspaceComponent() {
             std::vector<std::string> usedFiles;
 
             if (summaryStoreOpen_) {
-                moduleSummaries = summaryStore_.getAllModules();
-                projectSummary  = summaryStore_.getProject();
+                projectSummary = summaryStore_.getProject();
             }
 
-            dbg << "**[RAG — IntentRouter]**\n";
-            dbg << "Intencao: " << IntentRouter::levelName(intent) << "\n";
-            auto budget = budgetManager.allocate(intent,
-                budgetManager.defaultBudget(intent));
+            // ── Step 1 + 2: Vector search + reranker ─────────────────────
+            if (hasRAG) {
+                int numCandidates = 50;
+                int numResults    = 12;
 
-            switch (intent) {
-
-            // ── Project-level ──────────────────────────────────────────
-            // Only project summary — no vector search needed
-            case ContextLevel::Project: {
-                if (summaryStoreOpen_ && !projectSummary.architecture.empty()) {
-                    augmentedPrompt = PromptComposer::build(promptStr, {},
-                        projectSummary, {}, {});
-                    dbg << "Contexto: apenas ProjectSummary ("
-                        << projectSummary.architecture.size() << " chars)\n";
-                } else {
-                    augmentedPrompt = PromptComposer::build(promptStr, {});
-                    dbg << "Contexto: sem ProjectSummary disponivel\n";
-                }
-                break;
+                auto candidates = semanticIndexer_.retriever()
+                    .retrieve(promptStr, embeddingEngine_, numCandidates);
+                static const Reranker reranker;
+                finalChunks = reranker.rerank(promptStr, candidates, numResults);
             }
 
-            // ── Module-level ───────────────────────────────────────────
-            // Module summaries + relevant file summaries — no vector search
-            case ContextLevel::Module: {
-                if (summaryStoreOpen_) {
-                    augmentedPrompt = PromptComposer::build(promptStr, {},
-                        projectSummary, moduleSummaries, {});
-                    dbg << "Contexto: " << moduleSummaries.size()
-                        << " modulos + ProjectSummary\n";
-                } else {
-                    augmentedPrompt = PromptComposer::build(promptStr, {});
-                }
-                break;
+            // Collect unique files from chunks
+            for (const auto& c : finalChunks) {
+                bool found = false;
+                for (const auto& f : usedFiles) if (f == c.source) { found = true; break; }
+                if (!found) usedFiles.push_back(c.source);
             }
 
-            // ── File-level ─────────────────────────────────────────────
-            // File summaries + vector search chunks
-            case ContextLevel::File: {
-                usedVectorSearch = true;
-                if (hasRAG) {
-                    auto candidates = semanticIndexer_.retriever()
-                        .retrieve(promptStr, embeddingEngine_, 30);
-                    static const Reranker reranker;
-                    finalChunks = reranker.rerank(promptStr, candidates,
-                        std::min(budget.chunkTokens / 256 + 1, size_t(10)));
-
-                    for (const auto& c : finalChunks) {
-                        bool found = false;
-                        for (const auto& f : usedFiles) if (f == c.source) { found = true; break; }
-                        if (!found) usedFiles.push_back(c.source);
-                    }
-
-                    if (summaryStoreOpen_) {
-                        fileSummaries = summaryStore_.getAll(usedFiles);
-                    }
-                }
-                augmentedPrompt = PromptComposer::build(promptStr, finalChunks,
-                    projectSummary, moduleSummaries, fileSummaries);
-                dbg << "Contexto: " << finalChunks.size() << " chunks + summaries\n";
-                break;
-            }
-
-            // ── Symbol-level ───────────────────────────────────────────
-            // SymbolIndex lookup → exact line chunk → supplementary vector search
-            case ContextLevel::Symbol: {
-                usedVectorSearch = true;
-
-                if (summaryStoreOpen_) {
-                    SymbolIndexer symIndex;
-                    ProjectScanner scanner;
-                    scanner.scan(indexedWorkspacePath_);
-                    symIndex.buildIndex(scanner.files());
-
-                    auto symbols = symIndex.findSymbols(promptStr);
-                    if (!symbols.empty()) {
-                        dbg << "SymbolIndex: " << symbols.size() << " simbolos encontrados\n";
-
-                        size_t precisionLines = 30; // ±15 around symbol
-
-                        for (const auto& sym : symbols) {
-                            bool found = false;
-                            for (const auto& f : usedFiles) if (f == sym.file) { found = true; break; }
-                            if (!found) usedFiles.push_back(sym.file);
-
-                            // Read exact source window around symbol line
-                            std::ifstream fileStream(sym.file);
-                            if (fileStream.is_open()) {
-                                std::vector<std::string> fileLines;
-                                std::string line;
-                                while (std::getline(fileStream, line)) {
-                                    fileLines.push_back(line);
-                                }
-                                fileStream.close();
-
-                                if (!fileLines.empty()) {
-                                    size_t start = (sym.line > precisionLines/2)
-                                        ? sym.line - precisionLines/2 : 1;
-                                    size_t end = std::min(start + precisionLines, fileLines.size());
-
-                                    std::string snippet;
-                                    for (size_t l = start; l <= end; ++l) {
-                                        snippet += std::to_string(l) + ": " + fileLines[l-1] + "\n";
-                                    }
-
-                                    ContextChunk precisionChunk;
-                                    precisionChunk.source = sym.file;
-                                    precisionChunk.content = snippet;
-                                    precisionChunk.score = 1.0f;
-                                    finalChunks.push_back(precisionChunk);
-
-                                    dbg << "  Precisao: " << sym.name << " ("
-                                        << sym.file << ":" << sym.line << ")\n";
-
-                                    // Only take top 3 symbols max to avoid budget explosion
-                                    if (finalChunks.size() >= 3) break;
-                                }
+            // ── Step 3: SymbolIndex enhance (structural signal, not routing) ──
+            bool hasSymbolPattern =
+                promptStr.find("::") != std::string::npos ||
+                promptStr.find("()") != std::string::npos;
+            if (!hasSymbolPattern && summaryStoreOpen_) {
+                // Also check for camelCase/snake_case tokens
+                std::string tok;
+                for (char c : promptStr) {
+                    if (std::isalnum(static_cast<unsigned char>(c)) || c == '_') {
+                        tok += c;
+                    } else {
+                        if (tok.size() > 6) {
+                            bool camel = false;
+                            for (size_t i = 1; i < tok.size(); ++i)
+                                if (std::islower(tok[i-1]) && std::isupper(tok[i])) { camel = true; break; }
+                            if (camel || tok.find('_') != std::string::npos) {
+                                hasSymbolPattern = true;
+                                break;
                             }
                         }
+                        tok.clear();
+                    }
+                }
+            }
 
-                        // Supplementary: vector search for the remaining budget
-                        size_t vsBudget = budget.chunkTokens / 256 + 1;
-                        size_t precisionUsed = finalChunks.size();
-                        if (vsBudget > precisionUsed) {
-                            auto candidates = semanticIndexer_.retriever()
-                                .retrieve(promptStr, embeddingEngine_, 20);
-                            static const Reranker reranker;
-                            auto vsChunks = reranker.rerank(promptStr, candidates,
-                                vsBudget - precisionUsed);
-                            finalChunks.insert(finalChunks.end(), vsChunks.begin(), vsChunks.end());
+            if (hasSymbolPattern && summaryStoreOpen_) {
+                SymbolIndexer symIndex;
+                ProjectScanner scanner;
+                scanner.scan(indexedWorkspacePath_);
+                symIndex.buildIndex(scanner.files());
+
+                auto symbols = symIndex.findSymbols(promptStr);
+                if (!symbols.empty()) {
+                    dbg << "  SymbolIndex: " << symbols.size() << " matches\n";
+
+                    for (const auto& sym : symbols) {
+                        // Avoid re-reading a file we already have
+                        bool found = false;
+                        for (const auto& f : usedFiles) if (f == sym.file) { found = true; break; }
+                        if (!found) usedFiles.push_back(sym.file);
+
+                        // Read ±15 lines around the symbol
+                        std::ifstream fs(sym.file);
+                        if (fs.is_open()) {
+                            std::vector<std::string> lines;
+                            std::string line;
+                            while (std::getline(fs, line)) lines.push_back(line);
+                            fs.close();
+
+                            if (!lines.empty()) {
+                                size_t start = (sym.line > 15) ? sym.line - 15 : 1;
+                                size_t end   = std::min(start + 30, lines.size());
+                                std::string snippet;
+                                for (size_t l = start; l <= end; ++l)
+                                    snippet += std::to_string(l) + ": " + lines[l-1] + "\n";
+
+                                ContextChunk precisionChunk;
+                                precisionChunk.source = sym.file;
+                                precisionChunk.content = snippet;
+                                precisionChunk.score = 1.0f;
+                                // Insert at front — highest priority
+                                finalChunks.insert(finalChunks.begin(), precisionChunk);
+
+                                dbg << "  Precisao: " << sym.name
+                                    << " (" << sym.file << ":" << sym.line << ")\n";
+                                if (finalChunks.size() >= 15) break; // budget cap
+                            }
                         }
-
-                        if (summaryStoreOpen_)
-                            fileSummaries = summaryStore_.getAll(usedFiles);
                     }
                 }
+            }
 
-                // Fallback: vector search only
-                if (finalChunks.empty() && hasRAG) {
-                    auto candidates = semanticIndexer_.retriever()
-                        .retrieve(promptStr, embeddingEngine_, 20);
-                    static const Reranker reranker;
-                    finalChunks = reranker.rerank(promptStr, candidates, 8);
-                    for (const auto& c : finalChunks) {
-                        bool found = false;
-                        for (const auto& f : usedFiles) if (f == c.source) { found = true; break; }
-                        if (!found) usedFiles.push_back(c.source);
+            // ── Step 4: Attach summaries for matched files ──────────────
+            if (summaryStoreOpen_) {
+                fileSummaries = summaryStore_.getAll(usedFiles);
+
+                // Filter modules: only include modules that have files in context
+                moduleSummaries.clear();
+                auto allMods = summaryStore_.getAllModules();
+                for (const auto& mod : allMods) {
+                    for (const auto& f : usedFiles) {
+                        // Module name = top-level directory name
+                        std::string path = f;
+                        size_t pos = path.find_first_of("/\\");
+                        if (pos != std::string::npos) {
+                            std::string topDir = path.substr(0, pos);
+                            if (topDir == mod.moduleName) {
+                                moduleSummaries.push_back(mod);
+                                break;
+                            }
+                        }
                     }
-                    if (summaryStoreOpen_)
-                        fileSummaries = summaryStore_.getAll(usedFiles);
                 }
-
-                augmentedPrompt = PromptComposer::build(promptStr, finalChunks,
-                    projectSummary, moduleSummaries, fileSummaries);
-                dbg << "Contexto: " << finalChunks.size() << " chunks (symbol)\n";
-                break;
+                dbg << "  Modulos no contexto: " << moduleSummaries.size() << "/" << allMods.size() << "\n";
             }
 
-            // ── General knowledge ──────────────────────────────────────
-            case ContextLevel::General:
-            default: {
-                if (hasRAG) {
-                    // Lightweight vector search for general questions
-                    auto candidates = semanticIndexer_.retriever()
-                        .retrieve(promptStr, embeddingEngine_, 10);
-                    static const Reranker reranker;
-                    finalChunks = reranker.rerank(promptStr, candidates, 5);
-                    for (const auto& c : finalChunks) {
-                        bool found = false;
-                        for (const auto& f : usedFiles) if (f == c.source) { found = true; break; }
-                        if (!found) usedFiles.push_back(c.source);
-                    }
-                    if (summaryStoreOpen_)
-                        fileSummaries = summaryStore_.getAll(usedFiles);
-                }
-                augmentedPrompt = PromptComposer::build(promptStr, finalChunks,
-                    projectSummary, moduleSummaries, fileSummaries);
-                dbg << "Contexto: " << finalChunks.size() << " chunks (geral)\n";
-                break;
-            }
-            }
+            // ── Step 5 + 6: Compose (ProjectSummary sempre incluso) ─────
+            augmentedPrompt = PromptComposer::build(promptStr, finalChunks,
+                projectSummary, moduleSummaries, fileSummaries);
 
-            // Debug block — show what was used
+            // Debug block
             {
-                dbg << "Budget: " << budget.totalBudget << " tokens ("
-                    << "P:" << budget.projectTokens
-                    << " M:" << budget.moduleTokens
-                    << " F:" << budget.fileTokens
-                    << " C:" << budget.chunkTokens << ")\n";
+                dbg << "Contexto: " << finalChunks.size() << " chunks, "
+                    << fileSummaries.size() << " arquivos, "
+                    << moduleSummaries.size() << " modulos\n";
                 if (!usedFiles.empty()) {
                     dbg << "Arquivos no contexto:\n";
                     for (const auto& f : usedFiles) {
@@ -491,15 +426,6 @@ WorkspaceComponent::WorkspaceComponent() {
                 }
                 size_t estTokens = (augmentedPrompt.size() / 4) + 1;
                 dbg << "Tokens no prompt: ~" << estTokens << "\n";
-                dbg << "---\n";
-                debugBlock = dbg.str();
-            }
-                if (indexingInProgress_.load())
-                    dbg << "Indexação em andamento — tente novamente em instantes.\n";
-                else if (loadedEmbedPath_.empty())
-                    dbg << "Adicione um modelo de embedding (nomic/bge) à pasta models/.\n";
-                else
-                    dbg << "Abra uma pasta de projeto com o botão 📁 para indexar.\n";
                 dbg << "---\n";
                 debugBlock = dbg.str();
             }
