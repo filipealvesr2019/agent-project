@@ -11,6 +11,7 @@ LlamaRuntime::LlamaRuntime() {
 }
 
 LlamaRuntime::~LlamaRuntime() {
+    std::lock_guard<std::mutex> lock(mutex_);
     if (ctx_) {
         llama_free(ctx_);
     }
@@ -21,6 +22,7 @@ LlamaRuntime::~LlamaRuntime() {
 }
 
 bool LlamaRuntime::loadModel(const std::string& ggufPath, bool isEmbedding) {
+    std::lock_guard<std::mutex> lock(mutex_);
     if (model_) {
         llama_free_model(model_);
         model_ = nullptr;
@@ -58,6 +60,7 @@ bool LlamaRuntime::loadModel(const std::string& ggufPath, bool isEmbedding) {
 }
 
 GenerationResult LlamaRuntime::streamGenerate(const std::string& prompt, int32_t maxTokens, StreamCallback onChunk) {
+    std::lock_guard<std::mutex> lock(mutex_);
     GenerationResult res;
     res.tokens_out = 0;
     res.duration_ms = 0;
@@ -146,11 +149,11 @@ GenerationResult LlamaRuntime::streamGenerate(const std::string& prompt, int32_t
 }
 
 std::string LlamaRuntime::generate(const std::string& prompt) {
-    auto res = generateWithStats(prompt, 256);
-    return res.text;
+    return generateWithStats(prompt, 256).text;
 }
 
 GenerationResult LlamaRuntime::generateWithStats(const std::string& prompt, int32_t maxTokens) {
+    std::lock_guard<std::mutex> lock(mutex_);
     GenerationResult res;
     res.tokens_out = 0;
     res.duration_ms = 0;
@@ -238,6 +241,7 @@ GenerationResult LlamaRuntime::generateWithStats(const std::string& prompt, int3
 }
 
 std::vector<float> LlamaRuntime::getEmbedding(const std::string& prompt) {
+    std::lock_guard<std::mutex> lock(mutex_);
     if (!ctx_ || !model_ || !isEmbedding_) {
         std::cerr << "[LlamaRuntime] Model not loaded or not in embedding mode!\n";
         return {};

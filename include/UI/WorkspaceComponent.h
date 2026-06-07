@@ -213,6 +213,7 @@ private:
     std::string          loadedEmbedPath_;        // path of currently loaded embed model
     std::string          indexedWorkspacePath_;   // last indexed workspace root
     std::atomic<bool>    indexingInProgress_{false};
+    std::atomic<bool>    isProcessing_{false};
     std::string          ragDebugInfo_;           // shown in chat for transparency
 
     // === Hierarchical Summaries ===

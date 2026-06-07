@@ -236,8 +236,11 @@ WorkspaceComponent::WorkspaceComponent() {
     // ================================================================
 
     btnSubmit_.onClick = [this] {
+        if (isProcessing_.exchange(true)) return;
+        btnSubmit_.setEnabled(false);
+
         auto prompt = promptInput_.getText().trim();
-        if (prompt.isEmpty()) return;
+        if (prompt.isEmpty()) { isProcessing_ = false; btnSubmit_.setEnabled(true); return; }
 
         promptInput_.setText("");
 
@@ -490,6 +493,8 @@ WorkspaceComponent::WorkspaceComponent() {
             juce::MessageManager::callAsync([this, tsEnd] {
                 activeFileContent_ += "\n";
                 addTimelineEvent({"CEO", "CEO", "Resposta concluída.", "N/A", tsEnd, "CONCLUIDO", 0, 0});
+                isProcessing_ = false;
+                btnSubmit_.setEnabled(true);
                 repaint();
             });
         }).detach();

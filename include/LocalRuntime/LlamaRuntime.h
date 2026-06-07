@@ -1,5 +1,6 @@
 #pragma once
 
+#include <mutex>
 #include <string>
 #include <cstdint>
 #include <vector>
@@ -32,6 +33,7 @@ public:
     std::vector<float> getEmbedding(const std::string& prompt);
 
 private:
+    std::mutex     mutex_;
     llama_model*   model_ = nullptr;
     llama_context* ctx_   = nullptr;
     bool           isEmbedding_ = false;
