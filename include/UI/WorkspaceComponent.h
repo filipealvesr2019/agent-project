@@ -12,6 +12,7 @@
 #include "ProjectContext/IntentRouter.h"
 #include "ProjectContext/SymbolIndexStore.h"
 #include "LocalRuntime/LlamaRuntime.h"
+#include "UI/WorkspaceState.h"
 
 namespace AgentOS {
 
@@ -212,8 +213,9 @@ private:
     UniversalIndexer     semanticIndexer_;        // chunks + cosine search
     std::string          loadedEmbedPath_;        // path of currently loaded embed model
     std::string          indexedWorkspacePath_;   // last indexed workspace root
-    std::atomic<bool>    indexingInProgress_{false};
+    std::atomic<WorkspaceState> workspaceState_{WorkspaceState::Empty};
     std::atomic<bool>    isProcessing_{false};
+    std::atomic<bool>    generatingAnswer_{false};
     std::string          ragDebugInfo_;           // shown in chat for transparency
 
     // === Hierarchical Summaries ===
@@ -225,6 +227,17 @@ private:
     // Responde a uma pergunta (usado tanto imediatamente quanto após indexação)
     void processQuestion(const std::string& prompt, int placeholderStart,
                          const std::string& modelPath);
+
+    void setWorkspaceState(WorkspaceState state);
+    bool hasWorkspaceLoaded() const;
+    bool canAnswerNow() const;
+    bool isWorkspaceRelatedQuestion(const std::string& prompt);
+    bool hasUsableWorkspaceContext(size_t chunkCount,
+                                   const ProjectSummary& projectSummary,
+                                   const std::vector<ModuleSummary>& modules,
+                                   const std::vector<ContextChunk>& chunks) const;
+    void flushPendingQuestionIfReady();
+    void emitAnalysisMessage(const std::string& text);
 
     // Adiciona mensagem de progresso ao chat (chamado de qualquer thread via callAsync)
     void chatAppend(const std::string& text);

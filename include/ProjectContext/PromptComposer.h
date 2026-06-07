@@ -20,7 +20,8 @@ public:
                               const ProjectSummary& projectSummary,
                               const std::vector<ModuleSummary>& moduleSummaries,
                               const std::vector<FileSummary>& fileSummaries,
-                              const std::string& contextPrefix = "");
+                              const std::string& contextPrefix = "",
+                              bool workspaceOnly = false);
 };
 
 } // namespace AgentOS

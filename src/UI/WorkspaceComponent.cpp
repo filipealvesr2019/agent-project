@@ -12,14 +12,51 @@
 #include "ProjectContext/IntentRouter.h"
 #include "ProjectContext/ContextBudgetManager.h"
 #include "ProjectContext/SymbolIndexer.h"
+#include "ProjectContext/ProjectScanner.h"
+#include "UI/WorkspaceState.h"
 #include <filesystem>
 #include <fstream>
 #include <thread>
 #include <sstream>
 #include <set>
 #include <algorithm>
+#include <cctype>
 
 namespace fs = std::filesystem;
+
+namespace {
+
+std::string describeTechStack(const std::vector<AgentOS::FileEntry>& files) {
+    std::set<std::string> found;
+    for (const auto& f : files) {
+        const auto& e = f.extension;
+        if (e == ".js" || e == ".jsx" || e == ".ts" || e == ".tsx") found.insert("JavaScript");
+        else if (e == ".php") found.insert("PHP");
+        else if (e == ".py") found.insert("Python");
+        else if (e == ".cpp" || e == ".cxx" || e == ".cc" || e == ".h" || e == ".hpp") found.insert("C++");
+        else if (e == ".java") found.insert("Java");
+        else if (e == ".rs") found.insert("Rust");
+        else if (e == ".go") found.insert("Go");
+    }
+    if (found.empty()) return "";
+    std::vector<std::string> labels(found.begin(), found.end());
+    if (labels.size() == 1) return labels[0];
+    std::string result;
+    for (size_t i = 0; i < labels.size(); ++i) {
+        if (i > 0) result += (i + 1 == labels.size()) ? " e " : ", ";
+        result += labels[i];
+    }
+    return result;
+}
+
+std::string formatTechDiscovery(const std::string& stack) {
+    if (stack.empty())
+        return "Estou mapeando os componentes principais do projeto.\n\n";
+    return "Encontrei código " + stack + ". Agora estou verificando como eles se conectam.\n\n";
+}
+
+
+} // namespace
 
 namespace AgentOS {
 
@@ -97,8 +134,11 @@ WorkspaceComponent::WorkspaceComponent() {
 
                 // === RAG: index workspace in background ===
                 std::string rootPath = dir.getFullPathName().toStdString();
-                if (rootPath != indexedWorkspacePath_ && !indexingInProgress_.load()) {
-                    indexingInProgress_.store(true);
+                if (rootPath != indexedWorkspacePath_
+                    && workspaceState_.load() != WorkspaceState::Loading
+                    && workspaceState_.load() != WorkspaceState::Indexing
+                    && workspaceState_.load() != WorkspaceState::Analyzing) {
+                    setWorkspaceState(WorkspaceState::Loading);
                     indexedWorkspacePath_ = rootPath;
                     summaryStore_.close();
                     summaryBuilding_.store(false);
@@ -108,9 +148,13 @@ WorkspaceComponent::WorkspaceComponent() {
                     ragDebugInfo_ = "[RAG] Indexando: " + rootPath;
 
                     std::thread([this, rootPath]() {
+                        if (!pendingQuestion_.empty()) {
+                            emitAnalysisMessage(
+                                "Recebi sua pergunta. Vou entender primeiro como esse projeto está organizado.\n\n");
+                        }
+
                         // Try to find and load an embedding model (nomic/bge gguf)
                         if (loadedEmbedPath_.empty()) {
-                            chatAppend("🔍 Procurando modelo de embeddings...\n");
                             auto exeDir = juce::File::getSpecialLocation(juce::File::currentExecutableFile).getParentDirectory();
                             for (auto& candidate : {
                                     exeDir.getChildFile("../../models"),
@@ -138,25 +182,25 @@ WorkspaceComponent::WorkspaceComponent() {
                         }
 
                         if (loadedEmbedPath_.empty()) {
-                            chatAppend("❌ Nenhum modelo de embedding encontrado.\n");
-                            chatAppend("Coloque um modelo .gguf com nomic/bge/embed no nome dentro da pasta models/ e tente novamente.\n");
-                            indexingInProgress_.store(false);
+                            chatAppend("Ainda não consigo estudar este projeto — falta o modelo de embeddings "
+                                       "na pasta models/.\n\n");
+                            setWorkspaceState(WorkspaceState::Empty);
                             pendingQuestion_.clear();
                             return;
                         }
 
-                        chatAppend("✓ Modelo de embeddings carregado.\n");
+                        emitAnalysisMessage("Estou olhando a estrutura principal do projeto.\n\n");
 
                         // Wire up hierarchical summary store (heuristic fallback during index,
                         // LLM upgrade happens lazily when generation model is loaded)
                         if (summaryStoreOpen_)
                             semanticIndexer_.setSummaryGenerator(&summaryStore_, nullptr);
 
-                        chatAppend("📂 Escaneando arquivos do workspace...\n");
+                        setWorkspaceState(WorkspaceState::Indexing);
                         semanticIndexer_.indexWorkspace(rootPath, embeddingEngine_);
                         size_t total = semanticIndexer_.totalChunks();
 
-                        chatAppend("✓ " + std::to_string(total) + " chunks gerados.\n");
+                        setWorkspaceState(WorkspaceState::Analyzing);
 
                         // Build persistent symbol index (SQLite-backed)
                         symbolIndexStore_.close();
@@ -164,6 +208,7 @@ WorkspaceComponent::WorkspaceComponent() {
 
                         ProjectScanner scanner;
                         scanner.scan(rootPath);
+                        emitAnalysisMessage(formatTechDiscovery(describeTechStack(scanner.files())));
 
                         if (symbolIndexStore_.open(symDbPath)) {
                             symbolIndexStore_.purge(rootPath);
@@ -182,8 +227,7 @@ WorkspaceComponent::WorkspaceComponent() {
                             watchedFiles_ = std::move(seed);
                         }
 
-                        // Build module/project summaries (heuristic fallback, no LLM yet)
-                        chatAppend("🧩 Identificando módulos e dependências...\n");
+                        emitAnalysisMessage("Estou analisando os arquivos centrais antes de responder.\n\n");
                         buildModuleAndProjectSummaries(nullptr);
 
                         // Feed workspace context to IntentRouter for adaptive intent labels
@@ -193,21 +237,13 @@ WorkspaceComponent::WorkspaceComponent() {
                             intentRouter_.setWorkspaceContext(proj, mods);
                         }
 
-                        indexingInProgress_.store(false);
+                        setWorkspaceState(WorkspaceState::Ready);
 
                         juce::MessageManager::callAsync([this, total, rootPath] {
                             ragDebugInfo_ = "[RAG] " + std::to_string(total) + " chunks indexados de: " + rootPath;
                         });
 
-                        // Se há pergunta pendente, responde agora que a indexação terminou
-                        if (!pendingQuestion_.empty()) {
-                            chatAppend("✅ Workspace analisado. Preparando resposta...\n");
-                            std::string q = pendingQuestion_;
-                            int ps = pendingPlaceholderStart_;
-                            std::string mp = pendingModelPath_;
-                            pendingQuestion_.clear();
-                            processQuestion(q, ps, mp);
-                        }
+                        flushPendingQuestionIfReady();
                     }).detach();
                 }
                 
@@ -284,20 +320,19 @@ WorkspaceComponent::WorkspaceComponent() {
                 modelPath = modelFile.getFullPathName().toStdString();
         }
 
-        // Se o workspace está sendo indexado, não responde ainda — guarda pergunta e mostra progresso
-        if (indexingInProgress_.load() && !indexedWorkspacePath_.empty()) {
+        // Com workspace carregado, aguarda contexto pronto antes de responder
+        if (hasWorkspaceLoaded() && !canAnswerNow()) {
             pendingQuestion_ = prompt.toStdString();
             pendingPlaceholderStart_ = placeholderStart;
             pendingModelPath_ = modelPath;
             isProcessing_ = false;
             btnSubmit_.setEnabled(true);
 
-            chatAppend("🧠 Recebi sua pergunta. Estou analisando o workspace antes de responder...\n");
-            chatAppend("⏳ Escaneando estrutura do projeto...\n");
-            return; // não chama processQuestion — a indexação vai disparar quando terminar
+            emitAnalysisMessage(
+                "Recebi sua pergunta. Vou entender primeiro como esse projeto está organizado.\n\n");
+            return;
         }
 
-        // Indexação já terminou (ou não há workspace) → responde agora
         processQuestion(prompt.toStdString(), placeholderStart, modelPath);
     };
 
@@ -377,7 +412,7 @@ void WorkspaceComponent::timerCallback() {
 }
 
 void WorkspaceComponent::pollFileChanges() {
-    if (indexedWorkspacePath_.empty() || indexingInProgress_.load()) return;
+    if (indexedWorkspacePath_.empty() || workspaceState_.load() != WorkspaceState::Ready) return;
     if (!symbolIndexStore_.isOpen()) return;
 
     bool embedReady = !loadedEmbedPath_.empty();
@@ -445,7 +480,7 @@ void WorkspaceComponent::pollFileChanges() {
         if (ec) continue;
         uint64_t modTime = ft.time_since_epoch().count();
 
-        if (embedReady && !indexingInProgress_.load()) {
+        if (embedReady && workspaceState_.load() == WorkspaceState::Ready) {
             // Re-index vector chunks (handles incremental internally)
             semanticIndexer_.indexFiles({path}, embeddingEngine_);
         }
@@ -542,6 +577,64 @@ void WorkspaceComponent::buildModuleAndProjectSummaries(LlamaRuntime* llm) {
 }
 
 // ================================================================
+// Workspace state helpers
+// ================================================================
+
+void WorkspaceComponent::setWorkspaceState(WorkspaceState state) {
+    workspaceState_.store(state);
+    std::cerr << "[Workspace] state -> " << workspaceStateName(state) << "\n";
+}
+
+bool WorkspaceComponent::hasWorkspaceLoaded() const {
+    return !indexedWorkspacePath_.empty();
+}
+
+bool WorkspaceComponent::canAnswerNow() const {
+    if (!hasWorkspaceLoaded()) return true;
+    return workspaceState_.load() == WorkspaceState::Ready;
+}
+
+bool WorkspaceComponent::isWorkspaceRelatedQuestion(const std::string& prompt) {
+    if (!hasWorkspaceLoaded()) return false;
+    return intentRouter_.classify(prompt) != ContextLevel::General;
+    if (loadedEmbedPath_.empty()) return true;
+    if (workspaceState_.load() != WorkspaceState::Ready) return true;
+    return intentRouter_.classify(prompt) != ContextLevel::General;
+}
+
+bool WorkspaceComponent::hasUsableWorkspaceContext(size_t chunkCount,
+                                                    const ProjectSummary& projectSummary,
+                                                    const std::vector<ModuleSummary>& modules,
+                                                    const std::vector<ContextChunk>& chunks) const {
+    if (chunkCount > 0 || !chunks.empty()) return true;
+    if (!modules.empty()) return true;
+    if (!projectSummary.architecture.empty() || !projectSummary.projectName.empty()) return true;
+    return false;
+}
+
+void WorkspaceComponent::emitAnalysisMessage(const std::string& text) {
+    chatAppend(text);
+}
+
+void WorkspaceComponent::flushPendingQuestionIfReady() {
+    if (pendingQuestion_.empty() || !canAnswerNow()) return;
+    if (generatingAnswer_.load()) return;
+
+    emitAnalysisMessage("Já identifiquei os principais componentes. Vou revisar mais alguns pontos.\n\n");
+
+    std::string q = pendingQuestion_;
+    int ps = pendingPlaceholderStart_;
+    std::string mp = pendingModelPath_;
+    pendingQuestion_.clear();
+
+    juce::MessageManager::callAsync([this, q, ps, mp] {
+        isProcessing_ = true;
+        btnSubmit_.setEnabled(false);
+        processQuestion(q, ps, mp);
+    });
+}
+
+// ================================================================
 // Chat helpers
 // ================================================================
 
@@ -560,16 +653,43 @@ void WorkspaceComponent::processQuestion(const std::string& prompt,
                                           int placeholderStart,
                                           const std::string& modelPath) {
 
-    // Se há workspace carregado mas embedding não está pronto, avisa e NÃO gera resposta
-    if (!indexedWorkspacePath_.empty() && loadedEmbedPath_.empty()) {
-        chatAppend("❌ Não posso responder sobre o workspace ainda.\n"
-                   "Preciso de um modelo de embeddings (.gguf com nomic/bge/embed) na pasta models/.\n");
+    if (generatingAnswer_.exchange(true)) {
         juce::MessageManager::callAsync([this] {
             isProcessing_ = false;
             btnSubmit_.setEnabled(true);
         });
         return;
     }
+
+    // Workspace carregado: só responde quando o contexto estiver pronto
+    if (hasWorkspaceLoaded() && !canAnswerNow()) {
+        pendingQuestion_ = prompt;
+        pendingPlaceholderStart_ = placeholderStart;
+        pendingModelPath_ = modelPath;
+        generatingAnswer_.store(false);
+        juce::MessageManager::callAsync([this] {
+            isProcessing_ = false;
+            btnSubmit_.setEnabled(true);
+        });
+        return;
+    }
+
+    // Se há workspace carregado mas embedding não está pronto, avisa e NÃO gera resposta
+    if (hasWorkspaceLoaded() && loadedEmbedPath_.empty()) {
+        chatAppend("Ainda não consigo responder sobre este projeto — preciso do modelo de embeddings "
+                   "na pasta models/.\n\n");
+        generatingAnswer_.store(false);
+        juce::MessageManager::callAsync([this] {
+            isProcessing_ = false;
+            btnSubmit_.setEnabled(true);
+        });
+        return;
+    }
+
+    juce::MessageManager::callAsync([this] {
+        isProcessing_ = true;
+        btnSubmit_.setEnabled(false);
+    });
 
     std::thread([this, prompt, placeholderStart, modelPath]() {
         static AgentOS::LlamaRuntime llm;
@@ -596,6 +716,7 @@ void WorkspaceComponent::processQuestion(const std::string& prompt,
                 auto now2 = juce::Time::getCurrentTime();
                 auto ts2 = juce::String::formatted("%02d:%02d:%02d", now2.getHours(), now2.getMinutes(), now2.getSeconds());
                 addTimelineEvent({"CEO", "CEO", "Erro: modelo não encontrado.", "N/A", ts2, "ERRO", 0, 0});
+                generatingAnswer_.store(false);
                 isProcessing_ = false;
                 btnSubmit_.setEnabled(true);
                 repaint();
@@ -605,25 +726,17 @@ void WorkspaceComponent::processQuestion(const std::string& prompt,
 
         // ── RAG PIPELINE ────────────────────────────────────────────────
         std::string augmentedPrompt;
-        std::string debugBlock;
         std::ostringstream dbg;
-        dbg << "\n---\n";
 
         bool hasModel = !loadedEmbedPath_.empty();
-        bool idle     = !indexingInProgress_.load();
+        bool ready    = canAnswerNow();
         size_t nChunks = semanticIndexer_.totalChunks();
-        bool hasRAG = hasModel && idle && nChunks > 0;
-
-        if (!hasModel)
-            dbg << "**[RAG]** Nenhum modelo de embedding carregado.\n";
-        else if (!idle)
-            dbg << "**[RAG]** Ainda indexando (" << nChunks << " chunks ate agora)...\n";
-        else if (nChunks == 0)
-            dbg << "**[RAG]** Workspace vazio ou extensões não suportadas.\n";
+        bool hasRAG = hasModel && ready && nChunks > 0;
 
         ContextLevel intent = ContextLevel::General;
-        if (hasRAG) intent = intentRouter_.classify(prompt);
-        if (hasModel) dbg << "**[RAG — Advisor]** intent=" << IntentRouter::levelName(intent) << "\n";
+        if (hasModel && ready) intent = intentRouter_.classify(prompt);
+        dbg << "[RAG] intent=" << IntentRouter::levelName(intent)
+            << " chunks=" << nChunks << " ready=" << (ready ? "yes" : "no") << "\n";
 
         std::vector<ContextChunk> finalChunks;
         std::vector<FileSummary>  fileSummaries;
@@ -727,30 +840,40 @@ void WorkspaceComponent::processQuestion(const std::string& prompt,
             dbg << "  Modulos no contexto: " << moduleSummaries.size() << "/" << allMods.size() << "\n";
         }
 
+        bool workspaceRelated = isWorkspaceRelatedQuestion(prompt);
+        bool hasContext = hasUsableWorkspaceContext(nChunks, projectSummary,
+                                                    moduleSummaries, finalChunks);
+
+        if (hasWorkspaceLoaded() && workspaceRelated && !hasContext) {
+            std::cerr << dbg.str();
+            juce::MessageManager::callAsync([this] {
+                activeFileContent_ +=
+                    "Ainda não tenho contexto suficiente sobre este projeto para responder com segurança. "
+                    "Verifique se a pasta contém arquivos de código suportados e tente novamente.\n\n";
+                auto now2 = juce::Time::getCurrentTime();
+                auto ts2 = juce::String::formatted("%02d:%02d:%02d",
+                    now2.getHours(), now2.getMinutes(), now2.getSeconds());
+                addTimelineEvent({"CEO", "CEO", "Contexto insuficiente.", "N/A", ts2, "ERRO", 0, 0});
+                generatingAnswer_.store(false);
+                isProcessing_ = false;
+                btnSubmit_.setEnabled(true);
+                repaint();
+            });
+            return;
+        }
+
+        bool workspaceOnly = hasWorkspaceLoaded() && workspaceRelated;
         augmentedPrompt = PromptComposer::build(prompt, finalChunks,
-            projectSummary, moduleSummaries, fileSummaries);
+            projectSummary, moduleSummaries, fileSummaries, "", workspaceOnly);
 
         {
             dbg << "Contexto: " << finalChunks.size() << " chunks, "
                 << fileSummaries.size() << " arquivos, "
                 << moduleSummaries.size() << " modulos\n";
-            if (!usedFiles.empty()) {
-                dbg << "Arquivos no contexto:\n";
-                for (const auto& f : usedFiles) {
-                    auto pos = f.find_last_of("/\\");
-                    dbg << "  - " << (pos != std::string::npos ? f.substr(pos+1) : f) << "\n";
-                }
-            }
             size_t estTokens = (augmentedPrompt.size() / 4) + 1;
             dbg << "Tokens no prompt: ~" << estTokens << "\n";
-            dbg << "---\n";
-            debugBlock = dbg.str();
+            std::cerr << dbg.str();
         }
-
-        juce::MessageManager::callAsync([this, dbg = juce::String(debugBlock)] {
-            activeFileContent_ += dbg;
-            repaint();
-        });
 
         addTimelineEvent({"CEO", "CEO", "Gerando resposta...", "N/A",
             juce::String::formatted("%02d:%02d:%02d",
@@ -775,6 +898,7 @@ void WorkspaceComponent::processQuestion(const std::string& prompt,
         juce::MessageManager::callAsync([this, tsEnd] {
             activeFileContent_ += "\n";
             addTimelineEvent({"CEO", "CEO", "Resposta concluída.", "N/A", tsEnd, "CONCLUIDO", 0, 0});
+            generatingAnswer_.store(false);
             isProcessing_ = false;
             btnSubmit_.setEnabled(true);
             repaint();

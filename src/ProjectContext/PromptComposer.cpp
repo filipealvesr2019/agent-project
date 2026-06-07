@@ -11,7 +11,7 @@ namespace AgentOS {
 std::string PromptComposer::build(const std::string& query,
                                    const std::vector<ContextChunk>& chunks,
                                    const std::string& contextPrefix) {
-    return build(query, chunks, ProjectSummary{}, {}, {}, contextPrefix);
+    return build(query, chunks, ProjectSummary{}, {}, {}, contextPrefix, false);
 }
 
 // ================================================================
@@ -23,14 +23,22 @@ std::string PromptComposer::build(const std::string& query,
                                    const ProjectSummary& projectSummary,
                                    const std::vector<ModuleSummary>& moduleSummaries,
                                    const std::vector<FileSummary>& fileSummaries,
-                                   const std::string& contextPrefix) {
+                                   const std::string& contextPrefix,
+                                   bool workspaceOnly) {
     std::ostringstream prompt;
 
     prompt << "Voce e um assistente tecnico.\n\n";
-    prompt << "Use o contexto fornecido abaixo para responder a pergunta.\n";
-    prompt << "Se a resposta estiver no contexto, utilize-o.\n";
-    prompt << "Se nao estiver, use seu conhecimento geral.\n";
-    prompt << "Se houver incerteza, informe.\n";
+    if (workspaceOnly) {
+        prompt << "Responda APENAS com base no contexto do projeto fornecido abaixo.\n";
+        prompt << "Se o contexto for insuficiente, diga claramente que nao tem informacao suficiente.\n";
+        prompt << "Nao use conhecimento geral nem invente detalhes sobre o projeto.\n";
+        prompt << "Forneca UMA unica resposta final — sem rascunhos, refatoracoes ou versoes alternativas.\n";
+    } else {
+        prompt << "Use o contexto fornecido abaixo para responder a pergunta.\n";
+        prompt << "Se a resposta estiver no contexto, utilize-o.\n";
+        prompt << "Se nao estiver, use seu conhecimento geral.\n";
+        prompt << "Se houver incerteza, informe.\n";
+    }
 
     if (!contextPrefix.empty()) {
         prompt << "\n" << contextPrefix << "\n";
