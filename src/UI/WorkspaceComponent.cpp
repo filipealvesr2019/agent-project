@@ -9,6 +9,9 @@
 #include "ProjectContext/Reranker.h"
 #include "ProjectContext/FileSummaryStore.h"
 #include "ProjectContext/FileSummarizer.h"
+#include "ProjectContext/IntentRouter.h"
+#include "ProjectContext/ContextBudgetManager.h"
+#include "ProjectContext/SymbolIndexer.h"
 #include <filesystem>
 #include <fstream>
 #include <thread>
@@ -115,8 +118,10 @@ WorkspaceComponent::WorkspaceComponent() {
                                         auto nm = f.getFileName().toLowerCase();
                                         if (nm.contains("nomic") || nm.contains("bge") ||
                                             nm.contains("e5") || nm.contains("embed")) {
-                                            if (embeddingEngine_.loadModel(f.getFullPathName().toStdString()))
+                                            if (embeddingEngine_.loadModel(f.getFullPathName().toStdString())) {
                                                 loadedEmbedPath_ = f.getFullPathName().toStdString();
+                                                intentRouter_.setEmbeddingEngine(&embeddingEngine_);
+                                            }
                                             break;
                                         }
                                     }
@@ -255,127 +260,240 @@ WorkspaceComponent::WorkspaceComponent() {
             }
 
             // ================================================================
-            // RAG PIPELINE — Cursor/Windsurf style
-            // 1. Embed query
-            // 2. Retrieve top-K chunks from SemanticStore
-            // 3. Build prompt: system + <context> + question
-            // No domain detection. No roleForDomain. The model understands itself.
+            // RAG PIPELINE v2 — Intent-aware
+            // 0. Classify query → ContextLevel
+            // 1. Based on level: select summaries, symbols, or chunks
+            // 2. ContextBudgetManager allocates tokens per level
+            // 3. PromptComposer builds hierarchical prompt
             // ================================================================
 
             std::string augmentedPrompt;
             std::string debugBlock;
+            std::ostringstream dbg;
+            dbg << "\n---\n";
 
             bool hasRAG = !loadedEmbedPath_.empty() &&
                           !indexingInProgress_.load() &&
                           semanticIndexer_.totalChunks() > 0;
 
-            if (hasRAG) {
-                // ============================================================
-                // STAGE 1: Vector search — top-50 candidates
-                // ============================================================
-                constexpr size_t CANDIDATE_POOL = 50;
-                constexpr size_t FINAL_K        = 10;
+            static const ContextBudgetManager budgetManager;
+            ContextLevel intent = ContextLevel::General;
+            if (hasRAG) intent = intentRouter_.classify(promptStr);
 
-                auto queryEmb = embeddingEngine_.embed(promptStr);
+            // Flag to track whether we did vector search (for Symbol/File levels)
+            bool usedVectorSearch = false;
+            std::vector<ContextChunk> finalChunks;
+            std::vector<FileSummary>  fileSummaries;
+            std::vector<ModuleSummary> moduleSummaries;
+            ProjectSummary projectSummary;
+            std::vector<std::string> usedFiles;
 
-                std::vector<ContextChunk> candidates;
-                if (!queryEmb.empty()) {
-                    candidates = semanticIndexer_.retriever()
-                                     .retrieve(promptStr, embeddingEngine_, CANDIDATE_POOL);
-                }
+            if (summaryStoreOpen_) {
+                moduleSummaries = summaryStore_.getAllModules();
+                projectSummary  = summaryStore_.getProject();
+            }
 
-                // ============================================================
-                // STAGE 2: CodeGraph expansion
-                // Collect seed file paths from candidates, then BFS-expand
-                // to files related by import/include edges (depth 2).
-                // Extra files are fetched from the SemanticStore by file path.
-                // ============================================================
-                std::vector<std::string> seedFiles;
-                for (const auto& c : candidates) {
-                    bool found = false;
-                    for (const auto& s : seedFiles) if (s == c.source) { found = true; break; }
-                    if (!found) seedFiles.push_back(c.source);
-                }
+            dbg << "**[RAG — IntentRouter]**\n";
+            dbg << "Intencao: " << IntentRouter::levelName(intent) << "\n";
+            auto budget = budgetManager.allocate(intent,
+                budgetManager.defaultBudget(intent));
 
-                auto expandedFiles = semanticIndexer_.codeGraph().expand(seedFiles, 2);
+            switch (intent) {
 
-                // Pull the best chunk from each expanded file out of the store
-                for (const auto& filePath : expandedFiles) {
-                    // Retrieve top-1 for this specific file using keyword
-                    // (re-rank will score them properly later)
-                    auto fileCandidates = semanticIndexer_.retriever()
-                                             .retrieve(promptStr, embeddingEngine_, 5);
-                    for (auto& fc : fileCandidates) {
-                        if (fc.source == filePath) {
-                            candidates.push_back(fc);
-                            break;
-                        }
-                    }
-                }
-
-                // ============================================================
-                // STAGE 3: Multi-signal re-rank — top-50 → top-10
-                // ============================================================
-                static const Reranker reranker;
-                auto chunks = reranker.rerank(promptStr, candidates, FINAL_K);
-
-                // Deduplicate source files for debug display
-                std::vector<std::string> usedFiles;
-                for (const auto& c : chunks) {
-                    bool found = false;
-                    for (const auto& f : usedFiles) if (f == c.source) { found = true; break; }
-                    if (!found) usedFiles.push_back(c.source);
-                }
-
-                // Build the final prompt with hierarchical context
-                if (summaryStoreOpen_) {
-                    // Fetch summaries for files referenced in selected chunks
-                    std::vector<std::string> filePaths;
-                    for (const auto& c : chunks) {
-                        bool found = false;
-                        for (const auto& f : filePaths) if (f == c.source) { found = true; break; }
-                        if (!found) filePaths.push_back(c.source);
-                    }
-                    auto fileSummaries = summaryStore_.getAll(filePaths);
-                    auto moduleSummaries = summaryStore_.getAllModules();
-                    auto projectSummary = summaryStore_.getProject();
-
-                    augmentedPrompt = PromptComposer::build(
-                        promptStr, chunks,
-                        projectSummary, moduleSummaries, fileSummaries);
+            // ── Project-level ──────────────────────────────────────────
+            // Only project summary — no vector search needed
+            case ContextLevel::Project: {
+                if (summaryStoreOpen_ && !projectSummary.architecture.empty()) {
+                    augmentedPrompt = PromptComposer::build(promptStr, {},
+                        projectSummary, {}, {});
+                    dbg << "Contexto: apenas ProjectSummary ("
+                        << projectSummary.architecture.size() << " chars)\n";
                 } else {
-                    augmentedPrompt = PromptComposer::build(promptStr, chunks);
+                    augmentedPrompt = PromptComposer::build(promptStr, {});
+                    dbg << "Contexto: sem ProjectSummary disponivel\n";
+                }
+                break;
+            }
+
+            // ── Module-level ───────────────────────────────────────────
+            // Module summaries + relevant file summaries — no vector search
+            case ContextLevel::Module: {
+                if (summaryStoreOpen_) {
+                    augmentedPrompt = PromptComposer::build(promptStr, {},
+                        projectSummary, moduleSummaries, {});
+                    dbg << "Contexto: " << moduleSummaries.size()
+                        << " modulos + ProjectSummary\n";
+                } else {
+                    augmentedPrompt = PromptComposer::build(promptStr, {});
+                }
+                break;
+            }
+
+            // ── File-level ─────────────────────────────────────────────
+            // File summaries + vector search chunks
+            case ContextLevel::File: {
+                usedVectorSearch = true;
+                if (hasRAG) {
+                    auto candidates = semanticIndexer_.retriever()
+                        .retrieve(promptStr, embeddingEngine_, 30);
+                    static const Reranker reranker;
+                    finalChunks = reranker.rerank(promptStr, candidates,
+                        std::min(budget.chunkTokens / 256 + 1, size_t(10)));
+
+                    for (const auto& c : finalChunks) {
+                        bool found = false;
+                        for (const auto& f : usedFiles) if (f == c.source) { found = true; break; }
+                        if (!found) usedFiles.push_back(c.source);
+                    }
+
+                    if (summaryStoreOpen_) {
+                        fileSummaries = summaryStore_.getAll(usedFiles);
+                    }
+                }
+                augmentedPrompt = PromptComposer::build(promptStr, finalChunks,
+                    projectSummary, moduleSummaries, fileSummaries);
+                dbg << "Contexto: " << finalChunks.size() << " chunks + summaries\n";
+                break;
+            }
+
+            // ── Symbol-level ───────────────────────────────────────────
+            // SymbolIndex lookup → exact line chunk → supplementary vector search
+            case ContextLevel::Symbol: {
+                usedVectorSearch = true;
+
+                if (summaryStoreOpen_) {
+                    SymbolIndexer symIndex;
+                    ProjectScanner scanner;
+                    scanner.scan(indexedWorkspacePath_);
+                    symIndex.buildIndex(scanner.files());
+
+                    auto symbols = symIndex.findSymbols(promptStr);
+                    if (!symbols.empty()) {
+                        dbg << "SymbolIndex: " << symbols.size() << " simbolos encontrados\n";
+
+                        size_t precisionLines = 30; // ±15 around symbol
+
+                        for (const auto& sym : symbols) {
+                            bool found = false;
+                            for (const auto& f : usedFiles) if (f == sym.file) { found = true; break; }
+                            if (!found) usedFiles.push_back(sym.file);
+
+                            // Read exact source window around symbol line
+                            std::ifstream fileStream(sym.file);
+                            if (fileStream.is_open()) {
+                                std::vector<std::string> fileLines;
+                                std::string line;
+                                while (std::getline(fileStream, line)) {
+                                    fileLines.push_back(line);
+                                }
+                                fileStream.close();
+
+                                if (!fileLines.empty()) {
+                                    size_t start = (sym.line > precisionLines/2)
+                                        ? sym.line - precisionLines/2 : 1;
+                                    size_t end = std::min(start + precisionLines, fileLines.size());
+
+                                    std::string snippet;
+                                    for (size_t l = start; l <= end; ++l) {
+                                        snippet += std::to_string(l) + ": " + fileLines[l-1] + "\n";
+                                    }
+
+                                    ContextChunk precisionChunk;
+                                    precisionChunk.source = sym.file;
+                                    precisionChunk.content = snippet;
+                                    precisionChunk.score = 1.0f;
+                                    finalChunks.push_back(precisionChunk);
+
+                                    dbg << "  Precisao: " << sym.name << " ("
+                                        << sym.file << ":" << sym.line << ")\n";
+
+                                    // Only take top 3 symbols max to avoid budget explosion
+                                    if (finalChunks.size() >= 3) break;
+                                }
+                            }
+                        }
+
+                        // Supplementary: vector search for the remaining budget
+                        size_t vsBudget = budget.chunkTokens / 256 + 1;
+                        size_t precisionUsed = finalChunks.size();
+                        if (vsBudget > precisionUsed) {
+                            auto candidates = semanticIndexer_.retriever()
+                                .retrieve(promptStr, embeddingEngine_, 20);
+                            static const Reranker reranker;
+                            auto vsChunks = reranker.rerank(promptStr, candidates,
+                                vsBudget - precisionUsed);
+                            finalChunks.insert(finalChunks.end(), vsChunks.begin(), vsChunks.end());
+                        }
+
+                        if (summaryStoreOpen_)
+                            fileSummaries = summaryStore_.getAll(usedFiles);
+                    }
                 }
 
-                size_t estTokens = augmentedPrompt.size() / 4;
-
-                // Debug block: show all 3 stages
-                std::ostringstream dbg;
-                dbg << "\n---\n";
-                dbg << "**[RAG DEBUG — 3 stages]**\n";
-                dbg << "Stage 1 (vetor):  " << candidates.size() << " candidatos\n";
-                dbg << "Stage 2 (grafo):  +" << expandedFiles.size() << " arquivos expandidos\n";
-                dbg << "Stage 3 (rerank): " << chunks.size() << " chunks finais\n\n";
-                dbg << "Arquivos no contexto:\n";
-                for (const auto& f : usedFiles) {
-                    auto pos = f.find_last_of("/\\");
-                    dbg << "  - " << (pos != std::string::npos ? f.substr(pos+1) : f) << "\n";
+                // Fallback: vector search only
+                if (finalChunks.empty() && hasRAG) {
+                    auto candidates = semanticIndexer_.retriever()
+                        .retrieve(promptStr, embeddingEngine_, 20);
+                    static const Reranker reranker;
+                    finalChunks = reranker.rerank(promptStr, candidates, 8);
+                    for (const auto& c : finalChunks) {
+                        bool found = false;
+                        for (const auto& f : usedFiles) if (f == c.source) { found = true; break; }
+                        if (!found) usedFiles.push_back(c.source);
+                    }
+                    if (summaryStoreOpen_)
+                        fileSummaries = summaryStore_.getAll(usedFiles);
                 }
-                dbg << "Tokens estimados: ~" << estTokens << "\n";
+
+                augmentedPrompt = PromptComposer::build(promptStr, finalChunks,
+                    projectSummary, moduleSummaries, fileSummaries);
+                dbg << "Contexto: " << finalChunks.size() << " chunks (symbol)\n";
+                break;
+            }
+
+            // ── General knowledge ──────────────────────────────────────
+            case ContextLevel::General:
+            default: {
+                if (hasRAG) {
+                    // Lightweight vector search for general questions
+                    auto candidates = semanticIndexer_.retriever()
+                        .retrieve(promptStr, embeddingEngine_, 10);
+                    static const Reranker reranker;
+                    finalChunks = reranker.rerank(promptStr, candidates, 5);
+                    for (const auto& c : finalChunks) {
+                        bool found = false;
+                        for (const auto& f : usedFiles) if (f == c.source) { found = true; break; }
+                        if (!found) usedFiles.push_back(c.source);
+                    }
+                    if (summaryStoreOpen_)
+                        fileSummaries = summaryStore_.getAll(usedFiles);
+                }
+                augmentedPrompt = PromptComposer::build(promptStr, finalChunks,
+                    projectSummary, moduleSummaries, fileSummaries);
+                dbg << "Contexto: " << finalChunks.size() << " chunks (geral)\n";
+                break;
+            }
+            }
+
+            // Debug block — show what was used
+            {
+                dbg << "Budget: " << budget.totalBudget << " tokens ("
+                    << "P:" << budget.projectTokens
+                    << " M:" << budget.moduleTokens
+                    << " F:" << budget.fileTokens
+                    << " C:" << budget.chunkTokens << ")\n";
+                if (!usedFiles.empty()) {
+                    dbg << "Arquivos no contexto:\n";
+                    for (const auto& f : usedFiles) {
+                        auto pos = f.find_last_of("/\\");
+                        dbg << "  - " << (pos != std::string::npos ? f.substr(pos+1) : f) << "\n";
+                    }
+                }
+                size_t estTokens = (augmentedPrompt.size() / 4) + 1;
+                dbg << "Tokens no prompt: ~" << estTokens << "\n";
                 dbg << "---\n";
                 debugBlock = dbg.str();
-
-            } else {
-                // No embedding model / workspace not indexed — fall back to plain prompt
-                // Still tell the user what is happening
-                augmentedPrompt =
-                    "Voce e um assistente tecnico. Responda em portugues.\n\n"
-                    "Use markdown para organizar a resposta.\n\n"
-                    "Pergunta:\n" + promptStr;
-
-                std::ostringstream dbg;
-                dbg << "\n---\n";
-                dbg << "**[RAG DEBUG]** Sem indexação ativa.\n";
+            }
                 if (indexingInProgress_.load())
                     dbg << "Indexação em andamento — tente novamente em instantes.\n";
                 else if (loadedEmbedPath_.empty())

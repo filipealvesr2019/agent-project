@@ -7,6 +7,7 @@
 #include "ProjectContext/UniversalIndexer.h"
 #include "ProjectContext/FileSummaryStore.h"
 #include "ProjectContext/FileSummarizer.h"
+#include "ProjectContext/IntentRouter.h"
 #include "LocalRuntime/LlamaRuntime.h"
 
 namespace AgentOS {
@@ -204,6 +205,7 @@ private:
 
     // === RAG Pipeline ===
     LlamaEmbeddings      embeddingEngine_;       // nomic/bge embedding model
+    IntentRouter         intentRouter_;          // semantic + heuristic intent classifier
     UniversalIndexer     semanticIndexer_;        // chunks + cosine search
     std::string          loadedEmbedPath_;        // path of currently loaded embed model
     std::string          indexedWorkspacePath_;   // last indexed workspace root
