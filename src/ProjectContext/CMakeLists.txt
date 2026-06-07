@@ -10,6 +10,7 @@ add_library(ProjectContext STATIC
     PromptComposer.cpp
     SemanticStore.cpp
     SymbolIndexer.cpp
+    SymbolIndexStore.cpp
     TextChunker.cpp
     UniversalIndexer.cpp
     CodeGraph.cpp

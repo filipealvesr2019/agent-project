@@ -127,6 +127,11 @@ void UniversalIndexer::indexWorkspace(const std::string& rootPath,
               << graph_.nodeCount() << " graph nodes\n";
 }
 
+void UniversalIndexer::removeFile(const std::string& filePath) {
+    retriever_.removeFile(filePath);
+    graph_.removeFile(filePath);
+}
+
 void UniversalIndexer::clear() {
     retriever_.clear();
     graph_.clear();

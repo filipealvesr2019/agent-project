@@ -16,6 +16,10 @@
 #include <fstream>
 #include <thread>
 #include <sstream>
+#include <set>
+#include <algorithm>
+
+namespace fs = std::filesystem;
 
 namespace AgentOS {
 
@@ -145,6 +149,30 @@ WorkspaceComponent::WorkspaceComponent() {
 
                         semanticIndexer_.indexWorkspace(rootPath, embeddingEngine_);
                         size_t total = semanticIndexer_.totalChunks();
+
+                        // Build persistent symbol index (SQLite-backed)
+                        symbolIndexStore_.close();
+                        std::string symDbPath = rootPath + "/.agent_symbols.db";
+
+                        ProjectScanner scanner;
+                        scanner.scan(rootPath);
+
+                        if (symbolIndexStore_.open(symDbPath)) {
+                            symbolIndexStore_.purge(rootPath);
+                            SymbolIndexer symIndex;
+                            symIndex.setStore(&symbolIndexStore_);
+                            symIndex.buildIndex(scanner.files());
+                        }
+
+                        // Seed watchedFiles_ for incremental file watcher
+                        {
+                            std::unordered_map<std::string, uint64_t> seed;
+                            for (const auto& f : scanner.files()) {
+                                uint64_t mt = SymbolIndexer::getFileModTime(f.path);
+                                seed[f.path] = mt;
+                            }
+                            watchedFiles_ = std::move(seed);
+                        }
 
                         // Build module/project summaries (heuristic fallback, no LLM yet)
                         buildModuleAndProjectSummaries(nullptr);
@@ -333,7 +361,7 @@ WorkspaceComponent::WorkspaceComponent() {
                         if (tok.size() > 6) {
                             bool camel = false;
                             for (size_t i = 1; i < tok.size(); ++i)
-                                if (std::islower(tok[i-1]) && std::isupper(tok[i])) { camel = true; break; }
+                                if (std::islower(static_cast<unsigned char>(tok[i-1])) && std::isupper(static_cast<unsigned char>(tok[i]))) { camel = true; break; }
                             if (camel || tok.find('_') != std::string::npos) {
                                 hasSymbolPattern = true;
                                 break;
@@ -344,13 +372,8 @@ WorkspaceComponent::WorkspaceComponent() {
                 }
             }
 
-            if (hasSymbolPattern && summaryStoreOpen_) {
-                SymbolIndexer symIndex;
-                ProjectScanner scanner;
-                scanner.scan(indexedWorkspacePath_);
-                symIndex.buildIndex(scanner.files());
-
-                auto symbols = symIndex.findSymbols(promptStr);
+            if (hasSymbolPattern && symbolIndexStore_.isOpen()) {
+                auto symbols = symbolIndexStore_.findSymbols(promptStr);
                 if (!symbols.empty()) {
                     dbg << "  SymbolIndex: " << symbols.size() << " matches\n";
 
@@ -536,7 +559,109 @@ void WorkspaceComponent::timerCallback() {
     if (animationPhase_ > juce::MathConstants<float>::twoPi) {
         animationPhase_ -= juce::MathConstants<float>::twoPi;
     }
+
+    // Throttled file change polling
+    watchTick_++;
+    if (watchTick_ >= kWATCH_INTERVAL_TICKS) {
+        watchTick_ = 0;
+        pollFileChanges();
+    }
+
     repaint();
+}
+
+void WorkspaceComponent::pollFileChanges() {
+    if (indexedWorkspacePath_.empty() || indexingInProgress_.load()) return;
+    if (!symbolIndexStore_.isOpen()) return;
+
+    bool embedReady = !loadedEmbedPath_.empty();
+
+    // Scan workspace directory for existing files
+    std::unordered_map<std::string, uint64_t> currentFiles;
+    static const std::set<std::string> ignoreDirs = {
+        ".git", "build", "build_vs", "build_cli", "build_release", "build_check",
+        ".vs", ".opencode", "libs", "node_modules", "__pycache__", ".cache"
+    };
+    static const std::set<std::string> watchExts = {
+        ".cpp", ".cxx", ".cc", ".h", ".hpp", ".hxx",
+        ".txt", ".md", ".json", ".yaml", ".yml", ".csv",
+        ".py", ".ts", ".js", ".rs", ".java"
+    };
+    try {
+        auto dirIt = fs::recursive_directory_iterator(indexedWorkspacePath_);
+        auto dirEnd = fs::recursive_directory_iterator();
+        while (dirIt != dirEnd) {
+            if (dirIt->is_directory()) {
+                if (ignoreDirs.count(dirIt->path().filename().string())) {
+                    dirIt.disable_recursion_pending();
+                }
+                ++dirIt;
+                continue;
+            }
+            if (!dirIt->is_regular_file()) { ++dirIt; continue; }
+            std::string ext = dirIt->path().extension().string();
+            std::transform(ext.begin(), ext.end(), ext.begin(), ::tolower);
+            if (!watchExts.count(ext)) { ++dirIt; continue; }
+            std::string path = dirIt->path().string();
+            uint64_t mt = static_cast<uint64_t>(dirIt->last_write_time().time_since_epoch().count());
+            currentFiles[path] = mt;
+            ++dirIt;
+        }
+    } catch (const std::exception& e) {
+        std::cerr << "[FileWatcher] Scan error: " << e.what() << "\n";
+        return;
+    }
+
+    // Check for deleted files
+    {
+        bool anyDeleted = false;
+        for (const auto& [path, _] : watchedFiles_) {
+            if (!currentFiles.count(path)) {
+                semanticIndexer_.removeFile(path);
+                symbolIndexStore_.putSymbols(path, 0, {});
+                anyDeleted = true;
+                std::cerr << "[FileWatcher] Deleted: " << path << "\n";
+            }
+        }
+        if (anyDeleted && summaryStoreOpen_) {
+            summaryStore_.purge(indexedWorkspacePath_);
+        }
+    }
+
+    // Check for new/modified files
+    for (const auto& [path, mt] : currentFiles) {
+        auto it = watchedFiles_.find(path);
+        if (it != watchedFiles_.end() && it->second == mt) continue;
+
+        // File is new or changed
+        std::error_code ec;
+        auto ft = fs::last_write_time(path, ec);
+        if (ec) continue;
+        uint64_t modTime = ft.time_since_epoch().count();
+
+        if (embedReady && !indexingInProgress_.load()) {
+            // Re-index vector chunks (handles incremental internally)
+            semanticIndexer_.indexFiles({path}, embeddingEngine_);
+        }
+
+        // Re-index symbols
+        if (symbolIndexStore_.isOpen()) {
+            SymbolIndexer symIdx;
+            symIdx.setStore(&symbolIndexStore_);
+            // Build index for just this file
+            FileEntry fe{};
+            fe.path = path;
+            fe.extension = fs::path(path).extension().string();
+            std::transform(fe.extension.begin(), fe.extension.end(),
+                           fe.extension.begin(), ::tolower);
+            symIdx.buildIndex({fe});
+        }
+
+        auto action = (it == watchedFiles_.end()) ? "New" : "Modified";
+        std::cerr << "[FileWatcher] " << action << ": " << path << "\n";
+    }
+
+    watchedFiles_ = std::move(currentFiles);
 }
 
 void WorkspaceComponent::addTimelineEvent(const TimelineEvent& event) {

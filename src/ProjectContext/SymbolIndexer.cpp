@@ -1,4 +1,5 @@
 #include "ProjectContext/SymbolIndexer.h"
+#include "ProjectContext/SymbolIndexStore.h"
 #include <iostream>
 #include <fstream>
 #include <regex>
@@ -6,15 +7,50 @@
 #include <sstream>
 #include <set>
 #include <cctype>
+#include <filesystem>
+
+namespace fs = std::filesystem;
 
 namespace AgentOS {
 
+SymbolIndexer::SymbolIndexer() {}
+
+uint64_t SymbolIndexer::getFileModTime(const std::string& path) {
+    std::error_code ec;
+    auto ft = fs::last_write_time(path, ec);
+    if (ec) return 0;
+    return static_cast<uint64_t>(ft.time_since_epoch().count());
+}
+
 void SymbolIndexer::buildIndex(const std::vector<FileEntry>& files) {
     symbols_.clear();
+
     for (const auto& file : files) {
-        if (file.extension == ".cpp" || file.extension == ".cxx" ||
-            file.extension == ".h" || file.extension == ".hpp" || file.extension == ".hxx") {
-            indexFile(file);
+        if (file.extension != ".cpp" && file.extension != ".cxx" &&
+            file.extension != ".h" && file.extension != ".hpp" && file.extension != ".hxx") {
+            continue;
+        }
+
+        uint64_t modTime = getFileModTime(file.path);
+
+        // If store is available and file is cached, skip re-indexing
+        if (store_ && store_->isCached(file.path, modTime)) {
+            continue;
+        }
+
+        // Re-index this file
+        indexFile(file);
+
+        // Persist to store if available
+        if (store_) {
+            // Collect symbols belonging to this file from the in-memory list
+            std::vector<SymbolEntry> fileSymbols;
+            for (const auto& sym : symbols_) {
+                if (sym.file == file.path) {
+                    fileSymbols.push_back(sym);
+                }
+            }
+            store_->putSymbols(file.path, modTime, fileSymbols);
         }
     }
 }
@@ -130,6 +166,10 @@ void SymbolIndexer::extractSymbols(const std::string& filePath, const std::strin
 }
 
 std::vector<SymbolEntry> SymbolIndexer::findSymbols(const std::string& query) const {
+    // Use store if available
+    if (store_) return store_->findSymbols(query);
+
+    // Fallback: in-memory search
     std::vector<SymbolEntry> results;
     std::string queryLower = query;
     std::transform(queryLower.begin(), queryLower.end(), queryLower.begin(), ::tolower);
@@ -145,6 +185,10 @@ std::vector<SymbolEntry> SymbolIndexer::findSymbols(const std::string& query) co
 }
 
 std::vector<SymbolEntry> SymbolIndexer::findSymbolsInFile(const std::string& filePath) const {
+    // Use store if available
+    if (store_) return store_->findSymbolsInFile(filePath);
+
+    // Fallback: in-memory search
     std::vector<SymbolEntry> results;
     for (const auto& sym : symbols_) {
         if (sym.file == filePath) {
@@ -155,8 +199,11 @@ std::vector<SymbolEntry> SymbolIndexer::findSymbolsInFile(const std::string& fil
 }
 
 std::vector<std::string> SymbolIndexer::findRelevantFiles(const std::string& query) const {
-    std::set<std::string> fileSet;
+    // Use store if available
+    if (store_) return store_->findRelevantFiles(query);
 
+    // Fallback: in-memory search
+    std::set<std::string> fileSet;
     std::istringstream ss(query);
     std::string word;
     while (ss >> word) {
@@ -165,7 +212,6 @@ std::vector<std::string> SymbolIndexer::findRelevantFiles(const std::string& que
             fileSet.insert(sym.file);
         }
     }
-
     std::vector<std::string> files(fileSet.begin(), fileSet.end());
     return files;
 }

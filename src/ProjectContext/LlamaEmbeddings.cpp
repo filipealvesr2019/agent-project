@@ -18,14 +18,15 @@ LlamaEmbeddings::~LlamaEmbeddings() {
 }
 
 bool LlamaEmbeddings::loadModel(const std::string& path) {
-    if (backendInit_) {
-        if (ctx_)   { llama_free((llama_context*)ctx_);   ctx_ = nullptr; }
-        if (model_) { llama_model_free((llama_model*)model_); model_ = nullptr; }
-        llama_backend_free();
-    }
+    // Free old model/context if any, but do NOT touch the global backend
+    // (LlamaRuntime may already have it initialized for generation)
+    if (ctx_)   { llama_free((llama_context*)ctx_);   ctx_ = nullptr; }
+    if (model_) { llama_model_free((llama_model*)model_); model_ = nullptr; }
 
-    llama_backend_init();
-    backendInit_ = true;
+    if (!backendInit_) {
+        llama_backend_init();
+        backendInit_ = true;
+    }
 
     llama_model_params mparams = llama_model_default_params();
     llama_model* model = llama_model_load_from_file(path.c_str(), mparams);
@@ -56,7 +57,7 @@ bool LlamaEmbeddings::loadModel(const std::string& path) {
 }
 
 std::vector<float> LlamaEmbeddings::embed(const std::string& text) {
-    if (!ctx_) return {};
+    if (!ctx_ || !model_) return {};
 
     const llama_vocab* vocab = llama_model_get_vocab((const llama_model*)model_);
 

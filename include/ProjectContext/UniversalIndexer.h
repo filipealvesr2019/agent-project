@@ -23,6 +23,9 @@ public:
 
     size_t totalChunks() const { return retriever_.totalChunks(); }
 
+    // Remove a file from all indices (for incremental file deletion)
+    void removeFile(const std::string& filePath);
+
     ContextRetriever&       retriever()       { return retriever_; }
     const ContextRetriever& retriever() const { return retriever_; }
 

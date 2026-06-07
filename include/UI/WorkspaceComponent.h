@@ -3,11 +3,14 @@
 #include <vector>
 #include <string>
 #include <atomic>
+#include <unordered_map>
+#include <cstdint>
 #include "ProjectContext/LlamaEmbeddings.h"
 #include "ProjectContext/UniversalIndexer.h"
 #include "ProjectContext/FileSummaryStore.h"
 #include "ProjectContext/FileSummarizer.h"
 #include "ProjectContext/IntentRouter.h"
+#include "ProjectContext/SymbolIndexStore.h"
 #include "LocalRuntime/LlamaRuntime.h"
 
 namespace AgentOS {
@@ -227,6 +230,15 @@ private:
     std::atomic<bool>        summaryBuilding_{false};
     void                     startSummaryBuildQueue(LlamaRuntime& llm);
     bool                     processSummaryQueue(LlamaRuntime& llm); // returns true if more work
+
+    // === Persistent Symbol Index ===
+    SymbolIndexStore         symbolIndexStore_;
+
+    // === File Watcher (polling-based incremental re-indexing) ===
+    std::unordered_map<std::string, uint64_t> watchedFiles_; // path → last mod time
+    int                  watchTick_ = 0;
+    static constexpr int kWATCH_INTERVAL_TICKS = 60; // at 30Hz = every ~2s
+    void                 pollFileChanges();
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(WorkspaceComponent)
 };

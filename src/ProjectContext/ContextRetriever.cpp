@@ -51,6 +51,11 @@ std::vector<ContextChunk> ContextRetriever::retrieve(const std::string& query,
     return store_.search(queryEmb, topK);
 }
 
+void ContextRetriever::removeFile(const std::string& filePath) {
+    store_.removeChunksForFile(filePath);
+    indexedModTimes_.erase(filePath);
+}
+
 void ContextRetriever::clear() {
     store_.clear();
     indexedModTimes_.clear();

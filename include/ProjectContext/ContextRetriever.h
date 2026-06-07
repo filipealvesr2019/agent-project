@@ -21,6 +21,10 @@ public:
                                         size_t topK = 20);
 
     size_t totalChunks() const { return store_.size(); }
+
+    // Remove all data for a file (for incremental deletion)
+    void removeFile(const std::string& filePath);
+
     void clear();
     bool saveState(const std::string& path) const;
     bool loadState(const std::string& path);
