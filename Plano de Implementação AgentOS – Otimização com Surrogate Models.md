@@ -100,7 +100,7 @@ LLM principal 3B → gera resposta final
 
 * Criar **bateria de testes** para:
 
-  1. Abrir pasta de diferentes tamanhos.
+  1. Abrir pasta de diferentes tamanhos(use arquivos de testes criados pasta com arquivos desse caminho tem varios projetos -> C:\Users\filipe\Documents\themes it html ou C:\Users\filipe\Documents\tone matching).
   2. Enviar perguntas durante e depois da indexação.
   3. Conferir que a resposta final **usa contexto completo**.
   4. Salvar **todas as respostas em arquivo TXT** para análise e regressão.
@@ -314,3 +314,153 @@ O próximo passo que eu implementaria no seu AgentOS seria:
 **1. Symbol Index → 2. Context Budget Manager → 3. Surrogate Re-ranker → 4. Test Harness automático (TXT com perguntas e respostas)**
 
 Nessa ordem você ganha mais qualidade por linha de código escrita.
+
+
+## REGRAS DE ENGENHARIA (OBRIGATÓRIAS)
+
+### NÃO IMPLEMENTAR ATALHOS
+
+É proibido resolver problemas através de:
+
+* palavras-chave hardcoded
+* listas fixas de intenções
+* regras especiais para perguntas específicas
+* ifs do tipo:
+
+```cpp
+if (question.contains("projeto"))
+```
+
+```cpp
+if (question.contains("arquitetura"))
+```
+
+```cpp
+if (question.contains("modulo"))
+```
+
+```cpp
+if (answerType == "project")
+```
+
+* respostas mockadas
+* respostas simuladas
+* dados inventados
+* caminhos especiais para passar em testes
+
+O sistema deve funcionar para perguntas nunca vistas anteriormente.
+
+---
+
+### NÃO USAR MOCKS COMO SOLUÇÃO FINAL
+
+Mocks são permitidos apenas durante prototipagem.
+
+Nenhum componente crítico pode permanecer mockado:
+
+* IntentRouter
+* SymbolIndex
+* ContextBuilder
+* SummaryBuilder
+* Retrieval Engine
+* CodeGraph
+* PromptComposer
+* Workspace Analyzer
+
+Se algum componente estiver mockado, deve ser explicitamente reportado.
+
+---
+
+### NÃO ESCONDER PROBLEMAS
+
+Se uma funcionalidade não existir:
+
+ERRADO:
+
+"Implementado"
+
+quando na verdade existe apenas:
+
+```cpp
+return "TODO";
+```
+
+CORRETO:
+
+"Não implementado ainda."
+
+---
+
+### PREFERIR SOLUÇÕES GENERALIZÁVEIS
+
+Sempre escolher:
+
+Arquitetura > Gambiarra
+
+Sistema genérico > Caso especial
+
+Inferência > Palavra-chave
+
+Análise estrutural > Regex fixa
+
+Graph traversal > Lista hardcoded
+
+Embeddings > Match textual simples
+
+---
+
+### TESTE DE HONESTIDADE
+
+Antes de finalizar qualquer implementação, responder internamente:
+
+"Essa solução continua funcionando se eu trocar completamente os nomes dos arquivos, módulos e perguntas?"
+
+Se a resposta for NÃO:
+
+A implementação provavelmente está usando atalhos.
+
+---
+
+### PROIBIDO OTIMIZAR PARA O EXEMPLO
+
+O sistema não deve ser construído para responder:
+
+"O que esse projeto faz?"
+
+O sistema deve ser construído para responder QUALQUER pergunta sobre QUALQUER projeto.
+
+Se existir lógica específica para um exemplo de prompt, remover essa lógica.
+
+---
+
+### REGRA DO ANTIGRAVITY/CURSOR
+
+Sempre assumir que:
+
+* o projeto pode ter 10.000 arquivos
+* o usuário pode fazer perguntas nunca vistas
+* o usuário pode trocar completamente a linguagem do projeto
+* o usuário pode trocar completamente a estrutura do projeto
+
+A arquitetura deve continuar funcionando sem modificações.
+
+---
+
+### O QUE É CONSIDERADO CONCLUÍDO
+
+Uma funcionalidade só é considerada concluída quando:
+
+1. Funciona sem regras hardcoded
+2. Funciona sem mocks
+3. Funciona em projetos diferentes
+4. Possui testes
+5. Possui logs para depuração
+6. Não depende de exemplos específicos
+
+Caso contrário, marcar como:
+
+"Protótipo"
+"Parcial"
+"Experimental"
+
+Nunca marcar como concluído.
