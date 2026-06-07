@@ -464,3 +464,278 @@ Caso contrário, marcar como:
 "Experimental"
 
 Nunca marcar como concluído.
+
+
+lidando com limitaçoes:
+Limitações
+Precisão menor: o surrogate não substitui totalmente o LLM grande.
+Treinamento adicional: o surrogate precisa ser ajustado para imitar bem o comportamento do modelo principal.
+Risco de viés: decisões tomadas pelo surrogate podem filtrar chunks importantes se mal calibrado.
+Essa pergunta é muito importante porque sistemas bons não são aqueles que não têm limitações. São aqueles que **sabem quais são suas limitações e foram projetados para contorná-las**.
+
+No caso dos surrogate models, você não tenta eliminar as limitações. Você constrói a arquitetura assumindo que elas existem.
+
+### Limitação 1: O surrogate erra
+
+Todo surrogate vai errar às vezes.
+
+**Solução:**
+Nunca deixe ele tomar decisões finais.
+
+Errado:
+
+```text
+Surrogate
+   ↓
+Escolhe chunk
+   ↓
+Descarta todo resto
+```
+
+Correto:
+
+```text
+Surrogate
+   ↓
+Escolhe Top 50
+   ↓
+LLM Principal valida
+```
+
+O surrogate filtra.
+O modelo principal decide.
+
+---
+
+### Limitação 2: Falso negativo
+
+Ele pode descartar justamente o chunk mais importante.
+
+**Solução:**
+
+Nunca peça para ele achar "o melhor".
+
+Peça para ele achar "os 50 melhores".
+
+Exemplo:
+
+```text
+10.000 chunks
+   ↓
+Surrogate
+   ↓
+50 chunks
+   ↓
+Cross Encoder
+   ↓
+12 chunks
+   ↓
+LLM
+```
+
+Você troca precisão por recall.
+
+---
+
+### Limitação 3: Drift
+
+Conforme o projeto muda, o surrogate pode ficar desatualizado.
+
+Exemplo:
+
+```text
+Projeto antigo:
+AuthService
+LoginManager
+
+Projeto novo:
+IdentityProvider
+CredentialBroker
+```
+
+O surrogate foi treinado em outra realidade.
+
+**Solução:**
+
+Recalibrar usando dados reais.
+
+Por isso seu IntentRouter deveria registrar:
+
+```text
+Pergunta
+Chunks usados
+Resposta
+Feedback
+```
+
+Depois você analisa logs.
+
+---
+
+### Limitação 4: Generalização
+
+O surrogate pode funcionar bem em C++ e mal em Rust.
+
+**Solução:**
+
+Nunca confiar em palavras.
+
+Confiar em estrutura.
+
+Ruim:
+
+```cpp
+if(query.contains("auth"))
+```
+
+Bom:
+
+```text
+Embeddings
+CodeGraph
+SymbolGraph
+```
+
+---
+
+### Limitação 5: Não entende contexto global
+
+Um surrogate pequeno normalmente entende:
+
+```text
+Arquivo
+Função
+Classe
+```
+
+Mas não entende:
+
+```text
+Projeto inteiro
+Arquitetura
+Dependências
+```
+
+**Solução:**
+
+Criar níveis.
+
+```text
+ProjectSummary
+ModuleSummary
+FileSummary
+Chunks
+Symbols
+```
+
+O surrogate trabalha nos níveis baixos.
+
+O LLM principal recebe a visão global.
+
+---
+
+### Limitação 6: Latência acumulada
+
+Você pode criar:
+
+```text
+Surrogate 1
+Surrogate 2
+Surrogate 3
+Cross Encoder
+LLM
+```
+
+e acabar mais lento que usar apenas o LLM.
+
+**Solução:**
+
+Medir tudo.
+
+Seu AgentOS deveria registrar:
+
+```text
+Tempo busca
+Tempo rerank
+Tempo graph
+Tempo llm
+```
+
+Você otimiza onde realmente dói.
+
+---
+
+### Limitação 7: Alucinação estrutural
+
+O surrogate pode achar:
+
+```text
+JwtManager.cpp
+```
+
+é relevante porque viu "JWT".
+
+Mas a pergunta era:
+
+```text
+Como funciona o cache?
+```
+
+**Solução:**
+
+Misturar sinais.
+
+Não usar apenas embeddings.
+
+Usar:
+
+```text
+Embeddings
++
+CodeGraph
++
+SymbolGraph
++
+Recência
++
+Reranker
+```
+
+---
+
+## Regra que eu seguiria no AgentOS
+
+Todo componente deve ser tratado como:
+
+```text
+Impreciso
+Parcial
+Falível
+```
+
+Então a arquitetura vira:
+
+```text
+Vários componentes falíveis
+           ↓
+Votação
+           ↓
+LLM principal
+           ↓
+Resposta
+```
+
+É exatamente por isso que Cursor, Antigravity, Claude Code e outros agentes modernos não dependem de um único mecanismo.
+
+Eles assumem que:
+
+```text
+Busca erra
+Reranker erra
+Graph erra
+LLM erra
+```
+
+e tentam fazer com que os erros não coincidam.
+
+Essa mentalidade costuma produzir sistemas muito mais robustos do que tentar encontrar um componente "perfeito".
