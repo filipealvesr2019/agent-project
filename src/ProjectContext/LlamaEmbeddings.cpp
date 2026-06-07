@@ -12,12 +12,14 @@ LlamaEmbeddings::LlamaEmbeddings()
     : model_(nullptr), ctx_(nullptr), n_embd_(0), backendInit_(false) {}
 
 LlamaEmbeddings::~LlamaEmbeddings() {
+    std::lock_guard<std::mutex> lock(embedMutex_);
     if (ctx_)  llama_free((llama_context*)ctx_);
     if (model_) llama_model_free((llama_model*)model_);
     if (backendInit_) llama_backend_free();
 }
 
 bool LlamaEmbeddings::loadModel(const std::string& path) {
+    std::lock_guard<std::mutex> lock(embedMutex_);
     // Free old model/context if any, but do NOT touch the global backend
     // (LlamaRuntime may already have it initialized for generation)
     if (ctx_)   { llama_free((llama_context*)ctx_);   ctx_ = nullptr; }
@@ -57,6 +59,7 @@ bool LlamaEmbeddings::loadModel(const std::string& path) {
 }
 
 std::vector<float> LlamaEmbeddings::embed(const std::string& text) {
+    std::lock_guard<std::mutex> lock(embedMutex_);
     if (!ctx_ || !model_) return {};
 
     const llama_vocab* vocab = llama_model_get_vocab((const llama_model*)model_);

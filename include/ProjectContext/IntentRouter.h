@@ -1,5 +1,6 @@
 #pragma once
 
+#include <mutex>
 #include <string>
 #include <vector>
 #include <cstddef>
@@ -78,6 +79,7 @@ private:
     void logQuery(const std::string& query, ContextLevel pred, float finalScore,
                   const std::vector<LevelScore>& scores);
 
+    mutable std::mutex mutex_;
     EmbeddingEngine* embeddingEngine_ = nullptr;
 
     // Generic label embeddings (5 fixed labels)

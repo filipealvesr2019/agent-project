@@ -62,12 +62,14 @@ static std::vector<std::string> tokenise(const std::string& text) {
 IntentRouter::IntentRouter() {}
 
 void IntentRouter::setEmbeddingEngine(EmbeddingEngine* engine) {
+    std::lock_guard<std::mutex> lock(mutex_);
     embeddingEngine_ = engine;
     labelEmbeddingsReady_ = false;
     workspaceReady_ = false;
 }
 
 void IntentRouter::clearLog() {
+    std::lock_guard<std::mutex> lock(mutex_);
     queryLog_.clear();
     for (int i = 0; i < kLevels; ++i) {
         levelStats_[i] = LevelStats{};
@@ -111,6 +113,7 @@ void IntentRouter::ensureLabelEmbeddings() {
 
 void IntentRouter::setWorkspaceContext(const ProjectSummary& project,
                                         const std::vector<ModuleSummary>& modules) {
+    std::lock_guard<std::mutex> lock(mutex_);
     if (!embeddingEngine_) return;
 
     wsProjectEmb_.clear();
@@ -374,6 +377,7 @@ void IntentRouter::logQuery(const std::string& query, ContextLevel pred,
 // ================================================================
 
 ContextLevel IntentRouter::classify(const std::string& query) {
+    std::lock_guard<std::mutex> lock(mutex_);
     ensureLabelEmbeddings();
 
     // Periodic re-adjustment from full history

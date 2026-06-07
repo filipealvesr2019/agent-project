@@ -1,5 +1,6 @@
 #pragma once
 
+#include <mutex>
 #include <string>
 #include <vector>
 #include "ProjectContext/EmbeddingEngine.h"
@@ -16,6 +17,7 @@ public:
     size_t dimension() const override;
 
 private:
+    std::mutex embedMutex_;
     void* model_ = nullptr;
     void* ctx_ = nullptr;
     size_t n_embd_ = 0;
