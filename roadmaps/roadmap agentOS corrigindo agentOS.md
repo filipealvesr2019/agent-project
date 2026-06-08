@@ -1340,3 +1340,114 @@ O objetivo não é adicionar mais componentes.
 O objetivo é atingir autodesenvolvimento.
 
 Essa mudança de mentalidade evita construir um sistema enorme que impressiona em demos, mas não consegue ajudar no desenvolvimento do próprio projeto. O foco passa a ser capacidade real e verificável.
+
+
+# Regra Arquitetural Crítica — Proibição de Componentes Mockados
+
+O AgentOS não deve utilizar componentes mockados para simular capacidades que ainda não existem.
+
+## O que é considerado mock proibido
+
+Exemplos:
+
+* `if (pergunta contém "projeto") → responder resumo genérico`
+* Mensagens de análise geradas por temporizador (`sleep`) sem relação com o trabalho real
+* "Analisando arquivo..." sem realmente analisar o arquivo
+* "Encontrei módulo X" sem ter extraído módulo X do código
+* "Expandi símbolo Y" sem ter consultado SymbolGraph
+* Simulação de progresso baseada em porcentagem fixa
+* Respostas construídas a partir de heurísticas estáticas fingindo raciocínio
+* Dados fictícios inseridos apenas para melhorar demonstrações
+
+## Regra principal
+
+Toda informação exibida ao usuário deve ser rastreável até uma fonte real.
+
+Exemplos:
+
+### Correto
+
+"Estou analisando JwtService.cpp"
+
+Origem:
+
+* arquivo realmente está sendo processado
+* indexador realmente abriu o arquivo
+
+### Incorreto
+
+"Estou analisando autenticação"
+
+quando nenhum arquivo foi processado ainda.
+
+---
+
+## Regra de auditabilidade
+
+Toda saída relevante deve poder ser explicada através de:
+
+* workspace_diagnostics.txt
+* context_dump.txt
+* prompt_dump.txt
+
+Se uma informação não aparece em nenhum desses artefatos, ela provavelmente não deveria aparecer para o usuário.
+
+---
+
+## Regra do feedback humanizado
+
+Feedback humanizado não significa inventar atividade.
+
+Humanização correta:
+
+"Estou analisando o módulo Auth."
+
+porque o módulo Auth foi realmente identificado.
+
+Humanização incorreta:
+
+"Estou correlacionando dependências complexas..."
+
+quando nenhuma correlação foi executada.
+
+---
+
+## Regra de confiança
+
+É preferível responder:
+
+"Ainda não encontrei informações suficientes para responder."
+
+do que inventar contexto.
+
+É preferível mostrar:
+
+"Workspace ainda está sendo analisado."
+
+do que simular progresso inexistente.
+
+---
+
+## Regra para novos componentes
+
+Antes de adicionar qualquer funcionalidade nova, responder:
+
+1. Essa funcionalidade usa dados reais?
+2. Existe rastreabilidade?
+3. Existe teste validando?
+4. Funciona na UI Release?
+5. Funciona com o workspace real do AgentOS?
+
+Se qualquer resposta for NÃO:
+
+A funcionalidade não deve ser considerada concluída.
+
+---
+
+## Objetivo
+
+O AgentOS deve ser uma ferramenta confiável para desenvolver o próprio AgentOS.
+
+A confiança é mais importante do que parecer inteligente.
+
+Um sistema que admite limitações é melhor do que um sistema que produz respostas convincentes porém incorretas.
