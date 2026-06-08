@@ -1,0 +1,1342 @@
+objetivo e fazer ser funcional pra que eu possa começar a usar o proprio projeto pra continnuar ele mesmo
+
+Esse é exatamente o objetivo certo.
+
+Não é:
+
+```text
+fazer mais funcionalidades
+```
+
+É:
+
+```text
+chegar no ponto onde o AgentOS consegue evoluir o AgentOS
+```
+
+Essa mudança de mentalidade é importante.
+
+Hoje eu diria que você está em algo parecido com:
+
+```text
+Infraestrutura .......... 9/10
+RAG ..................... 8/10
+Symbol Index ............ 7/10
+Context Hierarchy ....... 8/10
+UX ...................... 4/10
+Autonomia ............... 2/10
+```
+
+O problema não é o SymbolGraph.
+
+Nem o RAG.
+
+Nem o Brain.
+
+O problema é:
+
+```text
+Você ainda não confia nele para trabalhar sozinho.
+```
+
+E enquanto isso não acontecer:
+
+```text
+Não adianta criar
+Brain
+30 agentes
+Image-to-Code
+Knowledge Graph
+```
+
+porque tudo isso vai amplificar bugs.
+
+---
+
+# Objetivo real
+
+Você precisa chegar nisso:
+
+```text
+Abro o AgentOS
+
+↓
+
+Aponto para o código dele
+
+↓
+
+Peço:
+
+"analise o sistema"
+
+↓
+
+Ele entende
+
+↓
+
+Peço:
+
+"corrija o bug"
+
+↓
+
+Ele corrige
+
+↓
+
+Peço:
+
+"adicione funcionalidade"
+
+↓
+
+Ele implementa
+
+↓
+
+Peço:
+
+"crie testes"
+
+↓
+
+Ele cria
+```
+
+Quando isso funcionar:
+
+```text
+AgentOS
+↓
+passa a desenvolver
+AgentOS
+```
+
+---
+
+# O que eu faria AGORA
+
+Esqueceria completamente:
+
+```text
+Brain
+
+Image-to-Code
+
+30 agentes
+
+Voting
+
+Knowledge Graph
+```
+
+por algumas semanas.
+
+---
+
+Focaria só em:
+
+# Marco 1
+
+Workspace Understanding
+
+Teste:
+
+```text
+Abrir AgentOS
+
+Perguntar:
+
+1. O que esse projeto faz?
+
+2. Quais módulos existem?
+
+3. O que estou implementando?
+
+4. Quais bugs você encontrou?
+
+5. Onde estão os riscos?
+```
+
+Meta:
+
+```text
+95% de acerto
+```
+
+---
+
+# Marco 2
+
+Code Modification
+
+Teste:
+
+```text
+Adicione um botão.
+
+Crie um endpoint.
+
+Refatore essa classe.
+```
+
+Meta:
+
+```text
+gerar código correto
+```
+
+---
+
+# Marco 3
+
+Auto Debug
+
+Teste:
+
+```text
+Build falhou.
+
+Analise o erro.
+
+Corrija.
+```
+
+Meta:
+
+```text
+corrigir sozinho
+```
+
+---
+
+# Marco 4
+
+Self Development
+
+Teste:
+
+```text
+Analise o AgentOS.
+
+Liste melhorias.
+
+Implemente uma delas.
+```
+
+Meta:
+
+```text
+ele modifica o próprio projeto
+```
+
+---
+
+# Quando você chegou aqui
+
+Aí sim:
+
+```text
+AgentOS
+↓
+entende código
+↓
+edita código
+↓
+testa código
+↓
+corrige código
+```
+
+---
+
+Só então eu começaria:
+
+```text
+Sprint Brain v1
+```
+
+Porque aí o Brain vai armazenar:
+
+```text
+erros reais
+
+correções reais
+
+refatorações reais
+
+decisões reais
+```
+
+e não um monte de markdown vazio.
+
+---
+
+Se fosse meu projeto, meu roadmap dos próximos dias seria:
+
+```text
+PRIORIDADE MÁXIMA
+
+[ ] Fazer o AgentOS entender o próprio código
+[ ] Fazer responder corretamente sobre o workspace
+[ ] Fazer editar arquivos reais
+[ ] Fazer gerar testes
+[ ] Fazer corrigir bugs de build
+[ ] Fazer passar nos próprios testes
+
+SÓ DEPOIS
+
+[ ] Brain
+[ ] Multi-agent
+[ ] Voting
+[ ] Knowledge Graph
+[ ] Image-to-Code
+```
+
+Porque quando esses primeiros itens estiverem funcionando, você finalmente vai poder usar o AgentOS para continuar desenvolvendo o AgentOS — e aí a velocidade de evolução do projeto muda completamente.
+Isso é algo que eu colocaria como um documento de direção técnica para a outra IA e para você mesmo.
+
+Hoje o risco é cair na armadilha:
+
+```text
+"vamos adicionar mais uma feature"
+```
+
+quando o objetivo real deveria ser:
+
+```text
+"vamos tornar o AgentOS útil para desenvolver o AgentOS"
+```
+
+---
+
+# Mudança de Mentalidade
+
+## Mentalidade antiga
+
+```text
+Adicionar Brain
+
+Adicionar 30 agentes
+
+Adicionar votação
+
+Adicionar Knowledge Graph
+
+Adicionar Image-to-Code
+
+Adicionar mais RAG
+```
+
+Problema:
+
+```text
+Mais componentes
+
+↓
+
+Mais complexidade
+
+↓
+
+Mais bugs
+
+↓
+
+Sistema continua incapaz de ajudar no próprio desenvolvimento
+```
+
+---
+
+## Nova Mentalidade
+
+Pergunta central:
+
+```text
+Se eu abrir o AgentOS agora,
+
+ele consegue me ajudar a evoluir o AgentOS?
+```
+
+Se a resposta for:
+
+```text
+Não
+```
+
+Então qualquer feature nova deve ser adiada.
+
+---
+
+# Objetivo Principal
+
+Transformar o AgentOS em:
+
+```text
+Self-Development Platform
+```
+
+ou seja:
+
+```text
+AgentOS
+↓
+entende AgentOS
+↓
+analisa AgentOS
+↓
+modifica AgentOS
+↓
+testa AgentOS
+↓
+corrige AgentOS
+```
+
+---
+
+# Roadmap até Autodesenvolvimento
+
+---
+
+# Fase A
+
+## Workspace Understanding
+
+Meta:
+
+```text
+Entender o projeto
+```
+
+---
+
+### Teste obrigatório
+
+Abrir AgentOS.
+
+Perguntar:
+
+```text
+O que este projeto faz?
+
+Quais módulos existem?
+
+O que estou implementando?
+
+Quais riscos existem?
+
+Quais bugs você encontrou?
+```
+
+---
+
+### Critério de sucesso
+
+O AgentOS responde usando:
+
+```text
+ProjectSummary
+
+ModuleSummary
+
+FileSummary
+
+SymbolIndex
+```
+
+Sem alucinar.
+
+---
+
+### Não avançar enquanto
+
+```text
+Ele ainda inventar respostas.
+```
+
+---
+
+# Fase B
+
+## Navegação Inteligente
+
+Meta:
+
+```text
+Entender relações.
+```
+
+---
+
+Implementar:
+
+```text
+SymbolGraph
+
+CallGraph
+
+DependencyGraph
+```
+
+---
+
+Teste:
+
+```text
+Explique validateJWT.
+```
+
+Resposta deve incluir:
+
+```text
+Quem chama
+
+Quem é chamado
+
+Dependências
+
+Arquivos envolvidos
+```
+
+---
+
+# Fase C
+
+## Modificação de Código
+
+Meta:
+
+```text
+Parar de só explicar.
+
+Começar a editar.
+```
+
+---
+
+Teste:
+
+```text
+Adicione um botão.
+
+Crie endpoint.
+
+Refatore classe.
+```
+
+---
+
+Critério:
+
+```text
+Arquivos alterados corretamente.
+```
+
+---
+
+# Fase D
+
+## Testes Automáticos
+
+Meta:
+
+```text
+Validar o que ele faz.
+```
+
+---
+
+Implementar:
+
+```text
+Test Generator
+```
+
+---
+
+Teste:
+
+```text
+Crie testes para LoginService.
+```
+
+---
+
+Resultado:
+
+```text
+test_login.cpp
+```
+
+ou
+
+```text
+LoginService.test.ts
+```
+
+---
+
+# Fase E
+
+## Auto Debug
+
+Meta:
+
+```text
+Corrigir sozinho.
+```
+
+---
+
+Pipeline:
+
+```text
+Build
+
+↓
+
+Erro
+
+↓
+
+Análise
+
+↓
+
+Correção
+
+↓
+
+Novo build
+```
+
+---
+
+Teste:
+
+Introduzir bug proposital.
+
+Perguntar:
+
+```text
+Corrija.
+```
+
+---
+
+Critério:
+
+```text
+Build volta a funcionar.
+```
+
+---
+
+# Fase F
+
+## Planejamento Técnico
+
+Meta:
+
+```text
+AgentOS sugere melhorias.
+```
+
+---
+
+Teste:
+
+```text
+Analise o AgentOS.
+
+Liste 10 melhorias.
+```
+
+---
+
+Critério:
+
+As melhorias devem vir do código real.
+
+---
+
+# Fase G
+
+## Self Development
+
+Agora sim.
+
+---
+
+Teste:
+
+```text
+Analise o AgentOS.
+
+Escolha uma melhoria.
+
+Implemente.
+```
+
+---
+
+Resultado esperado:
+
+```text
+Código modificado
+
+Testes criados
+
+Build funcionando
+```
+
+---
+
+# Somente Depois
+
+Agora entram:
+
+---
+
+## Brain v1
+
+Guardar:
+
+```text
+Decisões
+
+Erros
+
+Correções
+
+Aprendizados
+```
+
+---
+
+## Multi-Agent
+
+Criar:
+
+```text
+CEO
+
+Planner
+
+Architect
+
+Tester
+
+Coder
+```
+
+---
+
+## Knowledge Graph
+
+Conectar:
+
+```text
+Arquivos
+
+Símbolos
+
+Módulos
+
+Decisões
+```
+
+---
+
+## Voting
+
+Resolver conflitos.
+
+---
+
+## Brain Ativo
+
+Aprender com:
+
+```text
+sucessos
+
+falhas
+
+tempo de execução
+```
+
+---
+
+## Image-to-Code
+
+Somente depois.
+
+Porque aí ele já terá:
+
+```text
+AST
+
+SymbolGraph
+
+Context Hierarchy
+
+RAG
+
+Brain
+```
+
+e conseguirá encaixar a UI gerada no projeto real.
+
+---
+
+# Regra de Ouro
+
+Passe isso para a outra IA:
+
+Toda nova funcionalidade deve responder a uma pergunta:
+
+"Isso aproxima o AgentOS de desenvolver o próprio AgentOS?"
+
+Se a resposta for NÃO, a funcionalidade deve ser adiada.
+
+Prioridade absoluta:
+
+1. Entender o workspace.
+2. Navegar pelo código.
+3. Modificar código.
+4. Criar testes.
+5. Corrigir erros.
+6. Evoluir o próprio projeto.
+
+Brain, Multi-Agent, Voting, Knowledge Graph e Image-to-Code só devem ser implementados depois que o AgentOS conseguir analisar, modificar e validar o próprio código de forma confiável.
+
+O objetivo não é adicionar mais componentes.
+
+O objetivo é atingir autodesenvolvimento.
+
+Essa mudança de mentalidade evita construir um sistema enorme que impressiona em demos, mas não consegue ajudar no desenvolvimento do próprio projeto. O foco passa a ser capacidade real e verificável.
+Isso é algo que eu colocaria como um documento de direção técnica para a outra IA e para você mesmo.
+
+Hoje o risco é cair na armadilha:
+
+```text
+"vamos adicionar mais uma feature"
+```
+
+quando o objetivo real deveria ser:
+
+```text
+"vamos tornar o AgentOS útil para desenvolver o AgentOS"
+```
+
+---
+
+# Mudança de Mentalidade
+
+## Mentalidade antiga
+
+```text
+Adicionar Brain
+
+Adicionar 30 agentes
+
+Adicionar votação
+
+Adicionar Knowledge Graph
+
+Adicionar Image-to-Code
+
+Adicionar mais RAG
+```
+
+Problema:
+
+```text
+Mais componentes
+
+↓
+
+Mais complexidade
+
+↓
+
+Mais bugs
+
+↓
+
+Sistema continua incapaz de ajudar no próprio desenvolvimento
+```
+
+---
+
+## Nova Mentalidade
+
+Pergunta central:
+
+```text
+Se eu abrir o AgentOS agora,
+
+ele consegue me ajudar a evoluir o AgentOS?
+```
+
+Se a resposta for:
+
+```text
+Não
+```
+
+Então qualquer feature nova deve ser adiada.
+
+---
+
+# Objetivo Principal
+
+Transformar o AgentOS em:
+
+```text
+Self-Development Platform
+```
+
+ou seja:
+
+```text
+AgentOS
+↓
+entende AgentOS
+↓
+analisa AgentOS
+↓
+modifica AgentOS
+↓
+testa AgentOS
+↓
+corrige AgentOS
+```
+
+---
+
+# Roadmap até Autodesenvolvimento
+
+---
+
+# Fase A
+
+## Workspace Understanding
+
+Meta:
+
+```text
+Entender o projeto
+```
+
+---
+
+### Teste obrigatório
+
+Abrir AgentOS.
+
+Perguntar:
+
+```text
+O que este projeto faz?
+
+Quais módulos existem?
+
+O que estou implementando?
+
+Quais riscos existem?
+
+Quais bugs você encontrou?
+```
+
+---
+
+### Critério de sucesso
+
+O AgentOS responde usando:
+
+```text
+ProjectSummary
+
+ModuleSummary
+
+FileSummary
+
+SymbolIndex
+```
+
+Sem alucinar.
+
+---
+
+### Não avançar enquanto
+
+```text
+Ele ainda inventar respostas.
+```
+
+---
+
+# Fase B
+
+## Navegação Inteligente
+
+Meta:
+
+```text
+Entender relações.
+```
+
+---
+
+Implementar:
+
+```text
+SymbolGraph
+
+CallGraph
+
+DependencyGraph
+```
+
+---
+
+Teste:
+
+```text
+Explique validateJWT.
+```
+
+Resposta deve incluir:
+
+```text
+Quem chama
+
+Quem é chamado
+
+Dependências
+
+Arquivos envolvidos
+```
+
+---
+
+# Fase C
+
+## Modificação de Código
+
+Meta:
+
+```text
+Parar de só explicar.
+
+Começar a editar.
+```
+
+---
+
+Teste:
+
+```text
+Adicione um botão.
+
+Crie endpoint.
+
+Refatore classe.
+```
+
+---
+
+Critério:
+
+```text
+Arquivos alterados corretamente.
+```
+
+---
+
+# Fase D
+
+## Testes Automáticos
+
+Meta:
+
+```text
+Validar o que ele faz.
+```
+
+---
+
+Implementar:
+
+```text
+Test Generator
+```
+
+---
+
+Teste:
+
+```text
+Crie testes para LoginService.
+```
+
+---
+
+Resultado:
+
+```text
+test_login.cpp
+```
+
+ou
+
+```text
+LoginService.test.ts
+```
+
+---
+
+# Fase E
+
+## Auto Debug
+
+Meta:
+
+```text
+Corrigir sozinho.
+```
+
+---
+
+Pipeline:
+
+```text
+Build
+
+↓
+
+Erro
+
+↓
+
+Análise
+
+↓
+
+Correção
+
+↓
+
+Novo build
+```
+
+---
+
+Teste:
+
+Introduzir bug proposital.
+
+Perguntar:
+
+```text
+Corrija.
+```
+
+---
+
+Critério:
+
+```text
+Build volta a funcionar.
+```
+
+---
+
+# Fase F
+
+## Planejamento Técnico
+
+Meta:
+
+```text
+AgentOS sugere melhorias.
+```
+
+---
+
+Teste:
+
+```text
+Analise o AgentOS.
+
+Liste 10 melhorias.
+```
+
+---
+
+Critério:
+
+As melhorias devem vir do código real.
+
+---
+
+# Fase G
+
+## Self Development
+
+Agora sim.
+
+---
+
+Teste:
+
+```text
+Analise o AgentOS.
+
+Escolha uma melhoria.
+
+Implemente.
+```
+
+---
+
+Resultado esperado:
+
+```text
+Código modificado
+
+Testes criados
+
+Build funcionando
+```
+
+---
+
+# Somente Depois
+
+Agora entram:
+
+---
+
+## Brain v1
+
+Guardar:
+
+```text
+Decisões
+
+Erros
+
+Correções
+
+Aprendizados
+```
+
+---
+
+## Multi-Agent
+
+Criar:
+
+```text
+CEO
+
+Planner
+
+Architect
+
+Tester
+
+Coder
+```
+
+---
+
+## Knowledge Graph
+
+Conectar:
+
+```text
+Arquivos
+
+Símbolos
+
+Módulos
+
+Decisões
+```
+
+---
+
+## Voting
+
+Resolver conflitos.
+
+---
+
+## Brain Ativo
+
+Aprender com:
+
+```text
+sucessos
+
+falhas
+
+tempo de execução
+```
+
+---
+
+## Image-to-Code
+
+Somente depois.
+
+Porque aí ele já terá:
+
+```text
+AST
+
+SymbolGraph
+
+Context Hierarchy
+
+RAG
+
+Brain
+```
+
+e conseguirá encaixar a UI gerada no projeto real.
+
+---
+
+# Regra de Ouro
+
+Passe isso para a outra IA:
+
+Toda nova funcionalidade deve responder a uma pergunta:
+
+"Isso aproxima o AgentOS de desenvolver o próprio AgentOS?"
+
+Se a resposta for NÃO, a funcionalidade deve ser adiada.
+
+Prioridade absoluta:
+
+1. Entender o workspace.
+2. Navegar pelo código.
+3. Modificar código.
+4. Criar testes.
+5. Corrigir erros.
+6. Evoluir o próprio projeto.
+
+Brain, Multi-Agent, Voting, Knowledge Graph e Image-to-Code só devem ser implementados depois que o AgentOS conseguir analisar, modificar e validar o próprio código de forma confiável.
+
+O objetivo não é adicionar mais componentes.
+
+O objetivo é atingir autodesenvolvimento.
+
+Essa mudança de mentalidade evita construir um sistema enorme que impressiona em demos, mas não consegue ajudar no desenvolvimento do próprio projeto. O foco passa a ser capacidade real e verificável.
