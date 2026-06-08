@@ -38,17 +38,19 @@ std::string PromptComposer::build(const std::string& query,
                                    bool workspaceOnly) {
     std::ostringstream prompt;
 
-    prompt << "Voce e um assistente tecnico.\n\n";
+    prompt << "Voce e um assistente tecnico preciso e honesto.\n\n";
     if (workspaceOnly) {
-        prompt << "Responda APENAS com base no contexto do projeto fornecido abaixo.\n";
-        prompt << "Se o contexto for insuficiente, diga claramente que nao tem informacao suficiente.\n";
-        prompt << "Nao use conhecimento geral nem invente detalhes sobre o projeto.\n";
+        prompt << "Responda EXCLUSIVAMENTE com base no contexto do projeto fornecido abaixo.\n";
+        prompt << "Se o contexto for insuficiente para responder, diga claramente:\n";
+        prompt << "\"Nao encontrei esta informacao no codigo do projeto.\"\n";
+        prompt << "Nao use CONHECIMENTO GERAL nem invente detalhes sobre o projeto.\n";
+        prompt << "Nao complete informacoes parciais com suposicoes.\n";
         prompt << "Forneca UMA unica resposta final — sem rascunhos, refatoracoes ou versoes alternativas.\n";
     } else {
         prompt << "Use o contexto fornecido abaixo para responder a pergunta.\n";
-        prompt << "Se a resposta estiver no contexto, utilize-o.\n";
-        prompt << "Se nao estiver, use seu conhecimento geral.\n";
-        prompt << "Se houver incerteza, informe.\n";
+        prompt << "Se a resposta NAO estiver no contexto, use seu conhecimento geral.\n";
+        prompt << "Se tiver duvida entre contexto e conhecimento geral, priorize o contexto.\n";
+        prompt << "Se houver incerteza, informe claramente.\n";
     }
 
     if (!contextPrefix.empty()) {
@@ -109,6 +111,13 @@ std::string PromptComposer::build(const std::string& query,
         prompt << "\n";
     }
 
+    if (workspaceOnly) {
+        prompt << "=== FIM DO CONTEXTO ===\n\n";
+        prompt << "Lembre-se: Se a resposta nao estiver no contexto acima, responda:\n";
+        prompt << "\"Nao encontrei esta informacao no codigo do projeto.\"\n";
+        prompt << "Nao invente nada.\n\n";
+    }
+
     prompt << "=== PERGUNTA ===\n\n";
     prompt << query << "\n";
 
@@ -121,17 +130,19 @@ std::string PromptComposer::build(const std::string& query,
                                    bool workspaceOnly) {
     std::ostringstream prompt;
 
-    prompt << "Voce e um assistente tecnico.\n\n";
+    prompt << "Voce e um assistente tecnico preciso e honesto.\n\n";
     if (workspaceOnly) {
-        prompt << "Responda APENAS com base no contexto do projeto fornecido abaixo.\n";
-        prompt << "Se o contexto for insuficiente, diga claramente que nao tem informacao suficiente.\n";
-        prompt << "Nao use conhecimento geral nem invente detalhes sobre o projeto.\n";
+        prompt << "Responda EXCLUSIVAMENTE com base no contexto do projeto fornecido abaixo.\n";
+        prompt << "Se o contexto for insuficiente para responder, diga claramente:\n";
+        prompt << "\"Nao encontrei esta informacao no codigo do projeto.\"\n";
+        prompt << "Nao use CONHECIMENTO GERAL nem invente detalhes sobre o projeto.\n";
+        prompt << "Nao complete informacoes parciais com suposicoes.\n";
         prompt << "Forneca UMA unica resposta final - sem rascunhos, refatoracoes ou versoes alternativas.\n";
     } else {
         prompt << "Use o contexto fornecido abaixo para responder a pergunta.\n";
-        prompt << "Se a resposta estiver no contexto, utilize-o.\n";
-        prompt << "Se nao estiver, use seu conhecimento geral.\n";
-        prompt << "Se houver incerteza, informe.\n";
+        prompt << "Se a resposta NAO estiver no contexto, use seu conhecimento geral.\n";
+        prompt << "Se tiver duvida entre contexto e conhecimento geral, priorize o contexto.\n";
+        prompt << "Se houver incerteza, informe claramente.\n";
     }
 
     if (!contextPrefix.empty()) {
@@ -160,6 +171,13 @@ std::string PromptComposer::build(const std::string& query,
             }
             prompt << "\n";
         }
+    }
+
+    if (workspaceOnly) {
+        prompt << "=== FIM DO CONTEXTO ===\n\n";
+        prompt << "Lembre-se: Se a resposta nao estiver no contexto acima, responda:\n";
+        prompt << "\"Nao encontrei esta informacao no codigo do projeto.\"\n";
+        prompt << "Nao invente nada.\n\n";
     }
 
     prompt << "=== PERGUNTA ===\n\n";

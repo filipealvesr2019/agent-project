@@ -598,7 +598,6 @@ bool WorkspaceComponent::canAnswerNow() const {
 
 bool WorkspaceComponent::isWorkspaceRelatedQuestion(const std::string& prompt) {
     if (!hasWorkspaceLoaded()) return false;
-    return intentRouter_.classify(prompt) != ContextLevel::General;
     if (loadedEmbedPath_.empty()) return true;
     if (workspaceState_.load() != WorkspaceState::Ready) return true;
     return intentRouter_.classify(prompt) != ContextLevel::General;
@@ -608,10 +607,7 @@ bool WorkspaceComponent::hasUsableWorkspaceContext(size_t chunkCount,
                                                     const ProjectSummary& projectSummary,
                                                     const std::vector<ModuleSummary>& modules,
                                                     const std::vector<ContextChunk>& chunks) const {
-    if (chunkCount > 0 || !chunks.empty()) return true;
-    if (!modules.empty()) return true;
-    if (!projectSummary.architecture.empty() || !projectSummary.projectName.empty()) return true;
-    return false;
+    return chunkCount > 0 || !chunks.empty();
 }
 
 void WorkspaceComponent::emitAnalysisMessage(const std::string& text) {
