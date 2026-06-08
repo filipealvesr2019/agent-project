@@ -4,6 +4,7 @@
 #include <vector>
 #include <chrono>
 #include <algorithm>
+#include <thread>
 
 namespace AgentOS {
 
@@ -22,6 +23,12 @@ void trimToContext(std::vector<llama_token>& tokens, int32_t maxPromptTokens) {
     trimmed.insert(trimmed.end(), tokens.begin(), tokens.begin() + headCount);
     trimmed.insert(trimmed.end(), tokens.end() - tailCount, tokens.end());
     tokens = std::move(trimmed);
+}
+
+int32_t runtimeThreadCount() {
+    auto n = std::thread::hardware_concurrency();
+    if (n == 0) return 4;
+    return static_cast<int32_t>(std::clamp<unsigned int>(n > 2 ? n - 1 : n, 1, 12));
 }
 
 } // namespace
@@ -67,6 +74,8 @@ bool LlamaRuntime::loadModel(const std::string& ggufPath, bool isEmbedding) {
     cparams.n_ctx = isEmbedding ? 512 : 2048; // BGE max length is 512
     cparams.n_batch = isEmbedding ? 512 : 2048;
     cparams.n_ubatch = isEmbedding ? 512 : 2048;
+    cparams.n_threads = runtimeThreadCount();
+    cparams.n_threads_batch = runtimeThreadCount();
     cparams.embeddings = isEmbedding;
 
     ctx_ = llama_new_context_with_model(model_, cparams);
@@ -83,6 +92,8 @@ GenerationResult LlamaRuntime::streamGenerate(const std::string& prompt, int32_t
     std::lock_guard<std::mutex> lock(mutex_);
     GenerationResult res;
     res.tokens_out = 0;
+    res.prompt_tokens = 0;
+    res.first_token_ms = 0;
     res.duration_ms = 0;
     res.ok = false;
 
@@ -104,11 +115,14 @@ GenerationResult LlamaRuntime::streamGenerate(const std::string& prompt, int32_t
     tokens.resize(n_tokens);
     trimToContext(tokens, static_cast<int32_t>(llama_n_ctx(ctx_)) - 1);
     n_tokens = static_cast<int32_t>(tokens.size());
+    res.prompt_tokens = n_tokens;
 
     if (n_tokens <= 0) {
         res.text = "Error: empty prompt";
         return res;
     }
+
+    auto total_start_time = std::chrono::high_resolution_clock::now();
 
     llama_batch batch = llama_batch_init(n_tokens, 0, 1);
     batch.n_tokens = n_tokens;
@@ -132,8 +146,6 @@ GenerationResult LlamaRuntime::streamGenerate(const std::string& prompt, int32_t
     llama_sampler* smpl = llama_sampler_chain_init(sparams);
     llama_sampler_chain_add(smpl, llama_sampler_init_greedy());
 
-    auto start_time = std::chrono::high_resolution_clock::now();
-
     for (int i = 0; i < maxTokens; i++) {
         llama_token id = llama_sampler_sample(smpl, ctx_, -1);
         llama_sampler_accept(smpl, id);
@@ -146,11 +158,59 @@ GenerationResult LlamaRuntime::streamGenerate(const std::string& prompt, int32_t
         int n = llama_token_to_piece(vocab, id, buf, sizeof(buf), 0, true);
         if (n >= 0) {
             std::string chunk(buf, n);
+            const size_t previousSize = res.text.size();
             res.text += chunk;
+
+            const std::vector<std::string> stopSequences = {
+                "=== PERGUNTA",
+                "=== CONTEXTO",
+                "=== RESPOSTA",
+                "=== CONTEX",
+                "Instruction ",
+                "### Instruction",
+                "### Response",
+                "<|user|>",
+                "<|system|>",
+                "<|end|>",
+                "\n=== PERGUNTA",
+                "\n=== CONTEXTO",
+                "\n=== RESPOSTA",
+                "\n=== CONTEX",
+                "\nInstruction ",
+                "\n### Instruction",
+                "\n### Response",
+                "\n## Voce",
+                "\n## CEO",
+                "\n## AI",
+                "\n### Human",
+                "\n### Assistant"
+            };
+
+            size_t stopPos = std::string::npos;
+            for (const auto& stop : stopSequences) {
+                auto pos = res.text.find(stop);
+                if (pos != std::string::npos && (stopPos == std::string::npos || pos < stopPos)) {
+                    stopPos = pos;
+                }
+            }
+
+            if (stopPos != std::string::npos) {
+                if (onChunk && stopPos > previousSize) {
+                    onChunk(res.text.substr(previousSize, stopPos - previousSize));
+                }
+                res.text.resize(stopPos);
+                break;
+            }
+
             if (onChunk) onChunk(chunk);
         }
 
         res.tokens_out++;
+        if (res.tokens_out == 1) {
+            auto first_token_time = std::chrono::high_resolution_clock::now();
+            res.first_token_ms = std::chrono::duration_cast<std::chrono::milliseconds>(
+                first_token_time - total_start_time).count();
+        }
 
         batch.n_tokens = 1;
         batch.token[0] = id;
@@ -167,7 +227,7 @@ GenerationResult LlamaRuntime::streamGenerate(const std::string& prompt, int32_t
     }
 
     auto end_time = std::chrono::high_resolution_clock::now();
-    res.duration_ms = std::chrono::duration_cast<std::chrono::milliseconds>(end_time - start_time).count();
+    res.duration_ms = std::chrono::duration_cast<std::chrono::milliseconds>(end_time - total_start_time).count();
     res.ok = true;
 
     llama_batch_free(batch);

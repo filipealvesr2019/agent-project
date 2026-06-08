@@ -38,6 +38,7 @@ std::string PromptComposer::build(const std::string& query,
                                    bool workspaceOnly) {
     std::ostringstream prompt;
 
+    prompt << "<|system|>\n";
     prompt << "Voce e um assistente tecnico preciso e honesto.\n\n";
     if (workspaceOnly) {
         prompt << "Responda EXCLUSIVAMENTE com base no contexto do projeto fornecido abaixo.\n";
@@ -45,18 +46,21 @@ std::string PromptComposer::build(const std::string& query,
         prompt << "\"Nao encontrei esta informacao no codigo do projeto.\"\n";
         prompt << "Nao use CONHECIMENTO GERAL nem invente detalhes sobre o projeto.\n";
         prompt << "Nao complete informacoes parciais com suposicoes.\n";
-        prompt << "Forneca UMA unica resposta final — sem rascunhos, refatoracoes ou versoes alternativas.\n";
+        prompt << "Forneca UMA unica resposta final - sem rascunhos, refatoracoes ou versoes alternativas.\n";
+        prompt << "Nao repita a pergunta e nao continue listas numeradas da pergunta.\n";
     } else {
         prompt << "Use o contexto fornecido abaixo para responder a pergunta.\n";
         prompt << "Se a resposta NAO estiver no contexto, use seu conhecimento geral.\n";
         prompt << "Se tiver duvida entre contexto e conhecimento geral, priorize o contexto.\n";
         prompt << "Se houver incerteza, informe claramente.\n";
+        prompt << "Nao repita a pergunta e nao continue listas numeradas da pergunta.\n";
     }
 
     if (!contextPrefix.empty()) {
         prompt << "\n" << contextPrefix << "\n";
     }
 
+    prompt << "<|end|>\n<|user|>\n";
     prompt << "\n=== CONTEXTO ===\n";
 
     // ── Level 0: Project Summary ──────────────────────────────────────
@@ -120,6 +124,8 @@ std::string PromptComposer::build(const std::string& query,
 
     prompt << "=== PERGUNTA ===\n\n";
     prompt << query << "\n";
+    prompt << "\nResponda agora em portugues, diretamente, sem repetir a pergunta.\n";
+    prompt << "<|end|>\n<|assistant|>\n";
 
     return prompt.str();
 }
@@ -130,6 +136,7 @@ std::string PromptComposer::build(const std::string& query,
                                    bool workspaceOnly) {
     std::ostringstream prompt;
 
+    prompt << "<|system|>\n";
     prompt << "Voce e um assistente tecnico preciso e honesto.\n\n";
     if (workspaceOnly) {
         prompt << "Responda EXCLUSIVAMENTE com base no contexto do projeto fornecido abaixo.\n";
@@ -138,17 +145,20 @@ std::string PromptComposer::build(const std::string& query,
         prompt << "Nao use CONHECIMENTO GERAL nem invente detalhes sobre o projeto.\n";
         prompt << "Nao complete informacoes parciais com suposicoes.\n";
         prompt << "Forneca UMA unica resposta final - sem rascunhos, refatoracoes ou versoes alternativas.\n";
+        prompt << "Nao repita a pergunta e nao continue listas numeradas da pergunta.\n";
     } else {
         prompt << "Use o contexto fornecido abaixo para responder a pergunta.\n";
         prompt << "Se a resposta NAO estiver no contexto, use seu conhecimento geral.\n";
         prompt << "Se tiver duvida entre contexto e conhecimento geral, priorize o contexto.\n";
         prompt << "Se houver incerteza, informe claramente.\n";
+        prompt << "Nao repita a pergunta e nao continue listas numeradas da pergunta.\n";
     }
 
     if (!contextPrefix.empty()) {
         prompt << "\n" << contextPrefix << "\n";
     }
 
+    prompt << "<|end|>\n<|user|>\n";
     prompt << "\n=== CONTEXTO ===\n";
     for (const auto& layer : layers) {
         if (layer.chunks.empty()) continue;
@@ -182,6 +192,8 @@ std::string PromptComposer::build(const std::string& query,
 
     prompt << "=== PERGUNTA ===\n\n";
     prompt << query << "\n";
+    prompt << "\nResponda agora em portugues, diretamente, sem repetir a pergunta.\n";
+    prompt << "<|end|>\n<|assistant|>\n";
     return prompt.str();
 }
 

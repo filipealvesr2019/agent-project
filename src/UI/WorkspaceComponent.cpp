@@ -607,7 +607,12 @@ bool WorkspaceComponent::hasUsableWorkspaceContext(size_t chunkCount,
                                                     const ProjectSummary& projectSummary,
                                                     const std::vector<ModuleSummary>& modules,
                                                     const std::vector<ContextChunk>& chunks) const {
-    return chunkCount > 0 || !chunks.empty();
+    (void) chunkCount;
+    return !chunks.empty() ||
+           !modules.empty() ||
+           !projectSummary.projectName.empty() ||
+           !projectSummary.architecture.empty() ||
+           !projectSummary.modules.empty();
 }
 
 void WorkspaceComponent::emitAnalysisMessage(const std::string& text) {
@@ -618,6 +623,11 @@ void WorkspaceComponent::enqueuePendingQuestion(const std::string& prompt,
                                                 int placeholderStart,
                                                 const std::string& modelPath) {
     std::lock_guard<std::mutex> lock(pendingMutex_);
+    for (const auto& pending : pendingQuestions_) {
+        if (pending.prompt == prompt && pending.modelPath == modelPath) {
+            return;
+        }
+    }
     pendingQuestions_.push_back({prompt, placeholderStart, modelPath});
 }
 
@@ -630,8 +640,6 @@ void WorkspaceComponent::flushPendingQuestionIfReady() {
     if (!canAnswerNow()) return;
     if (generatingAnswer_.load()) return;
 
-    emitAnalysisMessage("Já identifiquei os principais componentes. Vou revisar mais alguns pontos.\n\n");
-
     PendingQuestion pending;
     {
         std::lock_guard<std::mutex> lock(pendingMutex_);
@@ -639,6 +647,8 @@ void WorkspaceComponent::flushPendingQuestionIfReady() {
         pending = pendingQuestions_.front();
         pendingQuestions_.pop_front();
     }
+
+    emitAnalysisMessage("Contexto pronto. Vou gerar a resposta final com os dados indexados.\n\n");
 
     juce::MessageManager::callAsync([this, pending] {
         isProcessing_ = true;
@@ -703,6 +713,21 @@ void WorkspaceComponent::processQuestion(const std::string& prompt,
     });
 
     std::thread([this, prompt, placeholderStart, modelPath]() {
+        using Clock = std::chrono::steady_clock;
+        auto requestStart = Clock::now();
+        auto stageStart = requestStart;
+        std::ostringstream profiler;
+        auto elapsedMs = [&](Clock::time_point start, Clock::time_point end) {
+            return std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
+        };
+        auto markStage = [&](const char* name) {
+            auto now = Clock::now();
+            profiler << "[profiler] " << name
+                     << "=" << elapsedMs(stageStart, now) << "ms"
+                     << " total=" << elapsedMs(requestStart, now) << "ms\n";
+            stageStart = now;
+        };
+
         static AgentOS::LlamaRuntime llm;
         static std::string loadedPath;
         bool modelOk = false;
@@ -715,6 +740,7 @@ void WorkspaceComponent::processQuestion(const std::string& prompt,
                 modelOk = true;
             }
         }
+        markStage("ModelLoad");
 
         if (!modelOk) {
             juce::MessageManager::callAsync([this] {
@@ -742,6 +768,7 @@ void WorkspaceComponent::processQuestion(const std::string& prompt,
 
         ContextLevel intent = ContextLevel::General;
         if (hasModel && ready) intent = intentRouter_.classify(prompt);
+        markStage("IntentRouter");
         dbg << "[RAG] intent=" << IntentRouter::levelName(intent)
             << " chunks=" << nChunks << " ready=" << (ready ? "yes" : "no") << "\n";
 
@@ -755,15 +782,36 @@ void WorkspaceComponent::processQuestion(const std::string& prompt,
         if (summaryStoreOpen_) {
             projectSummary = summaryStore_.getProject();
         }
+        markStage("ProjectSummary");
 
         if (hasRAG) {
-            int numCandidates = 50;
-            int numResults    = 12;
+            int numCandidates = 40;
+            int numResults    = 8;
+            switch (intent) {
+                case ContextLevel::Project:
+                    numCandidates = 24;
+                    numResults = 4;
+                    break;
+                case ContextLevel::Module:
+                    numCandidates = 32;
+                    numResults = 6;
+                    break;
+                case ContextLevel::File:
+                case ContextLevel::Symbol:
+                    numCandidates = 40;
+                    numResults = 8;
+                    break;
+                case ContextLevel::General:
+                    numCandidates = 20;
+                    numResults = 4;
+                    break;
+            }
             auto candidates = semanticIndexer_.retriever()
                 .retrieve(prompt, embeddingEngine_, numCandidates);
             static const Reranker reranker;
             finalChunks = reranker.rerank(prompt, candidates, numResults);
         }
+        markStage("RetrieveRerank");
 
         for (const auto& c : finalChunks) {
             bool found = false;
@@ -840,6 +888,7 @@ void WorkspaceComponent::processQuestion(const std::string& prompt,
                 }
             }
         }
+        markStage("SymbolIndex");
 
         if (summaryStoreOpen_) {
             fileSummaries = summaryStore_.getAll(usedFiles);
@@ -860,6 +909,7 @@ void WorkspaceComponent::processQuestion(const std::string& prompt,
             }
             dbg << "  Modulos no contexto: " << moduleSummaries.size() << "/" << allMods.size() << "\n";
         }
+        markStage("Summaries");
 
         bool workspaceRelated = isWorkspaceRelatedQuestion(prompt);
         std::vector<ContextChunk> contextChunksForCheck = finalChunks;
@@ -889,7 +939,6 @@ void WorkspaceComponent::processQuestion(const std::string& prompt,
         bool workspaceOnly = hasWorkspaceLoaded() && workspaceRelated;
         auto narrate = [this](const std::string& text) {
             emitAnalysisMessage(text + "\n\n");
-            std::this_thread::sleep_for(std::chrono::milliseconds(35));
         };
 
         std::vector<ContextLayer> layers;
@@ -971,6 +1020,7 @@ void WorkspaceComponent::processQuestion(const std::string& prompt,
 
         narrate("Todas as camadas estao prontas. Vou gerar uma unica resposta final.");
         augmentedPrompt = PromptComposer::build(prompt, layers, "", workspaceOnly);
+        markStage("PromptComposer");
 
         {
             dbg << "Contexto: " << finalChunks.size() << " chunks, "
@@ -978,6 +1028,7 @@ void WorkspaceComponent::processQuestion(const std::string& prompt,
                 << moduleSummaries.size() << " modulos\n";
             size_t estTokens = (augmentedPrompt.size() / 4) + 1;
             dbg << "Tokens no prompt: ~" << estTokens << "\n";
+            dbg << profiler.str();
             std::cerr << dbg.str();
         }
 
@@ -987,17 +1038,48 @@ void WorkspaceComponent::processQuestion(const std::string& prompt,
                 juce::Time::getCurrentTime().getMinutes(),
                 juce::Time::getCurrentTime().getSeconds()),
             "EXECUTANDO", 0, 0});
+        emitAnalysisMessage("Consultando o modelo local com o contexto selecionado...\n\n");
 
         AgentOS::GenerationResult generation;
+        std::string streamBuffer;
+        auto lastFlush = std::chrono::steady_clock::now();
+        bool firstVisibleFlush = true;
+        auto flushStream = [&](bool force) {
+            if (streamBuffer.empty()) return;
+
+            auto now = std::chrono::steady_clock::now();
+            auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(now - lastFlush).count();
+            bool hasSentenceEnd = streamBuffer.find(". ") != std::string::npos ||
+                                  streamBuffer.find("? ") != std::string::npos ||
+                                  streamBuffer.find("! ") != std::string::npos ||
+                                  streamBuffer.find("\n") != std::string::npos;
+
+            if (!force && firstVisibleFlush && streamBuffer.size() < 24 && elapsed < 250) {
+                return;
+            }
+
+            if (!force && !firstVisibleFlush && streamBuffer.size() < 96 && !hasSentenceEnd && elapsed < 180) {
+                return;
+            }
+
+            std::string text = std::move(streamBuffer);
+            streamBuffer.clear();
+            lastFlush = now;
+            firstVisibleFlush = false;
+            juce::MessageManager::callAsync([this, text = juce::String(text)] {
+                activeFileContent_ += text;
+                repaint();
+            });
+        };
+
         try {
-            generation = llm.streamGenerate(augmentedPrompt, 2048,
-                [this, placeholderStart](const std::string& chunk) {
-                    juce::MessageManager::callAsync([this, chunk = juce::String(chunk)] {
-                        activeFileContent_ += chunk;
-                        repaint();
-                    });
+            generation = llm.streamGenerate(augmentedPrompt, 768,
+                [&](const std::string& chunk) {
+                    streamBuffer += chunk;
+                    flushStream(false);
                 }
             );
+            flushStream(true);
         } catch (const std::exception& e) {
             generation.ok = false;
             generation.text = e.what();
@@ -1005,6 +1087,7 @@ void WorkspaceComponent::processQuestion(const std::string& prompt,
             generation.ok = false;
             generation.text = "erro desconhecido durante a geracao";
         }
+        markStage("LLMComplete");
 
         if (!generation.ok) {
             auto errorText = generation.text.empty()
@@ -1024,6 +1107,19 @@ void WorkspaceComponent::processQuestion(const std::string& prompt,
             });
             return;
         }
+
+        double tokensPerSecond = generation.duration_ms > 0
+            ? (static_cast<double>(generation.tokens_out) * 1000.0 / static_cast<double>(generation.duration_ms))
+            : 0.0;
+        std::ostringstream perf;
+        perf << "\n\n[telemetria] prompt_tokens=" << generation.prompt_tokens
+             << " first_token_ms=" << generation.first_token_ms
+             << " total_ms=" << generation.duration_ms
+             << " tokens_out=" << generation.tokens_out
+             << " tok_s=" << tokensPerSecond << "\n";
+        perf << profiler.str();
+        perf << "[profiler] RequestTotal=" << elapsedMs(requestStart, Clock::now()) << "ms\n";
+        std::cerr << perf.str();
 
         auto endTime = juce::Time::getCurrentTime();
         auto tsEnd = juce::String::formatted("%02d:%02d:%02d",

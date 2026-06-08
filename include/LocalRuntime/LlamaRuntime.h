@@ -15,6 +15,8 @@ namespace AgentOS {
 struct GenerationResult {
     std::string text;          // generated text
     int32_t     tokens_out;   // number of generated tokens
+    int32_t     prompt_tokens = 0;
+    int64_t     first_token_ms = 0;
     int64_t     duration_ms;  // wall-clock generation time
     bool        ok;           // false if decode failed
 };
