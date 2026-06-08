@@ -5,6 +5,8 @@
 #include <atomic>
 #include <unordered_map>
 #include <cstdint>
+#include <deque>
+#include <mutex>
 #include "ProjectContext/LlamaEmbeddings.h"
 #include "ProjectContext/UniversalIndexer.h"
 #include "ProjectContext/FileSummaryStore.h"
@@ -33,6 +35,12 @@ struct FileNode {
     bool isPopulated = false;
     std::vector<std::shared_ptr<FileNode>> children;
     juce::Rectangle<int> lastBounds;
+};
+
+struct PendingQuestion {
+    std::string prompt;
+    int placeholderStart = 0;
+    std::string modelPath;
 };
 
 // Dark LookAndFeel for the context menu
@@ -238,14 +246,17 @@ private:
                                    const std::vector<ContextChunk>& chunks) const;
     void flushPendingQuestionIfReady();
     void emitAnalysisMessage(const std::string& text);
+    void enqueuePendingQuestion(const std::string& prompt,
+                                int placeholderStart,
+                                const std::string& modelPath);
+    bool hasPendingQuestions() const;
 
     // Adiciona mensagem de progresso ao chat (chamado de qualquer thread via callAsync)
     void chatAppend(const std::string& text);
 
-    // Pergunta pendente (aguardando indexação terminar)
-    std::string          pendingQuestion_;
-    int                  pendingPlaceholderStart_ = 0;
-    std::string          pendingModelPath_;
+    // Perguntas pendentes (aguardando indexacao terminar)
+    mutable std::mutex       pendingMutex_;
+    std::deque<PendingQuestion> pendingQuestions_;
 
     // ── Background summary queue ─────────────────────────────────────
     // Instead of blocking the first prompt with a synchronous LLM pass,

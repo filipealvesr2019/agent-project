@@ -21,6 +21,7 @@
 #include <set>
 #include <algorithm>
 #include <cctype>
+#include <chrono>
 
 namespace fs = std::filesystem;
 
@@ -148,7 +149,7 @@ WorkspaceComponent::WorkspaceComponent() {
                     ragDebugInfo_ = "[RAG] Indexando: " + rootPath;
 
                     std::thread([this, rootPath]() {
-                        if (!pendingQuestion_.empty()) {
+                        if (hasPendingQuestions()) {
                             emitAnalysisMessage(
                                 "Recebi sua pergunta. Vou entender primeiro como esse projeto está organizado.\n\n");
                         }
@@ -185,7 +186,10 @@ WorkspaceComponent::WorkspaceComponent() {
                             chatAppend("Ainda não consigo estudar este projeto — falta o modelo de embeddings "
                                        "na pasta models/.\n\n");
                             setWorkspaceState(WorkspaceState::Empty);
-                            pendingQuestion_.clear();
+                            {
+                                std::lock_guard<std::mutex> lock(pendingMutex_);
+                                pendingQuestions_.clear();
+                            }
                             return;
                         }
 
@@ -322,9 +326,7 @@ WorkspaceComponent::WorkspaceComponent() {
 
         // Com workspace carregado, aguarda contexto pronto antes de responder
         if (hasWorkspaceLoaded() && !canAnswerNow()) {
-            pendingQuestion_ = prompt.toStdString();
-            pendingPlaceholderStart_ = placeholderStart;
-            pendingModelPath_ = modelPath;
+            enqueuePendingQuestion(prompt.toStdString(), placeholderStart, modelPath);
             isProcessing_ = false;
             btnSubmit_.setEnabled(true);
 
@@ -616,21 +618,36 @@ void WorkspaceComponent::emitAnalysisMessage(const std::string& text) {
     chatAppend(text);
 }
 
+void WorkspaceComponent::enqueuePendingQuestion(const std::string& prompt,
+                                                int placeholderStart,
+                                                const std::string& modelPath) {
+    std::lock_guard<std::mutex> lock(pendingMutex_);
+    pendingQuestions_.push_back({prompt, placeholderStart, modelPath});
+}
+
+bool WorkspaceComponent::hasPendingQuestions() const {
+    std::lock_guard<std::mutex> lock(pendingMutex_);
+    return !pendingQuestions_.empty();
+}
+
 void WorkspaceComponent::flushPendingQuestionIfReady() {
-    if (pendingQuestion_.empty() || !canAnswerNow()) return;
+    if (!canAnswerNow()) return;
     if (generatingAnswer_.load()) return;
 
     emitAnalysisMessage("Já identifiquei os principais componentes. Vou revisar mais alguns pontos.\n\n");
 
-    std::string q = pendingQuestion_;
-    int ps = pendingPlaceholderStart_;
-    std::string mp = pendingModelPath_;
-    pendingQuestion_.clear();
+    PendingQuestion pending;
+    {
+        std::lock_guard<std::mutex> lock(pendingMutex_);
+        if (pendingQuestions_.empty()) return;
+        pending = pendingQuestions_.front();
+        pendingQuestions_.pop_front();
+    }
 
-    juce::MessageManager::callAsync([this, q, ps, mp] {
+    juce::MessageManager::callAsync([this, pending] {
         isProcessing_ = true;
         btnSubmit_.setEnabled(false);
-        processQuestion(q, ps, mp);
+        processQuestion(pending.prompt, pending.placeholderStart, pending.modelPath);
     });
 }
 
@@ -663,9 +680,7 @@ void WorkspaceComponent::processQuestion(const std::string& prompt,
 
     // Workspace carregado: só responde quando o contexto estiver pronto
     if (hasWorkspaceLoaded() && !canAnswerNow()) {
-        pendingQuestion_ = prompt;
-        pendingPlaceholderStart_ = placeholderStart;
-        pendingModelPath_ = modelPath;
+        enqueuePendingQuestion(prompt, placeholderStart, modelPath);
         generatingAnswer_.store(false);
         juce::MessageManager::callAsync([this] {
             isProcessing_ = false;
@@ -739,6 +754,7 @@ void WorkspaceComponent::processQuestion(const std::string& prompt,
             << " chunks=" << nChunks << " ready=" << (ready ? "yes" : "no") << "\n";
 
         std::vector<ContextChunk> finalChunks;
+        std::vector<ContextChunk> symbolChunks;
         std::vector<FileSummary>  fileSummaries;
         std::vector<ModuleSummary> moduleSummaries;
         ProjectSummary projectSummary;
@@ -803,17 +819,30 @@ void WorkspaceComponent::processQuestion(const std::string& prompt,
                         if (!lines.empty()) {
                             size_t start = (sym.line > 15) ? sym.line - 15 : 1;
                             size_t end   = std::min(start + 30, lines.size());
-                            std::string snippet;
-                            for (size_t l = start; l <= end; ++l)
-                                snippet += std::to_string(l) + ": " + lines[l-1] + "\n";
                             ContextChunk precisionChunk;
                             precisionChunk.source = sym.file;
-                            precisionChunk.content = snippet;
+                            std::ostringstream symbolText;
+                            symbolText << "[symbol] " << sym.name << "\n";
+                            if (!sym.parentClass.empty())
+                                symbolText << "Parent: " << sym.parentClass << "\n";
+                            symbolText << "Lines: " << sym.line;
+                            if (sym.endLine > sym.line) symbolText << "-" << sym.endLine;
+                            symbolText << "\n";
+                            if (!sym.signature.empty())
+                                symbolText << "Signature: " << sym.signature << "\n";
+                            symbolText << "Snippet:\n";
+                            if (!sym.snippet.empty()) {
+                                symbolText << sym.snippet;
+                            } else {
+                                for (size_t l = start; l <= end; ++l)
+                                    symbolText << std::to_string(l) << ": " << lines[l-1] << "\n";
+                            }
+                            precisionChunk.content = symbolText.str();
                             precisionChunk.relevanceScore = 1.0;
-                            finalChunks.insert(finalChunks.begin(), precisionChunk);
+                            symbolChunks.push_back(precisionChunk);
                             dbg << "  Precisao: " << sym.name
                                 << " (" << sym.file << ":" << sym.line << ")\n";
-                            if (finalChunks.size() >= 15) break;
+                            if (symbolChunks.size() >= 8) break;
                         }
                     }
                 }
@@ -841,8 +870,11 @@ void WorkspaceComponent::processQuestion(const std::string& prompt,
         }
 
         bool workspaceRelated = isWorkspaceRelatedQuestion(prompt);
+        std::vector<ContextChunk> contextChunksForCheck = finalChunks;
+        contextChunksForCheck.insert(contextChunksForCheck.end(),
+                                     symbolChunks.begin(), symbolChunks.end());
         bool hasContext = hasUsableWorkspaceContext(nChunks, projectSummary,
-                                                    moduleSummaries, finalChunks);
+                                                    moduleSummaries, contextChunksForCheck);
 
         if (hasWorkspaceLoaded() && workspaceRelated && !hasContext) {
             std::cerr << dbg.str();
@@ -863,8 +895,90 @@ void WorkspaceComponent::processQuestion(const std::string& prompt,
         }
 
         bool workspaceOnly = hasWorkspaceLoaded() && workspaceRelated;
-        augmentedPrompt = PromptComposer::build(prompt, finalChunks,
-            projectSummary, moduleSummaries, fileSummaries, "", workspaceOnly);
+        auto narrate = [this](const std::string& text) {
+            emitAnalysisMessage(text + "\n\n");
+            std::this_thread::sleep_for(std::chrono::milliseconds(35));
+        };
+
+        std::vector<ContextLayer> layers;
+        if (!projectSummary.projectName.empty() || !projectSummary.architecture.empty()) {
+            narrate("Estou revisando a arquitetura do projeto...");
+            ContextChunk layerChunk;
+            layerChunk.source = "ProjectSummary";
+            std::ostringstream text;
+            if (!projectSummary.projectName.empty())
+                text << "Nome: " << projectSummary.projectName << "\n";
+            if (!projectSummary.architecture.empty())
+                text << "Arquitetura: " << projectSummary.architecture << "\n";
+            if (!projectSummary.modules.empty()) {
+                text << "Modulos: ";
+                for (size_t i = 0; i < projectSummary.modules.size(); ++i) {
+                    if (i > 0) text << ", ";
+                    text << projectSummary.modules[i];
+                }
+                text << "\n";
+            }
+            layerChunk.content = text.str();
+            layers.push_back({ContextLayerLevel::Project, "", {layerChunk}});
+        }
+
+        if (!moduleSummaries.empty()) {
+            ContextLayer moduleLayer;
+            moduleLayer.level = ContextLayerLevel::Module;
+            size_t narratedModules = 0;
+            for (const auto& module : moduleSummaries) {
+                if (narratedModules < 4) {
+                    narrate("Agora estou analisando o modulo " + module.moduleName + "...");
+                    ++narratedModules;
+                }
+                ContextChunk layerChunk;
+                layerChunk.source = module.modulePath;
+                layerChunk.content = "[" + module.moduleName + "] " + module.summary + "\n";
+                moduleLayer.chunks.push_back(std::move(layerChunk));
+            }
+            if (moduleSummaries.size() > narratedModules) {
+                narrate("Tambem conferi mais " +
+                        std::to_string(moduleSummaries.size() - narratedModules) +
+                        " modulos relacionados.");
+            }
+            layers.push_back(std::move(moduleLayer));
+        }
+
+        if (!fileSummaries.empty()) {
+            ContextLayer fileLayer;
+            fileLayer.level = ContextLayerLevel::File;
+            size_t narratedFiles = 0;
+            for (const auto& summary : fileSummaries) {
+                std::string filename = fs::path(summary.path).filename().string();
+                if (narratedFiles < 6) {
+                    narrate("O arquivo " + filename + " esta sendo examinado...");
+                    ++narratedFiles;
+                }
+                ContextChunk layerChunk;
+                layerChunk.source = summary.path;
+                layerChunk.content = summary.summary + "\n";
+                fileLayer.chunks.push_back(std::move(layerChunk));
+            }
+            if (fileSummaries.size() > narratedFiles) {
+                narrate("Tambem revisei mais " +
+                        std::to_string(fileSummaries.size() - narratedFiles) +
+                        " arquivos usados no contexto.");
+            }
+            layers.push_back(std::move(fileLayer));
+        }
+
+        if (!symbolChunks.empty()) {
+            narrate("Identifiquei simbolos relevantes e estou verificando seus usos...");
+            layers.push_back({ContextLayerLevel::Symbol, "", symbolChunks});
+        }
+
+        if (!finalChunks.empty()) {
+            narrate("Extraindo trechos relevantes do codigo...");
+            layers.push_back({ContextLayerLevel::Chunk, "", finalChunks});
+        }
+
+        narrate("Todas as camadas estao prontas. Vou gerar uma unica resposta final.");
+        augmentedPrompt = PromptComposer::build(prompt, layers, "", workspaceOnly);
 
         {
             dbg << "Contexto: " << finalChunks.size() << " chunks, "
@@ -902,6 +1016,7 @@ void WorkspaceComponent::processQuestion(const std::string& prompt,
             isProcessing_ = false;
             btnSubmit_.setEnabled(true);
             repaint();
+            flushPendingQuestionIfReady();
         });
     }).detach();
 }
