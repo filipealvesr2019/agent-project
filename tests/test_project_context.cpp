@@ -8,6 +8,7 @@
 #include "ProjectContext/FileScanner.h"
 #include "ProjectContext/TextChunker.h"
 #include "ProjectContext/EmbeddingEngine.h"
+#include "ProjectContext/Reranker.h"
 #include <iostream>
 #include <cstdlib>
 #include <filesystem>
@@ -218,6 +219,34 @@ static void testUniversalContextBuilder() {
     std::cerr << "  [PASSOU]\n";
 }
 
+static void testRerankerUsesSemanticScoreAsPrimarySignal() {
+    std::cerr << "[Test] Reranker semantic primary signal\n";
+
+    ContextChunk low;
+    low.source = "alpha.hpp";
+    low.content = "token token token token token token token token";
+    low.chunkIndex = 0;
+    low.relevanceScore = 0.20f;
+
+    ContextChunk high;
+    high.source = "beta.unknown";
+    high.content = "linha um\nlinha dois\nlinha tres\nlinha quatro\n";
+    high.chunkIndex = 1;
+    high.relevanceScore = 0.80f;
+
+    Reranker reranker;
+    auto ranked = reranker.rerank("pergunta sem dependencia de extensao",
+                                  {low, high}, 2);
+
+    CHECK(ranked.size() == 2, "reranker deve retornar dois chunks");
+    CHECK(ranked[0].source == "beta.unknown",
+          "score semantico maior deve vencer extensao ou texto superficial");
+
+    std::cerr << "  Top chunk: " << ranked[0].source
+              << " score=" << ranked[0].relevanceScore << "\n";
+    std::cerr << "  [PASSOU]\n";
+}
+
 static void testFileScanner() {
     std::cerr << "[Test] FileScanner\n";
 
@@ -237,10 +266,10 @@ static void testTextChunker() {
     std::cerr << "[Test] TextChunker\n";
 
     std::string text = "Linha A\nLinha B\nLinha C\nLinha D\nLinha E\n";
-    auto chunks = TextChunker::chunkText("test.txt", text, 10);
+    auto chunks = TextChunker::chunkText("test.txt", text, 3);
 
     std::cerr << "  Chunks: " << chunks.size() << "\n";
-    CHECK(chunks.size() > 1, "texto de 35 chars com chunkSize=10 deve gerar multiplos chunks");
+    CHECK(chunks.size() > 1, "texto com targetTokens=3 deve gerar multiplos chunks");
 
     size_t total = 0;
     for (const auto& c : chunks) {
@@ -269,6 +298,7 @@ int main() {
     testPromptComposer();
     testUniversalIndexer();
     testUniversalContextBuilder();
+    testRerankerUsesSemanticScoreAsPrimarySignal();
 
     std::cerr << "\n--- Todos os testes passaram! ---\n";
     return 0;

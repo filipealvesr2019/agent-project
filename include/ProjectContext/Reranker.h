@@ -30,12 +30,11 @@ public:
 private:
     double score(const std::string& query, const ContextChunk& chunk) const;
 
-    // Count how many query words appear in the chunk content (TF-style)
-    double keywordOverlap(const std::string& query,
-                          const std::string& content) const;
-
     // Normalised position bonus: chunk 0 scores 1.0, later chunks decay
     double positionBonus(int chunkIndex) const;
+
+    // Language-agnostic signal: dense chunks tend to carry more usable context.
+    double informationDensity(const std::string& content) const;
 };
 
 } // namespace AgentOS

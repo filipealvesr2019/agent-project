@@ -4,6 +4,7 @@ build_release/
 build_cli/
 build_vs/
 build_check/
+build_project_context/
 builds/
 out/
 bin/

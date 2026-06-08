@@ -600,18 +600,9 @@ option(BUILD_PROJECT_CONTEXT_TEST "Build AgentOS ProjectContext Test" OFF)
 if(BUILD_PROJECT_CONTEXT_TEST)
     add_executable(AgentOS_ProjectContextTest
         tests/test_project_context.cpp
-        src/ProjectContext/ProjectScanner.cpp
-        src/ProjectContext/SymbolIndexer.cpp
-        src/ProjectContext/ContextBuilder.cpp
-        src/ProjectContext/EmbeddingEngine.cpp
-        src/ProjectContext/SemanticStore.cpp
-        src/ProjectContext/FileScanner.cpp
-        src/ProjectContext/TextChunker.cpp
-        src/ProjectContext/ContextRetriever.cpp
-        src/ProjectContext/UniversalIndexer.cpp
-        src/ProjectContext/PromptComposer.cpp
     )
     target_include_directories(AgentOS_ProjectContextTest PRIVATE include)
+    target_link_libraries(AgentOS_ProjectContextTest PRIVATE ProjectContext)
     target_compile_features(AgentOS_ProjectContextTest PRIVATE cxx_std_20)
 endif()
 

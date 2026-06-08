@@ -7,6 +7,15 @@
 
 namespace AgentOS {
 
+static bool shouldIgnoreDirectory(const std::string& dirName) {
+    static const std::set<std::string> ignoreDirs = {
+        ".git", "build", "builds", "out", "bin", "lib",
+        ".vs", ".opencode", "libs", "node_modules", "__pycache__", ".cache"
+    };
+
+    return ignoreDirs.count(dirName) > 0 || dirName.rfind("build_", 0) == 0;
+}
+
 void ProjectScanner::scan(const std::string& rootPath) {
     rootPath_ = rootPath;
     summary_ = {};
@@ -18,11 +27,6 @@ void ProjectScanner::scan(const std::string& rootPath) {
         std::cerr << "[ProjectScanner] Invalid root: " << rootPath << "\n";
         return;
     }
-
-    std::set<std::string> ignoreDirs = {
-        ".git", "build", "build_vs", "build_cli", "build_release", "build_check",
-        ".vs", ".opencode", "libs", "node_modules", "__pycache__", ".cache"
-    };
 
     std::set<std::string> ignoreExts = {
         ".exe", ".dll", ".lib", ".pdb", ".obj", ".o", ".a", ".so",
@@ -38,7 +42,7 @@ void ProjectScanner::scan(const std::string& rootPath) {
             const auto& entry = *it;
             if (entry.is_directory()) {
                 std::string dirName = entry.path().filename().string();
-                if (ignoreDirs.count(dirName)) {
+                if (shouldIgnoreDirectory(dirName)) {
                     it.disable_recursion_pending();
                 }
                 ++it;

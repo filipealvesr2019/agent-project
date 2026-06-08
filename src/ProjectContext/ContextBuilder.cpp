@@ -6,6 +6,7 @@
 #include <fstream>
 #include <algorithm>
 #include <sstream>
+#include <unordered_set>
 
 namespace AgentOS {
 
@@ -72,6 +73,23 @@ std::vector<ContextChunk> ContextBuilder::chunkFile(const std::string& path,
     return chunks;
 }
 
+size_t ContextBuilder::topKForBudget(const std::vector<ContextChunk>& candidates,
+                                      size_t chunkBudget) const {
+    if (candidates.empty()) return 0;
+    if (candidates.size() <= 4) return candidates.size();
+    if (chunkBudget == 0) return std::min<size_t>(12, candidates.size());
+
+    size_t sampleCount = std::min<size_t>(candidates.size(), 8);
+    size_t total = 0;
+    for (size_t i = 0; i < sampleCount; ++i) {
+        total += estimateTokens(candidates[i].content);
+    }
+
+    size_t avg = std::max<size_t>(1, total / sampleCount);
+    size_t byBudget = std::max<size_t>(1, chunkBudget / avg);
+    return std::clamp(byBudget, size_t(4), std::min<size_t>(12, candidates.size()));
+}
+
 BuiltContext ContextBuilder::buildContext(const std::string& query, size_t maxTokens) {
     BuiltContext ctx;
     ctx.projectMap = scanner_.generateProjectMap();
@@ -127,22 +145,80 @@ BuiltContext ContextBuilder::buildContext(const std::string& question,
                                           EmbeddingEngine& engine) {
     BuiltContext ctx;
 
+    if (folder.empty() && files.empty()) {
+        ctx.finalPrompt = question;
+        ctx.fullPrompt = ctx.finalPrompt;
+        ctx.totalTokens = estimateTokens(question);
+        return ctx;
+    }
+
     if (!folder.empty()) {
         indexer_.indexWorkspace(folder, engine);
     }
 
     indexer_.indexFiles(files, engine);
 
-    auto chunks = indexer_.retriever().retrieve(question, engine, 20);
+    FileSummaryStore* summaryStore = indexer_.summaryStore();
+    ProjectSummary projectSummary;
+    std::vector<ModuleSummary> moduleSummaries;
+    if (summaryStore && summaryStore->isOpen()) {
+        projectSummary = summaryStore->getProject();
+        moduleSummaries = summaryStore->getAllModules();
+    }
+
+    intentRouter_.setEmbeddingEngine(&engine);
+    if (!projectSummary.projectName.empty() || !projectSummary.architecture.empty() ||
+        !moduleSummaries.empty()) {
+        intentRouter_.setWorkspaceContext(projectSummary, moduleSummaries);
+    }
+
+    ContextLevel intent = intentRouter_.classify(question);
+    size_t budget = ContextBudgetManager::defaultBudget(intent);
+    BudgetAllocation allocation = budgetManager_.allocate(intent, budget);
+
+    auto candidates = indexer_.retriever().retrieve(question, engine, 50);
+    size_t finalTopK = topKForBudget(candidates, allocation.chunkTokens);
+    auto chunks = reranker_.rerank(question, candidates, finalTopK);
+
+    std::vector<std::string> selectedPaths;
+    std::unordered_set<std::string> seenPaths;
+    for (const auto& c : chunks) {
+        if (seenPaths.insert(c.source).second) {
+            selectedPaths.push_back(c.source);
+        }
+    }
+
+    std::vector<FileSummary> fileSummaries;
+    if (summaryStore && summaryStore->isOpen()) {
+        fileSummaries = summaryStore->getAll(selectedPaths);
+    }
 
     ctx.totalTokens = 0;
     for (const auto& c : chunks) {
         ctx.chunks.push_back(c);
-        ctx.sourceFiles.push_back(c.source);
+        if (std::find(ctx.sourceFiles.begin(), ctx.sourceFiles.end(), c.source) ==
+            ctx.sourceFiles.end()) {
+            ctx.sourceFiles.push_back(c.source);
+        }
         ctx.totalTokens += estimateTokens(c.content);
     }
+    ctx.totalTokens += allocation.projectTokens;
+    ctx.totalTokens += allocation.moduleTokens;
+    ctx.totalTokens += allocation.fileTokens;
 
-    ctx.finalPrompt = PromptComposer::build(question, chunks);
+    std::ostringstream prefix;
+    prefix << "Nivel de contexto estimado: " << IntentRouter::levelName(intent) << "\n";
+    prefix << "Orcamento: projeto=" << allocation.projectTokens
+           << ", modulos=" << allocation.moduleTokens
+           << ", arquivos=" << allocation.fileTokens
+           << ", trechos=" << allocation.chunkTokens << "\n";
+
+    ctx.finalPrompt = PromptComposer::build(question, chunks,
+                                            projectSummary,
+                                            moduleSummaries,
+                                            fileSummaries,
+                                            prefix.str(),
+                                            true);
     ctx.fullPrompt = ctx.finalPrompt;
 
     return ctx;

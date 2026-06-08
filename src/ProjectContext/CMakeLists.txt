@@ -1,5 +1,6 @@
 add_library(ProjectContext STATIC
     ContextBuilder.cpp
+    ContextBudgetManager.cpp
     ContextRetriever.cpp
     EmbeddingEngine.cpp
     FileScanner.cpp

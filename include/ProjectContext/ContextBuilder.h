@@ -8,6 +8,9 @@
 #include "ProjectContext/ProjectScanner.h"
 #include "ProjectContext/SymbolIndexer.h"
 #include "ProjectContext/EmbeddingEngine.h"
+#include "ProjectContext/IntentRouter.h"
+#include "ProjectContext/Reranker.h"
+#include "ProjectContext/ContextBudgetManager.h"
 
 namespace AgentOS {
 
@@ -35,10 +38,15 @@ private:
     ProjectScanner scanner_;
     SymbolIndexer  symbolIndexer_;
     UniversalIndexer indexer_;
+    IntentRouter intentRouter_;
+    Reranker reranker_;
+    ContextBudgetManager budgetManager_;
 
     size_t estimateTokens(const std::string& text) const;
     std::string readFileChunk(const std::string& path, size_t startLine, size_t endLine) const;
     std::vector<ContextChunk> chunkFile(const std::string& path, size_t chunkSize = 300) const;
+    size_t topKForBudget(const std::vector<ContextChunk>& candidates,
+                         size_t chunkBudget) const;
 };
 
 } // namespace AgentOS
