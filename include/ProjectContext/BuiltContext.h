@@ -16,6 +16,7 @@ struct ContextDiagnostics {
     bool projectSummaryFound = false;
     size_t moduleSummaryCount = 0;
     size_t fileSummaryCount = 0;
+    size_t symbolMatchCount = 0;
     size_t promptTokens = 0;
     std::vector<std::string> filesUsed;
 };

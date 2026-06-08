@@ -7,8 +7,26 @@
 #include <algorithm>
 #include <sstream>
 #include <unordered_set>
+#include <filesystem>
+#include <cctype>
+
+namespace fs = std::filesystem;
 
 namespace AgentOS {
+
+static const char* symbolTypeName(SymbolType type) {
+    switch (type) {
+        case SymbolType::Class: return "Class";
+        case SymbolType::Struct: return "Struct";
+        case SymbolType::Function: return "Function";
+        case SymbolType::Method: return "Method";
+        case SymbolType::Enum: return "Enum";
+        case SymbolType::Namespace: return "Namespace";
+        case SymbolType::Endpoint: return "Endpoint";
+        case SymbolType::Unknown: return "Unknown";
+    }
+    return "Unknown";
+}
 
 ContextBuilder::ContextBuilder() {}
 
@@ -111,6 +129,8 @@ std::string ContextBuilder::buildDiagnosticsText(
     out << "  " << diagnostics.moduleSummaryCount << "\n\n";
     out << "FileSummaries:\n";
     out << "  " << diagnostics.fileSummaryCount << "\n\n";
+    out << "SymbolMatches:\n";
+    out << "  " << diagnostics.symbolMatchCount << "\n\n";
     out << "Prompt tokens:\n";
     out << "  " << diagnostics.promptTokens << "\n\n";
     out << "Files used:\n";
@@ -152,6 +172,137 @@ void ContextBuilder::writeDiagnosticsArtifacts(const BuiltContext& ctx) const {
         std::ofstream out("context_dump.txt", std::ios::trunc);
         if (out.is_open()) out << ctx.contextDump;
     }
+}
+
+std::vector<FileEntry> ContextBuilder::fileEntriesFor(
+    const std::vector<std::string>& files) const {
+    std::vector<FileEntry> entries;
+    for (const auto& path : files) {
+        std::error_code ec;
+        if (!fs::exists(path, ec) || !fs::is_regular_file(path, ec)) continue;
+
+        FileEntry entry;
+        entry.path = path;
+        entry.extension = fs::path(path).extension().string();
+        std::transform(entry.extension.begin(), entry.extension.end(),
+                       entry.extension.begin(), ::tolower);
+        entry.sizeBytes = static_cast<size_t>(fs::file_size(path, ec));
+        entry.lineCount = 0;
+
+        std::ifstream in(path);
+        std::string line;
+        while (std::getline(in, line)) ++entry.lineCount;
+        entries.push_back(std::move(entry));
+    }
+    return entries;
+}
+
+std::vector<std::string> ContextBuilder::extractSymbolQueries(
+    const std::string& query) const {
+    std::vector<std::string> result;
+    std::unordered_set<std::string> seen;
+    std::string token;
+
+    auto flush = [&]() {
+        if (token.empty()) return;
+        std::string value = token;
+        while (!value.empty() && (value.back() == '(' || value.back() == ')' ||
+                                  value.back() == ':' || value.back() == ';' ||
+                                  value.back() == ',' || value.back() == '.')) {
+            value.pop_back();
+        }
+        while (!value.empty() && (value.front() == '.' || value.front() == ':' ||
+                                  value.front() == '(')) {
+            value.erase(value.begin());
+        }
+
+        bool structural = value.find("::") != std::string::npos ||
+                          value.find('_') != std::string::npos ||
+                          value.find('/') != std::string::npos;
+        for (size_t i = 1; i < value.size(); ++i) {
+            if (std::islower(static_cast<unsigned char>(value[i - 1])) &&
+                std::isupper(static_cast<unsigned char>(value[i]))) {
+                structural = true;
+                break;
+            }
+        }
+        if (value.size() >= 3 && seen.insert(value).second) {
+            result.push_back(value);
+        }
+        token.clear();
+    };
+
+    for (char c : query) {
+        if (std::isalnum(static_cast<unsigned char>(c)) ||
+            c == '_' || c == ':' || c == '/' || c == '.') {
+            token += c;
+        } else {
+            flush();
+        }
+    }
+    flush();
+
+    return result;
+}
+
+std::vector<ContextChunk> ContextBuilder::buildSymbolChunks(
+    const std::string& query,
+    size_t maxSymbols) const {
+    std::vector<ContextChunk> result;
+    std::unordered_set<std::string> seen;
+
+    auto queries = extractSymbolQueries(query);
+    for (const auto& candidate : queries) {
+        std::vector<std::string> lookupNames = {candidate};
+        size_t scope = candidate.rfind("::");
+        if (scope != std::string::npos && scope + 2 < candidate.size()) {
+            lookupNames.push_back(candidate.substr(scope + 2));
+        }
+
+        std::vector<SymbolEntry> matches;
+        for (const auto& lookup : lookupNames) {
+            auto exact = symbolIndexer_.findExactSymbols(lookup);
+            matches.insert(matches.end(), exact.begin(), exact.end());
+        }
+        if (matches.empty()) {
+            for (const auto& lookup : lookupNames) {
+                auto partial = symbolIndexer_.findSymbols(lookup);
+                matches.insert(matches.end(), partial.begin(), partial.end());
+            }
+        }
+
+        for (const auto& symbol : matches) {
+            std::string id = symbol.file + ":" + std::to_string(symbol.line) + ":" + symbol.name;
+            if (!seen.insert(id).second) continue;
+
+            ContextChunk chunk;
+            chunk.source = symbol.file;
+            chunk.chunkIndex = static_cast<int>(symbol.line);
+            chunk.relevanceScore = 1.0;
+
+            std::ostringstream content;
+            content << "[symbol] " << symbol.name << "\n";
+            content << "Type: " << symbolTypeName(symbol.type) << "\n";
+            if (!symbol.parentClass.empty()) {
+                content << "Parent: " << symbol.parentClass << "\n";
+            }
+            content << "Lines: " << symbol.line;
+            if (symbol.endLine > symbol.line) {
+                content << "-" << symbol.endLine;
+            }
+            content << "\n";
+            if (!symbol.signature.empty()) {
+                content << "Signature: " << symbol.signature << "\n";
+            }
+            content << "Snippet:\n" << symbol.snippet;
+            chunk.content = content.str();
+            result.push_back(std::move(chunk));
+
+            if (result.size() >= maxSymbols) return result;
+        }
+    }
+
+    return result;
 }
 
 BuiltContext ContextBuilder::buildContext(const std::string& query, size_t maxTokens) {
@@ -218,10 +369,14 @@ BuiltContext ContextBuilder::buildContext(const std::string& question,
 
     if (!folder.empty()) {
         indexer_.indexWorkspace(folder, engine);
+        scanner_.scan(folder);
+        symbolIndexer_.buildIndex(scanner_.files());
     }
 
     if (!files.empty()) {
         indexer_.indexFiles(files, engine);
+        auto entries = fileEntriesFor(files);
+        symbolIndexer_.buildIndex(entries);
     }
 
     FileSummaryStore* summaryStore = indexer_.summaryStore();
@@ -245,6 +400,27 @@ BuiltContext ContextBuilder::buildContext(const std::string& question,
     auto candidates = indexer_.retriever().retrieve(question, engine, 50);
     size_t finalTopK = topKForBudget(candidates, allocation.chunkTokens);
     auto chunks = reranker_.rerank(question, candidates, finalTopK);
+    auto symbolChunks = buildSymbolChunks(question, 8);
+
+    if (!symbolChunks.empty()) {
+        std::vector<ContextChunk> merged;
+        std::unordered_set<std::string> seenChunkKeys;
+
+        for (const auto& c : symbolChunks) {
+            std::string key = c.source + ":" + std::to_string(c.chunkIndex);
+            if (seenChunkKeys.insert(key).second) {
+                merged.push_back(c);
+            }
+        }
+
+        for (const auto& c : chunks) {
+            std::string key = c.source + ":" + std::to_string(c.chunkIndex);
+            if (seenChunkKeys.insert(key).second) {
+                merged.push_back(c);
+            }
+        }
+        chunks = std::move(merged);
+    }
 
     std::vector<std::string> selectedPaths;
     std::unordered_set<std::string> seenPaths;
@@ -293,6 +469,7 @@ BuiltContext ContextBuilder::buildContext(const std::string& question,
     ctx.diagnostics.intent = IntentRouter::levelName(intent);
     ctx.diagnostics.candidateCount = candidates.size();
     ctx.diagnostics.rerankedCount = chunks.size();
+    ctx.diagnostics.symbolMatchCount = symbolChunks.size();
     ctx.diagnostics.projectSummaryFound =
         !projectSummary.projectName.empty() || !projectSummary.architecture.empty();
     ctx.diagnostics.moduleSummaryCount = moduleSummaries.size();

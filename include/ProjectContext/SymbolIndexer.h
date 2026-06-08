@@ -16,6 +16,7 @@ enum class SymbolType {
     Method,
     Enum,
     Namespace,
+    Endpoint,
     Unknown
 };
 
@@ -24,7 +25,10 @@ struct SymbolEntry {
     std::string  name;
     SymbolType   type;
     size_t       line;
+    size_t       endLine = 0;
     std::string  parentClass;
+    std::string  signature;
+    std::string  snippet;
 };
 
 class SymbolIndexer {
@@ -40,6 +44,7 @@ public:
 
     // Query methods — use store if available, fallback to in-memory
     std::vector<SymbolEntry> findSymbols(const std::string& query) const;
+    std::vector<SymbolEntry> findExactSymbols(const std::string& name) const;
     std::vector<SymbolEntry> findSymbolsInFile(const std::string& filePath) const;
     std::vector<std::string> findRelevantFiles(const std::string& query) const;
 

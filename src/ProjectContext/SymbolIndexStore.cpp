@@ -39,12 +39,22 @@ void SymbolIndexStore::createTables() {
         "  name     TEXT NOT NULL,"
         "  type     INTEGER NOT NULL,"
         "  line     INTEGER NOT NULL,"
+        "  end_line INTEGER NOT NULL DEFAULT 0,"
         "  parent   TEXT NOT NULL DEFAULT '',"
+        "  signature TEXT NOT NULL DEFAULT '',"
+        "  snippet   TEXT NOT NULL DEFAULT '',"
         "  mod_time INTEGER NOT NULL"
         ");"
         "CREATE INDEX IF NOT EXISTS idx_sym_file ON SymbolIndex(file);"
         "CREATE INDEX IF NOT EXISTS idx_sym_name ON SymbolIndex(name);";
     sqlite3_exec(DB, sql, nullptr, nullptr, nullptr);
+
+    sqlite3_exec(DB, "ALTER TABLE SymbolIndex ADD COLUMN end_line INTEGER NOT NULL DEFAULT 0;",
+                 nullptr, nullptr, nullptr);
+    sqlite3_exec(DB, "ALTER TABLE SymbolIndex ADD COLUMN signature TEXT NOT NULL DEFAULT '';",
+                 nullptr, nullptr, nullptr);
+    sqlite3_exec(DB, "ALTER TABLE SymbolIndex ADD COLUMN snippet TEXT NOT NULL DEFAULT '';",
+                 nullptr, nullptr, nullptr);
 }
 
 void SymbolIndexStore::putSymbols(const std::string& filePath, uint64_t modTime,
@@ -62,8 +72,9 @@ void SymbolIndexStore::putSymbols(const std::string& filePath, uint64_t modTime,
 
     // Insert new entries
     const char* insSql =
-        "INSERT INTO SymbolIndex (file, name, type, line, parent, mod_time)"
-        " VALUES (?, ?, ?, ?, ?, ?);";
+        "INSERT INTO SymbolIndex"
+        " (file, name, type, line, end_line, parent, signature, snippet, mod_time)"
+        " VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?);";
     if (sqlite3_prepare_v2(DB, insSql, -1, &stmt, nullptr) != SQLITE_OK) return;
 
     for (const auto& sym : symbols) {
@@ -72,8 +83,11 @@ void SymbolIndexStore::putSymbols(const std::string& filePath, uint64_t modTime,
         sqlite3_bind_text (stmt, 2, sym.name.c_str(),           -1, SQLITE_STATIC);
         sqlite3_bind_int  (stmt, 3, static_cast<int>(sym.type));
         sqlite3_bind_int64(stmt, 4, static_cast<sqlite3_int64>(sym.line));
-        sqlite3_bind_text (stmt, 5, sym.parentClass.c_str(),    -1, SQLITE_STATIC);
-        sqlite3_bind_int64(stmt, 6, static_cast<sqlite3_int64>(modTime));
+        sqlite3_bind_int64(stmt, 5, static_cast<sqlite3_int64>(sym.endLine));
+        sqlite3_bind_text (stmt, 6, sym.parentClass.c_str(),    -1, SQLITE_STATIC);
+        sqlite3_bind_text (stmt, 7, sym.signature.c_str(),      -1, SQLITE_STATIC);
+        sqlite3_bind_text (stmt, 8, sym.snippet.c_str(),        -1, SQLITE_STATIC);
+        sqlite3_bind_int64(stmt, 9, static_cast<sqlite3_int64>(modTime));
         sqlite3_step(stmt);
     }
     sqlite3_finalize(stmt);
@@ -98,12 +112,17 @@ static SymbolEntry rowToSymbol(sqlite3_stmt* stmt) {
     SymbolEntry sym;
     const char* f = reinterpret_cast<const char*>(sqlite3_column_text(stmt, 0));
     const char* n = reinterpret_cast<const char*>(sqlite3_column_text(stmt, 1));
-    const char* p = reinterpret_cast<const char*>(sqlite3_column_text(stmt, 4));
+    const char* p = reinterpret_cast<const char*>(sqlite3_column_text(stmt, 5));
+    const char* sig = reinterpret_cast<const char*>(sqlite3_column_text(stmt, 6));
+    const char* snip = reinterpret_cast<const char*>(sqlite3_column_text(stmt, 7));
     sym.file        = f ? f : "";
     sym.name        = n ? n : "";
     sym.type        = static_cast<SymbolType>(sqlite3_column_int(stmt, 2));
     sym.line        = static_cast<size_t>(sqlite3_column_int64(stmt, 3));
+    sym.endLine     = static_cast<size_t>(sqlite3_column_int64(stmt, 4));
     sym.parentClass = p ? p : "";
+    sym.signature   = sig ? sig : "";
+    sym.snippet     = snip ? snip : "";
     return sym;
 }
 
@@ -112,7 +131,7 @@ std::vector<SymbolEntry> SymbolIndexStore::findSymbols(const std::string& query)
     if (!db_) return results;
 
     const char* sql =
-        "SELECT file, name, type, line, parent FROM SymbolIndex"
+        "SELECT file, name, type, line, end_line, parent, signature, snippet FROM SymbolIndex"
         " WHERE name LIKE ? COLLATE NOCASE"
         " ORDER BY file, line;";
     sqlite3_stmt* stmt = nullptr;
@@ -128,12 +147,31 @@ std::vector<SymbolEntry> SymbolIndexStore::findSymbols(const std::string& query)
     return results;
 }
 
+std::vector<SymbolEntry> SymbolIndexStore::findExactSymbols(const std::string& name) const {
+    std::vector<SymbolEntry> results;
+    if (!db_) return results;
+
+    const char* sql =
+        "SELECT file, name, type, line, end_line, parent, signature, snippet FROM SymbolIndex"
+        " WHERE name = ? COLLATE NOCASE"
+        " ORDER BY file, line;";
+    sqlite3_stmt* stmt = nullptr;
+    if (sqlite3_prepare_v2(DB, sql, -1, &stmt, nullptr) != SQLITE_OK) return results;
+    sqlite3_bind_text(stmt, 1, name.c_str(), -1, SQLITE_STATIC);
+
+    while (sqlite3_step(stmt) == SQLITE_ROW) {
+        results.push_back(rowToSymbol(stmt));
+    }
+    sqlite3_finalize(stmt);
+    return results;
+}
+
 std::vector<SymbolEntry> SymbolIndexStore::findSymbolsInFile(const std::string& filePath) const {
     std::vector<SymbolEntry> results;
     if (!db_) return results;
 
     const char* sql =
-        "SELECT file, name, type, line, parent FROM SymbolIndex"
+        "SELECT file, name, type, line, end_line, parent, signature, snippet FROM SymbolIndex"
         " WHERE file = ?"
         " ORDER BY line;";
     sqlite3_stmt* stmt = nullptr;

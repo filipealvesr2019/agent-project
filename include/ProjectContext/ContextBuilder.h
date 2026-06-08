@@ -50,6 +50,10 @@ private:
     std::string buildDiagnosticsText(const ContextDiagnostics& diagnostics) const;
     std::string buildContextDump(const std::vector<ContextChunk>& chunks) const;
     void writeDiagnosticsArtifacts(const BuiltContext& ctx) const;
+    std::vector<FileEntry> fileEntriesFor(const std::vector<std::string>& files) const;
+    std::vector<std::string> extractSymbolQueries(const std::string& query) const;
+    std::vector<ContextChunk> buildSymbolChunks(const std::string& query,
+                                                size_t maxSymbols) const;
 };
 
 } // namespace AgentOS

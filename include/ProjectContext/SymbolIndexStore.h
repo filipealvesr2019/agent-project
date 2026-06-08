@@ -27,6 +27,7 @@ public:
 
     // Queries
     std::vector<SymbolEntry> findSymbols(const std::string& query) const;
+    std::vector<SymbolEntry> findExactSymbols(const std::string& name) const;
     std::vector<SymbolEntry> findSymbolsInFile(const std::string& filePath) const;
     std::vector<std::string> findRelevantFiles(const std::string& query) const;
 

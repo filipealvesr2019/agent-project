@@ -13,6 +13,7 @@
 #include <iostream>
 #include <cstdlib>
 #include <filesystem>
+#include <fstream>
 
 using namespace AgentOS;
 
@@ -297,6 +298,76 @@ static void testContextBuilderUsesSummariesAndDumpsPrompt() {
     std::cerr << "  [PASSOU]\n";
 }
 
+static void testSymbolIndexRealMetadata() {
+    std::cerr << "[Test] SymbolIndex real metadata\n";
+
+    std::string path = "_test_symbol_fixture.cpp";
+    {
+        std::ofstream out(path);
+        out << "class JWTAuth {\n"
+            << "public:\n"
+            << "    bool validateToken(const std::string& token) {\n"
+            << "        return token.size() > 0;\n"
+            << "    }\n"
+            << "};\n";
+    }
+
+    FileEntry entry;
+    entry.path = path;
+    entry.extension = ".cpp";
+    entry.sizeBytes = static_cast<size_t>(std::filesystem::file_size(path));
+    entry.lineCount = 6;
+
+    SymbolIndexer indexer;
+    indexer.buildIndex({entry});
+
+    auto exact = indexer.findExactSymbols("validateToken");
+    CHECK(!exact.empty(), "deve encontrar validateToken por busca exata");
+    CHECK(exact[0].type == SymbolType::Method, "validateToken deve ser Method");
+    CHECK(exact[0].parentClass == "JWTAuth", "parentClass deve ser JWTAuth");
+    CHECK(exact[0].line == 3, "linha inicial deve ser 3");
+    CHECK(exact[0].endLine >= exact[0].line, "linha final deve ser preenchida");
+    CHECK(exact[0].signature.find("validateToken") != std::string::npos,
+          "signature deve conter validateToken");
+    CHECK(exact[0].snippet.find("return token.size()") != std::string::npos,
+          "snippet deve conter corpo real da funcao");
+
+    std::filesystem::remove(path);
+    std::cerr << "  [PASSOU]\n";
+}
+
+static void testContextBuilderPrioritizesSymbolChunks() {
+    std::cerr << "[Test] ContextBuilder symbol path\n";
+
+    std::string path = "_test_symbol_context.cpp";
+    {
+        std::ofstream out(path);
+        out << "class JWTAuth {\n"
+            << "public:\n"
+            << "    bool validateToken(const std::string& token) {\n"
+            << "        return token == \"ok\";\n"
+            << "    }\n"
+            << "};\n";
+    }
+
+    DummyEmbeddingEngine engine(64);
+    ContextBuilder builder;
+    auto ctx = builder.buildContext("Explique JWTAuth::validateToken()", {path}, "", engine);
+
+    CHECK(ctx.diagnostics.symbolMatchCount > 0,
+          "diagnostico deve registrar simbolos encontrados");
+    CHECK(!ctx.chunks.empty(), "contexto deve conter chunks");
+    CHECK(ctx.chunks[0].content.find("[symbol] validateToken") != std::string::npos,
+          "primeiro chunk deve ser o simbolo encontrado");
+    CHECK(ctx.finalPrompt.find("[symbol] validateToken") != std::string::npos,
+          "prompt deve receber chunk de simbolo");
+    CHECK(ctx.contextDump.find("Signature:") != std::string::npos,
+          "context dump deve conter assinatura do simbolo");
+
+    std::filesystem::remove(path);
+    std::cerr << "  [PASSOU]\n";
+}
+
 static void testRerankerUsesSemanticScoreAsPrimarySignal() {
     std::cerr << "[Test] Reranker semantic primary signal\n";
 
@@ -377,6 +448,8 @@ int main() {
     testUniversalIndexer();
     testUniversalContextBuilder();
     testContextBuilderUsesSummariesAndDumpsPrompt();
+    testSymbolIndexRealMetadata();
+    testContextBuilderPrioritizesSymbolChunks();
     testRerankerUsesSemanticScoreAsPrimarySignal();
 
     std::cerr << "\n--- Todos os testes passaram! ---\n";
