@@ -75,8 +75,16 @@ void UniversalIndexer::indexFile(const std::string& filePath, EmbeddingEngine& e
 
 void UniversalIndexer::indexFiles(const std::vector<std::string>& filePaths,
                                    EmbeddingEngine& engine) {
+    lastSupportedFiles_ = filePaths.size();
+    lastIndexedFiles_ = 0;
+    lastSkippedFiles_ = 0;
+
     for (const auto& path : filePaths) {
+        size_t before = retriever_.totalChunks();
         indexFile(path, engine);
+        size_t after = retriever_.totalChunks();
+        if (after == before) ++lastSkippedFiles_;
+        else ++lastIndexedFiles_;
     }
 }
 
@@ -91,8 +99,9 @@ void UniversalIndexer::indexWorkspace(const std::string& rootPath,
     // Build the code graph first (fast, no embeddings needed)
     graph_.buildFromWorkspace(rootPath);
 
-    size_t fileCount  = 0;
-    size_t skippedCount = 0;
+    lastSupportedFiles_ = 0;
+    lastIndexedFiles_ = 0;
+    lastSkippedFiles_ = 0;
     try {
         fs::recursive_directory_iterator it(root);
         fs::recursive_directory_iterator end;
@@ -112,11 +121,12 @@ void UniversalIndexer::indexWorkspace(const std::string& rootPath,
                 std::transform(ext.begin(), ext.end(), ext.begin(), ::tolower);
 
                 if (supportedExts.count(ext)) {
+                    ++lastSupportedFiles_;
                     size_t before = retriever_.totalChunks();
                     indexFile(entry.path().string(), engine);
                     size_t after  = retriever_.totalChunks();
-                    if (after == before) ++skippedCount; // unchanged file, skipped
-                    else                ++fileCount;
+                    if (after == before) ++lastSkippedFiles_;
+                    else ++lastIndexedFiles_;
                 }
             }
             ++it;
@@ -125,8 +135,8 @@ void UniversalIndexer::indexWorkspace(const std::string& rootPath,
         std::cerr << "[UniversalIndexer] Error: " << e.what() << "\n";
     }
 
-    std::cerr << "[UniversalIndexer] Indexed " << fileCount << " files ("
-              << skippedCount << " skipped — unchanged), "
+    std::cerr << "[UniversalIndexer] Indexed " << lastIndexedFiles_ << " files ("
+              << lastSkippedFiles_ << " skipped), "
               << retriever_.totalChunks() << " chunks, "
               << graph_.nodeCount() << " graph nodes\n";
 }

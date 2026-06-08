@@ -47,6 +47,9 @@ private:
     std::vector<ContextChunk> chunkFile(const std::string& path, size_t chunkSize = 300) const;
     size_t topKForBudget(const std::vector<ContextChunk>& candidates,
                          size_t chunkBudget) const;
+    std::string buildDiagnosticsText(const ContextDiagnostics& diagnostics) const;
+    std::string buildContextDump(const std::vector<ContextChunk>& chunks) const;
+    void writeDiagnosticsArtifacts(const BuiltContext& ctx) const;
 };
 
 } // namespace AgentOS

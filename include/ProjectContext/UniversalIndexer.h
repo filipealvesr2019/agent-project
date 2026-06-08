@@ -22,6 +22,9 @@ public:
     void indexFiles(const std::vector<std::string>& filePaths, EmbeddingEngine& engine);
 
     size_t totalChunks() const { return retriever_.totalChunks(); }
+    size_t lastSupportedFiles() const { return lastSupportedFiles_; }
+    size_t lastIndexedFiles() const { return lastIndexedFiles_; }
+    size_t lastSkippedFiles() const { return lastSkippedFiles_; }
 
     // Remove a file from all indices (for incremental file deletion)
     void removeFile(const std::string& filePath);
@@ -46,6 +49,9 @@ private:
     CodeGraph        graph_;
     FileSummaryStore* summaryStore_ = nullptr;
     LlamaRuntime*     summaryLlm_   = nullptr;
+    size_t lastSupportedFiles_ = 0;
+    size_t lastIndexedFiles_ = 0;
+    size_t lastSkippedFiles_ = 0;
     void indexFile(const std::string& filePath, EmbeddingEngine& engine);
 };
 

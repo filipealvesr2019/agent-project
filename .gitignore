@@ -73,6 +73,9 @@ build/
 *.tmp
 *.cache
 index.dat
+workspace_diagnostics.txt
+prompt_dump.txt
+context_dump.txt
 
 # Submodules (evita incluir diretórios de libs)
 

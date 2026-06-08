@@ -9,6 +9,7 @@
 #include "ProjectContext/TextChunker.h"
 #include "ProjectContext/EmbeddingEngine.h"
 #include "ProjectContext/Reranker.h"
+#include "ProjectContext/FileSummaryStore.h"
 #include <iostream>
 #include <cstdlib>
 #include <filesystem>
@@ -202,6 +203,22 @@ static void testUniversalContextBuilder() {
     CHECK(ctx.chunks.size() > 0, "chunks deve ser > 0");
     CHECK(ctx.totalTokens > 0, "totalTokens deve ser > 0");
     CHECK(!ctx.finalPrompt.empty(), "finalPrompt nao deve ser vazio");
+    CHECK(!ctx.diagnosticsText.empty(), "diagnosticsText nao deve ser vazio");
+    CHECK(!ctx.contextDump.empty(), "contextDump nao deve ser vazio");
+    CHECK(ctx.diagnostics.indexedFiles == files.size(),
+          "diagnostico deve registrar arquivos indexados");
+    CHECK(ctx.diagnostics.indexedChunks > 0,
+          "diagnostico deve registrar chunks indexados");
+    CHECK(ctx.diagnostics.candidateCount > 0,
+          "diagnostico deve registrar candidatos recuperados");
+    CHECK(ctx.diagnostics.rerankedCount == ctx.chunks.size(),
+          "diagnostico deve registrar chunks rerankeados");
+    CHECK(std::filesystem::exists("workspace_diagnostics.txt"),
+          "workspace_diagnostics.txt deve ser gerado");
+    CHECK(std::filesystem::exists("prompt_dump.txt"),
+          "prompt_dump.txt deve ser gerado");
+    CHECK(std::filesystem::exists("context_dump.txt"),
+          "context_dump.txt deve ser gerado");
 
     bool bancadaFound = false;
     for (const auto& c : ctx.chunks) {
@@ -216,6 +233,67 @@ static void testUniversalContextBuilder() {
     }
 
     std::cerr << "  Final prompt length: " << ctx.finalPrompt.size() << " chars\n";
+    std::cerr << "  [PASSOU]\n";
+}
+
+static void testContextBuilderUsesSummariesAndDumpsPrompt() {
+    std::cerr << "[Test] ContextBuilder summaries + diagnostics\n";
+
+    std::string dbPath = "_test_summary_store.db";
+    std::filesystem::remove(dbPath);
+
+    FileSummaryStore store;
+    CHECK(store.open(dbPath), "summary store deve abrir");
+
+    ProjectSummary project;
+    project.projectName = "Projeto de teste";
+    project.architecture = "Arquitetura validada por diagnostico";
+    project.modules = {"ModuloTeste"};
+    CHECK(store.putProject(project), "project summary deve ser salvo");
+
+    ModuleSummary module;
+    module.moduleName = "ModuloTeste";
+    module.modulePath = ".";
+    module.summary = "Modulo usado para validar injecao de summaries no prompt";
+    CHECK(store.putModule(module), "module summary deve ser salvo");
+
+    DummyEmbeddingEngine engine(64);
+    ContextBuilder builder;
+    builder.universalIndexer().setSummaryGenerator(&store);
+
+    std::vector<std::string> files = {
+        "test_multi_domain_bancada.txt",
+        "test_multi_domain_jwt.txt"
+    };
+
+    auto ctx = builder.buildContext("Explique os arquivos de teste", files, "", engine);
+
+    CHECK(ctx.finalPrompt.find("## Projeto") != std::string::npos,
+          "prompt deve conter summary de projeto");
+    CHECK(ctx.finalPrompt.find("Arquitetura validada por diagnostico") != std::string::npos,
+          "prompt deve conter arquitetura do projeto");
+    CHECK(ctx.finalPrompt.find("## Modulos") != std::string::npos,
+          "prompt deve conter summaries de modulo");
+    CHECK(ctx.finalPrompt.find("Modulo usado para validar") != std::string::npos,
+          "prompt deve conter summary do modulo");
+    CHECK(ctx.finalPrompt.find("## Arquivos no contexto") != std::string::npos,
+          "prompt deve conter summaries dos arquivos usados");
+    CHECK(ctx.diagnostics.projectSummaryFound,
+          "diagnostico deve indicar ProjectSummary FOUND");
+    CHECK(ctx.diagnostics.moduleSummaryCount >= 1,
+          "diagnostico deve registrar summaries de modulo");
+    CHECK(ctx.diagnostics.fileSummaryCount >= 1,
+          "diagnostico deve registrar summaries de arquivo");
+    CHECK(ctx.diagnosticsText.find("ProjectSummary:") != std::string::npos,
+          "diagnostico deve conter secao ProjectSummary");
+    CHECK(ctx.contextDump.find("=== CHUNK") != std::string::npos,
+          "context dump deve listar chunks reais");
+
+    store.close();
+    std::filesystem::remove(dbPath);
+    std::filesystem::remove(dbPath + "-shm");
+    std::filesystem::remove(dbPath + "-wal");
+
     std::cerr << "  [PASSOU]\n";
 }
 
@@ -298,6 +376,7 @@ int main() {
     testPromptComposer();
     testUniversalIndexer();
     testUniversalContextBuilder();
+    testContextBuilderUsesSummariesAndDumpsPrompt();
     testRerankerUsesSemanticScoreAsPrimarySignal();
 
     std::cerr << "\n--- Todos os testes passaram! ---\n";

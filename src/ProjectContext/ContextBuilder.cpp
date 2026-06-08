@@ -90,6 +90,70 @@ size_t ContextBuilder::topKForBudget(const std::vector<ContextChunk>& candidates
     return std::clamp(byBudget, size_t(4), std::min<size_t>(12, candidates.size()));
 }
 
+std::string ContextBuilder::buildDiagnosticsText(
+    const ContextDiagnostics& diagnostics) const {
+    std::ostringstream out;
+    out << "Workspace:\n";
+    out << "  Files: " << diagnostics.indexedFiles << "\n\n";
+    out << "Chunks:\n";
+    out << "  Total: " << diagnostics.indexedChunks << "\n\n";
+    out << "Query:\n";
+    out << "  " << diagnostics.query << "\n\n";
+    out << "Intent:\n";
+    out << "  " << diagnostics.intent << "\n\n";
+    out << "Candidates:\n";
+    out << "  " << diagnostics.candidateCount << "\n\n";
+    out << "Reranked:\n";
+    out << "  " << diagnostics.rerankedCount << "\n\n";
+    out << "ProjectSummary:\n";
+    out << "  " << (diagnostics.projectSummaryFound ? "FOUND" : "MISSING") << "\n\n";
+    out << "ModuleSummaries:\n";
+    out << "  " << diagnostics.moduleSummaryCount << "\n\n";
+    out << "FileSummaries:\n";
+    out << "  " << diagnostics.fileSummaryCount << "\n\n";
+    out << "Prompt tokens:\n";
+    out << "  " << diagnostics.promptTokens << "\n\n";
+    out << "Files used:\n";
+    for (const auto& file : diagnostics.filesUsed) {
+        out << "  " << file << "\n";
+    }
+    return out.str();
+}
+
+std::string ContextBuilder::buildContextDump(
+    const std::vector<ContextChunk>& chunks) const {
+    std::ostringstream out;
+    for (size_t i = 0; i < chunks.size(); ++i) {
+        const auto& chunk = chunks[i];
+        out << "=== CHUNK " << i << " ===\n";
+        out << "Source: " << chunk.source << "\n";
+        out << "ChunkIndex: " << chunk.chunkIndex << "\n";
+        out << "Score: " << chunk.relevanceScore << "\n";
+        out << "Content:\n";
+        out << chunk.content;
+        if (!chunk.content.empty() && chunk.content.back() != '\n') {
+            out << "\n";
+        }
+        out << "\n";
+    }
+    return out.str();
+}
+
+void ContextBuilder::writeDiagnosticsArtifacts(const BuiltContext& ctx) const {
+    {
+        std::ofstream out("workspace_diagnostics.txt", std::ios::trunc);
+        if (out.is_open()) out << ctx.diagnosticsText;
+    }
+    {
+        std::ofstream out("prompt_dump.txt", std::ios::trunc);
+        if (out.is_open()) out << ctx.finalPrompt;
+    }
+    {
+        std::ofstream out("context_dump.txt", std::ios::trunc);
+        if (out.is_open()) out << ctx.contextDump;
+    }
+}
+
 BuiltContext ContextBuilder::buildContext(const std::string& query, size_t maxTokens) {
     BuiltContext ctx;
     ctx.projectMap = scanner_.generateProjectMap();
@@ -156,7 +220,9 @@ BuiltContext ContextBuilder::buildContext(const std::string& question,
         indexer_.indexWorkspace(folder, engine);
     }
 
-    indexer_.indexFiles(files, engine);
+    if (!files.empty()) {
+        indexer_.indexFiles(files, engine);
+    }
 
     FileSummaryStore* summaryStore = indexer_.summaryStore();
     ProjectSummary projectSummary;
@@ -220,6 +286,21 @@ BuiltContext ContextBuilder::buildContext(const std::string& question,
                                             prefix.str(),
                                             true);
     ctx.fullPrompt = ctx.finalPrompt;
+    ctx.contextDump = buildContextDump(chunks);
+    ctx.diagnostics.indexedFiles = indexer_.lastSupportedFiles();
+    ctx.diagnostics.indexedChunks = indexer_.totalChunks();
+    ctx.diagnostics.query = question;
+    ctx.diagnostics.intent = IntentRouter::levelName(intent);
+    ctx.diagnostics.candidateCount = candidates.size();
+    ctx.diagnostics.rerankedCount = chunks.size();
+    ctx.diagnostics.projectSummaryFound =
+        !projectSummary.projectName.empty() || !projectSummary.architecture.empty();
+    ctx.diagnostics.moduleSummaryCount = moduleSummaries.size();
+    ctx.diagnostics.fileSummaryCount = fileSummaries.size();
+    ctx.diagnostics.promptTokens = estimateTokens(ctx.finalPrompt);
+    ctx.diagnostics.filesUsed = ctx.sourceFiles;
+    ctx.diagnosticsText = buildDiagnosticsText(ctx.diagnostics);
+    writeDiagnosticsArtifacts(ctx);
 
     return ctx;
 }
