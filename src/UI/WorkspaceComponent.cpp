@@ -720,10 +720,6 @@ void WorkspaceComponent::processQuestion(const std::string& prompt,
             }
         }
 
-        if (modelOk && summaryStoreOpen_ && !summaryBuilding_.load()) {
-            startSummaryBuildQueue(llm);
-        }
-
         if (!modelOk) {
             juce::MessageManager::callAsync([this] {
                 activeFileContent_ += "Nenhum modelo GGUF encontrado em 'models/'.\n"
@@ -996,14 +992,42 @@ void WorkspaceComponent::processQuestion(const std::string& prompt,
                 juce::Time::getCurrentTime().getSeconds()),
             "EXECUTANDO", 0, 0});
 
-        llm.streamGenerate(augmentedPrompt, 2048,
-            [this, placeholderStart](const std::string& chunk) {
-                juce::MessageManager::callAsync([this, chunk = juce::String(chunk)] {
-                    activeFileContent_ += chunk;
-                    repaint();
-                });
-            }
-        );
+        AgentOS::GenerationResult generation;
+        try {
+            generation = llm.streamGenerate(augmentedPrompt, 2048,
+                [this, placeholderStart](const std::string& chunk) {
+                    juce::MessageManager::callAsync([this, chunk = juce::String(chunk)] {
+                        activeFileContent_ += chunk;
+                        repaint();
+                    });
+                }
+            );
+        } catch (const std::exception& e) {
+            generation.ok = false;
+            generation.text = e.what();
+        } catch (...) {
+            generation.ok = false;
+            generation.text = "erro desconhecido durante a geracao";
+        }
+
+        if (!generation.ok) {
+            auto errorText = generation.text.empty()
+                ? std::string("Erro ao gerar resposta.")
+                : std::string("Erro ao gerar resposta: ") + generation.text;
+            juce::MessageManager::callAsync([this, errorText = juce::String(errorText)] {
+                activeFileContent_ += errorText + "\n";
+                auto now2 = juce::Time::getCurrentTime();
+                auto ts2 = juce::String::formatted("%02d:%02d:%02d",
+                    now2.getHours(), now2.getMinutes(), now2.getSeconds());
+                addTimelineEvent({"CEO", "CEO", "Erro na geracao.", "N/A", ts2, "ERRO", 0, 0});
+                generatingAnswer_.store(false);
+                isProcessing_ = false;
+                btnSubmit_.setEnabled(true);
+                repaint();
+                flushPendingQuestionIfReady();
+            });
+            return;
+        }
 
         auto endTime = juce::Time::getCurrentTime();
         auto tsEnd = juce::String::formatted("%02d:%02d:%02d",

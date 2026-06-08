@@ -3,8 +3,28 @@
 #include <iostream>
 #include <vector>
 #include <chrono>
+#include <algorithm>
 
 namespace AgentOS {
+
+namespace {
+
+void trimToContext(std::vector<llama_token>& tokens, int32_t maxPromptTokens) {
+    if (maxPromptTokens <= 0 || static_cast<int32_t>(tokens.size()) <= maxPromptTokens) {
+        return;
+    }
+
+    const int32_t headCount = std::max<int32_t>(1, maxPromptTokens / 4);
+    const int32_t tailCount = maxPromptTokens - headCount;
+
+    std::vector<llama_token> trimmed;
+    trimmed.reserve(maxPromptTokens);
+    trimmed.insert(trimmed.end(), tokens.begin(), tokens.begin() + headCount);
+    trimmed.insert(trimmed.end(), tokens.end() - tailCount, tokens.end());
+    tokens = std::move(trimmed);
+}
+
+} // namespace
 
 LlamaRuntime::LlamaRuntime() {
     llama_backend_init();
@@ -82,8 +102,15 @@ GenerationResult LlamaRuntime::streamGenerate(const std::string& prompt, int32_t
         n_tokens = llama_tokenize(vocab, prompt.c_str(), prompt.length(), tokens.data(), tokens.size(), true, true);
     }
     tokens.resize(n_tokens);
+    trimToContext(tokens, static_cast<int32_t>(llama_n_ctx(ctx_)) - 1);
+    n_tokens = static_cast<int32_t>(tokens.size());
 
-    llama_batch batch = llama_batch_init(512, 0, 1);
+    if (n_tokens <= 0) {
+        res.text = "Error: empty prompt";
+        return res;
+    }
+
+    llama_batch batch = llama_batch_init(n_tokens, 0, 1);
     batch.n_tokens = n_tokens;
     for (int i = 0; i < n_tokens; i++) {
         batch.token[i] = tokens[i];
@@ -176,8 +203,15 @@ GenerationResult LlamaRuntime::generateWithStats(const std::string& prompt, int3
         n_tokens = llama_tokenize(vocab, prompt.c_str(), prompt.length(), tokens.data(), tokens.size(), true, true);
     }
     tokens.resize(n_tokens);
+    trimToContext(tokens, static_cast<int32_t>(llama_n_ctx(ctx_)) - 1);
+    n_tokens = static_cast<int32_t>(tokens.size());
 
-    llama_batch batch = llama_batch_init(512, 0, 1);
+    if (n_tokens <= 0) {
+        res.text = "Error: empty prompt";
+        return res;
+    }
+
+    llama_batch batch = llama_batch_init(n_tokens, 0, 1);
     batch.n_tokens = n_tokens;
     for (int i = 0; i < n_tokens; i++) {
         batch.token[i] = tokens[i];
