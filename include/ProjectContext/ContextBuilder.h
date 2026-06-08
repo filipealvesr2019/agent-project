@@ -51,6 +51,7 @@ private:
                          size_t chunkBudget) const;
     std::string buildDiagnosticsText(const ContextDiagnostics& diagnostics) const;
     std::string buildContextDump(const std::vector<ContextChunk>& chunks) const;
+    std::string buildLayeredContextDump(const std::vector<ContextLayer>& layers) const;
     void writeDiagnosticsArtifacts(const BuiltContext& ctx) const;
     std::vector<FileEntry> fileEntriesFor(const std::vector<std::string>& files) const;
     std::vector<std::string> extractSymbolQueries(const std::string& query) const;
@@ -60,6 +61,12 @@ private:
                                                 std::vector<std::string>& expandedSymbols) const;
     std::vector<std::string> topFilesFor(const std::vector<ContextChunk>& chunks,
                                          size_t maxFiles) const;
+    std::vector<ContextLayer> buildContextLayers(
+        const ProjectSummary& projectSummary,
+        const std::vector<ModuleSummary>& moduleSummaries,
+        const std::vector<FileSummary>& fileSummaries,
+        const std::vector<ContextChunk>& symbolChunks,
+        const std::vector<ContextChunk>& chunks) const;
 };
 
 } // namespace AgentOS

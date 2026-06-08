@@ -188,6 +188,41 @@ std::string ContextBuilder::buildContextDump(
     return out.str();
 }
 
+static const char* contextLayerName(ContextLayerLevel level) {
+    switch (level) {
+        case ContextLayerLevel::Project: return "Project";
+        case ContextLayerLevel::Module: return "Module";
+        case ContextLayerLevel::File: return "File";
+        case ContextLayerLevel::Symbol: return "Symbol";
+        case ContextLayerLevel::Chunk: return "Chunk";
+    }
+    return "Chunk";
+}
+
+std::string ContextBuilder::buildLayeredContextDump(
+    const std::vector<ContextLayer>& layers) const {
+    std::ostringstream out;
+    for (const auto& layer : layers) {
+        out << "=== LAYER " << contextLayerName(layer.level) << " ===\n";
+        if (!layer.title.empty()) {
+            out << "Title: " << layer.title << "\n";
+        }
+        for (size_t i = 0; i < layer.chunks.size(); ++i) {
+            const auto& chunk = layer.chunks[i];
+            out << "--- ITEM " << i << " ---\n";
+            out << "Source: " << chunk.source << "\n";
+            out << "ChunkIndex: " << chunk.chunkIndex << "\n";
+            out << "Score: " << chunk.relevanceScore << "\n";
+            out << "Content:\n" << chunk.content;
+            if (!chunk.content.empty() && chunk.content.back() != '\n') {
+                out << "\n";
+            }
+        }
+        out << "\n";
+    }
+    return out.str();
+}
+
 void ContextBuilder::writeDiagnosticsArtifacts(const BuiltContext& ctx) const {
     {
         std::ofstream out("workspace_diagnostics.txt", std::ios::trunc);
@@ -371,6 +406,71 @@ std::vector<std::string> ContextBuilder::topFilesFor(
     return result;
 }
 
+std::vector<ContextLayer> ContextBuilder::buildContextLayers(
+    const ProjectSummary& projectSummary,
+    const std::vector<ModuleSummary>& moduleSummaries,
+    const std::vector<FileSummary>& fileSummaries,
+    const std::vector<ContextChunk>& symbolChunks,
+    const std::vector<ContextChunk>& chunks) const {
+    std::vector<ContextLayer> layers;
+
+    if (!projectSummary.projectName.empty() || !projectSummary.architecture.empty()) {
+        ContextChunk chunk;
+        chunk.source = "ProjectSummary";
+        std::ostringstream text;
+        if (!projectSummary.projectName.empty()) {
+            text << "Nome: " << projectSummary.projectName << "\n";
+        }
+        if (!projectSummary.architecture.empty()) {
+            text << "Arquitetura: " << projectSummary.architecture << "\n";
+        }
+        if (!projectSummary.modules.empty()) {
+            text << "Modulos: ";
+            for (size_t i = 0; i < projectSummary.modules.size(); ++i) {
+                if (i > 0) text << ", ";
+                text << projectSummary.modules[i];
+            }
+            text << "\n";
+        }
+        chunk.content = text.str();
+        layers.push_back({ContextLayerLevel::Project, "", {chunk}});
+    }
+
+    if (!moduleSummaries.empty()) {
+        ContextLayer layer;
+        layer.level = ContextLayerLevel::Module;
+        for (const auto& module : moduleSummaries) {
+            ContextChunk chunk;
+            chunk.source = module.modulePath;
+            chunk.content = "[" + module.moduleName + "] " + module.summary + "\n";
+            layer.chunks.push_back(std::move(chunk));
+        }
+        layers.push_back(std::move(layer));
+    }
+
+    if (!fileSummaries.empty()) {
+        ContextLayer layer;
+        layer.level = ContextLayerLevel::File;
+        for (const auto& summary : fileSummaries) {
+            ContextChunk chunk;
+            chunk.source = summary.path;
+            chunk.content = summary.summary + "\n";
+            layer.chunks.push_back(std::move(chunk));
+        }
+        layers.push_back(std::move(layer));
+    }
+
+    if (!symbolChunks.empty()) {
+        layers.push_back({ContextLayerLevel::Symbol, "", symbolChunks});
+    }
+
+    if (!chunks.empty()) {
+        layers.push_back({ContextLayerLevel::Chunk, "", chunks});
+    }
+
+    return layers;
+}
+
 BuiltContext ContextBuilder::buildContext(const std::string& query, size_t maxTokens) {
     BuiltContext ctx;
     ctx.projectMap = scanner_.generateProjectMap();
@@ -525,14 +625,14 @@ BuiltContext ContextBuilder::buildContext(const std::string& question,
            << ", arquivos=" << allocation.fileTokens
            << ", trechos=" << allocation.chunkTokens << "\n";
 
-    ctx.finalPrompt = PromptComposer::build(question, chunks,
-                                            projectSummary,
-                                            moduleSummaries,
-                                            fileSummaries,
-                                            prefix.str(),
-                                            true);
+    ctx.layers = buildContextLayers(projectSummary,
+                                    moduleSummaries,
+                                    fileSummaries,
+                                    symbolChunks,
+                                    chunks);
+    ctx.finalPrompt = PromptComposer::build(question, ctx.layers, prefix.str(), true);
     ctx.fullPrompt = ctx.finalPrompt;
-    ctx.contextDump = buildContextDump(chunks);
+    ctx.contextDump = buildLayeredContextDump(ctx.layers);
     ctx.diagnostics.indexedFiles = indexer_.lastSupportedFiles();
     ctx.diagnostics.indexedChunks = indexer_.totalChunks();
     ctx.diagnostics.query = question;

@@ -2,6 +2,7 @@
 
 #include <string>
 #include <vector>
+#include "ProjectContext/BuiltContext.h"
 #include "ProjectContext/ContextChunk.h"
 #include "ProjectContext/FileSummaryStore.h"
 
@@ -20,6 +21,11 @@ public:
                               const ProjectSummary& projectSummary,
                               const std::vector<ModuleSummary>& moduleSummaries,
                               const std::vector<FileSummary>& fileSummaries,
+                              const std::string& contextPrefix = "",
+                              bool workspaceOnly = false);
+
+    static std::string build(const std::string& query,
+                              const std::vector<ContextLayer>& layers,
                               const std::string& contextPrefix = "",
                               bool workspaceOnly = false);
 };

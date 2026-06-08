@@ -4,6 +4,17 @@
 
 namespace AgentOS {
 
+static const char* layerHeading(ContextLayerLevel level) {
+    switch (level) {
+        case ContextLayerLevel::Project: return "## Projeto";
+        case ContextLayerLevel::Module: return "## Modulos";
+        case ContextLayerLevel::File: return "## Arquivos";
+        case ContextLayerLevel::Symbol: return "## Simbolos relevantes";
+        case ContextLayerLevel::Chunk: return "## Trechos relevantes";
+    }
+    return "## Trechos relevantes";
+}
+
 // ================================================================
 // Original build — flat context
 // ================================================================
@@ -101,6 +112,58 @@ std::string PromptComposer::build(const std::string& query,
     prompt << "=== PERGUNTA ===\n\n";
     prompt << query << "\n";
 
+    return prompt.str();
+}
+
+std::string PromptComposer::build(const std::string& query,
+                                   const std::vector<ContextLayer>& layers,
+                                   const std::string& contextPrefix,
+                                   bool workspaceOnly) {
+    std::ostringstream prompt;
+
+    prompt << "Voce e um assistente tecnico.\n\n";
+    if (workspaceOnly) {
+        prompt << "Responda APENAS com base no contexto do projeto fornecido abaixo.\n";
+        prompt << "Se o contexto for insuficiente, diga claramente que nao tem informacao suficiente.\n";
+        prompt << "Nao use conhecimento geral nem invente detalhes sobre o projeto.\n";
+        prompt << "Forneca UMA unica resposta final - sem rascunhos, refatoracoes ou versoes alternativas.\n";
+    } else {
+        prompt << "Use o contexto fornecido abaixo para responder a pergunta.\n";
+        prompt << "Se a resposta estiver no contexto, utilize-o.\n";
+        prompt << "Se nao estiver, use seu conhecimento geral.\n";
+        prompt << "Se houver incerteza, informe.\n";
+    }
+
+    if (!contextPrefix.empty()) {
+        prompt << "\n" << contextPrefix << "\n";
+    }
+
+    prompt << "\n=== CONTEXTO ===\n";
+    for (const auto& layer : layers) {
+        if (layer.chunks.empty()) continue;
+
+        prompt << "\n" << layerHeading(layer.level) << "\n";
+        if (!layer.title.empty()) {
+            prompt << layer.title << "\n";
+        }
+
+        for (const auto& chunk : layer.chunks) {
+            if (!chunk.source.empty()) {
+                std::string filename = chunk.source;
+                auto pos = filename.find_last_of("/\\");
+                if (pos != std::string::npos) filename = filename.substr(pos + 1);
+                prompt << "[arquivo] " << filename << "\n";
+            }
+            prompt << chunk.content;
+            if (!chunk.content.empty() && chunk.content.back() != '\n') {
+                prompt << "\n";
+            }
+            prompt << "\n";
+        }
+    }
+
+    prompt << "=== PERGUNTA ===\n\n";
+    prompt << query << "\n";
     return prompt.str();
 }
 

@@ -6,6 +6,20 @@
 
 namespace AgentOS {
 
+enum class ContextLayerLevel {
+    Project,
+    Module,
+    File,
+    Symbol,
+    Chunk
+};
+
+struct ContextLayer {
+    ContextLayerLevel level = ContextLayerLevel::Chunk;
+    std::string title;
+    std::vector<ContextChunk> chunks;
+};
+
 struct ContextDiagnostics {
     size_t indexedFiles = 0;
     size_t indexedChunks = 0;
@@ -28,6 +42,7 @@ struct ContextDiagnostics {
 
 struct BuiltContext {
     std::vector<ContextChunk> chunks;
+    std::vector<ContextLayer> layers;
     std::vector<std::string>  sourceFiles;
     size_t                    totalTokens = 0;
     std::string               projectMap;

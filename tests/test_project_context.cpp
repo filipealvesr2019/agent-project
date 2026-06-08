@@ -278,7 +278,7 @@ static void testContextBuilderUsesSummariesAndDumpsPrompt() {
           "prompt deve conter summaries de modulo");
     CHECK(ctx.finalPrompt.find("Modulo usado para validar") != std::string::npos,
           "prompt deve conter summary do modulo");
-    CHECK(ctx.finalPrompt.find("## Arquivos no contexto") != std::string::npos,
+    CHECK(ctx.finalPrompt.find("## Arquivos") != std::string::npos,
           "prompt deve conter summaries dos arquivos usados");
     CHECK(ctx.diagnostics.projectSummaryFound,
           "diagnostico deve indicar ProjectSummary FOUND");
@@ -288,8 +288,8 @@ static void testContextBuilderUsesSummariesAndDumpsPrompt() {
           "diagnostico deve registrar summaries de arquivo");
     CHECK(ctx.diagnosticsText.find("ProjectSummary:") != std::string::npos,
           "diagnostico deve conter secao ProjectSummary");
-    CHECK(ctx.contextDump.find("=== CHUNK") != std::string::npos,
-          "context dump deve listar chunks reais");
+    CHECK(ctx.contextDump.find("=== LAYER") != std::string::npos,
+          "context dump deve listar camadas reais");
 
     store.close();
     std::filesystem::remove(dbPath);
@@ -461,6 +461,71 @@ static void testContextBuilderEntityExpansionDiagnostics() {
     std::cerr << "  [PASSOU]\n";
 }
 
+static void testHierarchicalPromptLayerOrder() {
+    std::cerr << "[Test] Hierarchical prompt layer order\n";
+
+    std::string dbPath = "_test_hierarchy_store.db";
+    std::string path = "_test_hierarchy_symbol.cpp";
+    std::filesystem::remove(dbPath);
+
+    {
+        std::ofstream out(path);
+        out << "std::string decodeJWT(const std::string& token) {\n"
+            << "    return token;\n"
+            << "}\n\n"
+            << "bool validateToken(const std::string& token) {\n"
+            << "    return decodeJWT(token).size() > 0;\n"
+            << "}\n";
+    }
+
+    FileSummaryStore store;
+    CHECK(store.open(dbPath), "summary store hierarquico deve abrir");
+
+    ProjectSummary project;
+    project.projectName = "Projeto Hierarquico";
+    project.architecture = "Arquitetura em camadas";
+    project.modules = {"Auth"};
+    CHECK(store.putProject(project), "project summary hierarquico deve salvar");
+
+    ModuleSummary module;
+    module.moduleName = "Auth";
+    module.modulePath = ".";
+    module.summary = "Modulo de autenticacao";
+    CHECK(store.putModule(module), "module summary hierarquico deve salvar");
+
+    DummyEmbeddingEngine engine(64);
+    ContextBuilder builder;
+    builder.universalIndexer().setSummaryGenerator(&store);
+    auto ctx = builder.buildContext("Explique validateToken()", {path}, "", engine);
+
+    auto pProject = ctx.finalPrompt.find("## Projeto");
+    auto pModule = ctx.finalPrompt.find("## Modulos");
+    auto pFile = ctx.finalPrompt.find("## Arquivos");
+    auto pSymbol = ctx.finalPrompt.find("## Simbolos relevantes");
+    auto pChunk = ctx.finalPrompt.find("## Trechos relevantes");
+
+    CHECK(pProject != std::string::npos, "prompt deve conter camada Projeto");
+    CHECK(pModule != std::string::npos, "prompt deve conter camada Modulos");
+    CHECK(pFile != std::string::npos, "prompt deve conter camada Arquivos");
+    CHECK(pSymbol != std::string::npos, "prompt deve conter camada Simbolos");
+    CHECK(pChunk != std::string::npos, "prompt deve conter camada Trechos");
+    CHECK(pProject < pModule && pModule < pFile && pFile < pSymbol && pSymbol < pChunk,
+          "camadas devem estar em ordem hierarquica");
+    CHECK(ctx.contextDump.find("=== LAYER Project ===") != std::string::npos,
+          "dump deve conter camada Project");
+    CHECK(ctx.contextDump.find("=== LAYER Symbol ===") != std::string::npos,
+          "dump deve conter camada Symbol");
+    CHECK(!ctx.layers.empty(), "BuiltContext deve expor camadas");
+
+    store.close();
+    std::filesystem::remove(path);
+    std::filesystem::remove(dbPath);
+    std::filesystem::remove(dbPath + "-shm");
+    std::filesystem::remove(dbPath + "-wal");
+
+    std::cerr << "  [PASSOU]\n";
+}
+
 static void testRerankerUsesSemanticScoreAsPrimarySignal() {
     std::cerr << "[Test] Reranker semantic primary signal\n";
 
@@ -545,6 +610,7 @@ int main() {
     testContextBuilderPrioritizesSymbolChunks();
     testSymbolGraphRelationsAndExpansion();
     testContextBuilderEntityExpansionDiagnostics();
+    testHierarchicalPromptLayerOrder();
     testRerankerUsesSemanticScoreAsPrimarySignal();
 
     std::cerr << "\n--- Todos os testes passaram! ---\n";
