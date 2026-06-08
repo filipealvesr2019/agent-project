@@ -10,6 +10,7 @@
 #include "ProjectContext/EmbeddingEngine.h"
 #include "ProjectContext/Reranker.h"
 #include "ProjectContext/FileSummaryStore.h"
+#include "ProjectContext/SymbolGraph.h"
 #include <iostream>
 #include <cstdlib>
 #include <filesystem>
@@ -368,6 +369,98 @@ static void testContextBuilderPrioritizesSymbolChunks() {
     std::cerr << "  [PASSOU]\n";
 }
 
+static void testSymbolGraphRelationsAndExpansion() {
+    std::cerr << "[Test] SymbolGraph relations + expansion\n";
+
+    SymbolEntry validate;
+    validate.file = "auth.cpp";
+    validate.name = "validateToken";
+    validate.type = SymbolType::Function;
+    validate.line = 10;
+    validate.snippet =
+        "bool validateToken(const std::string& token) {\n"
+        "    auto payload = decodeJWT(token);\n"
+        "    return verifySignature(payload);\n"
+        "}\n";
+
+    SymbolEntry decode;
+    decode.file = "auth.cpp";
+    decode.name = "decodeJWT";
+    decode.type = SymbolType::Function;
+    decode.line = 2;
+    decode.snippet = "std::string decodeJWT(const std::string& token) { return token; }\n";
+
+    SymbolEntry verify;
+    verify.file = "auth.cpp";
+    verify.name = "verifySignature";
+    verify.type = SymbolType::Function;
+    verify.line = 6;
+    verify.snippet = "bool verifySignature(const std::string& payload) { return true; }\n";
+
+    SymbolGraph graph;
+    graph.build({validate, decode, verify});
+
+    CHECK(graph.relations().size() >= 2,
+          "grafo deve registrar chamadas entre simbolos");
+
+    auto expanded = graph.expand({validate}, 2, 8);
+    bool decodeFound = false;
+    bool verifyFound = false;
+    for (const auto& symbol : expanded) {
+        if (symbol.name == "decodeJWT") decodeFound = true;
+        if (symbol.name == "verifySignature") verifyFound = true;
+    }
+    CHECK(decodeFound, "expansao deve incluir decodeJWT");
+    CHECK(verifyFound, "expansao deve incluir verifySignature");
+
+    std::cerr << "  [PASSOU]\n";
+}
+
+static void testContextBuilderEntityExpansionDiagnostics() {
+    std::cerr << "[Test] ContextBuilder entity expansion diagnostics\n";
+
+    std::string path = "_test_symbol_expansion.cpp";
+    {
+        std::ofstream out(path);
+        out << "std::string decodeJWT(const std::string& token) {\n"
+            << "    return token;\n"
+            << "}\n\n"
+            << "bool verifySignature(const std::string& payload) {\n"
+            << "    return payload.size() > 0;\n"
+            << "}\n\n"
+            << "bool validateToken(const std::string& token) {\n"
+            << "    auto payload = decodeJWT(token);\n"
+            << "    return verifySignature(payload);\n"
+            << "}\n";
+    }
+
+    DummyEmbeddingEngine engine(64);
+    ContextBuilder builder;
+    auto ctx = builder.buildContext("Explique validateToken()", {path}, "", engine);
+
+    CHECK(ctx.diagnostics.symbolBoostApplied,
+          "diagnostico deve indicar boost de simbolo aplicado");
+    CHECK(ctx.diagnostics.symbolMatches.size() >= 1,
+          "diagnostico deve listar nomes dos simbolos encontrados");
+    CHECK(ctx.diagnostics.symbolMatches[0].find("validateToken") != std::string::npos,
+          "diagnostico deve listar validateToken");
+    CHECK(ctx.diagnostics.expandedSymbols.size() >= 2,
+          "diagnostico deve listar simbolos expandidos");
+    CHECK(ctx.finalPrompt.find("[symbol] decodeJWT") != std::string::npos,
+          "prompt deve incluir decodeJWT por expansao");
+    CHECK(ctx.finalPrompt.find("[symbol] verifySignature") != std::string::npos,
+          "prompt deve incluir verifySignature por expansao");
+    CHECK(ctx.diagnosticsText.find("SymbolBoostApplied:") != std::string::npos,
+          "diagnostico deve conter SymbolBoostApplied");
+    CHECK(ctx.diagnosticsText.find("RetrievedChunks:") != std::string::npos,
+          "diagnostico deve conter RetrievedChunks");
+    CHECK(ctx.diagnosticsText.find("TopFiles:") != std::string::npos,
+          "diagnostico deve conter TopFiles");
+
+    std::filesystem::remove(path);
+    std::cerr << "  [PASSOU]\n";
+}
+
 static void testRerankerUsesSemanticScoreAsPrimarySignal() {
     std::cerr << "[Test] Reranker semantic primary signal\n";
 
@@ -450,6 +543,8 @@ int main() {
     testContextBuilderUsesSummariesAndDumpsPrompt();
     testSymbolIndexRealMetadata();
     testContextBuilderPrioritizesSymbolChunks();
+    testSymbolGraphRelationsAndExpansion();
+    testContextBuilderEntityExpansionDiagnostics();
     testRerankerUsesSemanticScoreAsPrimarySignal();
 
     std::cerr << "\n--- Todos os testes passaram! ---\n";

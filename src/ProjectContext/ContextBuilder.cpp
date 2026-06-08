@@ -130,7 +130,36 @@ std::string ContextBuilder::buildDiagnosticsText(
     out << "FileSummaries:\n";
     out << "  " << diagnostics.fileSummaryCount << "\n\n";
     out << "SymbolMatches:\n";
-    out << "  " << diagnostics.symbolMatchCount << "\n\n";
+    if (diagnostics.symbolMatches.empty()) {
+        out << "  NONE\n\n";
+    } else {
+        for (const auto& symbol : diagnostics.symbolMatches) {
+            out << "  " << symbol << "\n";
+        }
+        out << "\n";
+    }
+    out << "SymbolBoostApplied:\n";
+    out << "  " << (diagnostics.symbolBoostApplied ? "true" : "false") << "\n\n";
+    out << "RetrievedChunks:\n";
+    out << "  " << diagnostics.retrievedChunkCount << "\n\n";
+    out << "ExpandedSymbols:\n";
+    if (diagnostics.expandedSymbols.empty()) {
+        out << "  NONE\n\n";
+    } else {
+        for (const auto& symbol : diagnostics.expandedSymbols) {
+            out << "  " << symbol << "\n";
+        }
+        out << "\n";
+    }
+    out << "TopFiles:\n";
+    if (diagnostics.topFiles.empty()) {
+        out << "  NONE\n\n";
+    } else {
+        for (const auto& file : diagnostics.topFiles) {
+            out << "  " << file << "\n";
+        }
+        out << "\n";
+    }
     out << "Prompt tokens:\n";
     out << "  " << diagnostics.promptTokens << "\n\n";
     out << "Files used:\n";
@@ -247,9 +276,47 @@ std::vector<std::string> ContextBuilder::extractSymbolQueries(
 
 std::vector<ContextChunk> ContextBuilder::buildSymbolChunks(
     const std::string& query,
-    size_t maxSymbols) const {
+    size_t maxSymbols,
+    std::vector<std::string>& matchedSymbols,
+    std::vector<std::string>& expandedSymbols) const {
     std::vector<ContextChunk> result;
     std::unordered_set<std::string> seen;
+    std::vector<SymbolEntry> matchedEntries;
+
+    auto symbolId = [](const SymbolEntry& symbol) {
+        return symbol.parentClass.empty()
+            ? symbol.name
+            : symbol.parentClass + "::" + symbol.name;
+    };
+
+    auto addChunk = [&](const SymbolEntry& symbol) {
+        std::string id = symbol.file + ":" + std::to_string(symbol.line) + ":" + symbol.name;
+        if (!seen.insert(id).second) return false;
+
+        ContextChunk chunk;
+        chunk.source = symbol.file;
+        chunk.chunkIndex = static_cast<int>(symbol.line);
+        chunk.relevanceScore = 1.0;
+
+        std::ostringstream content;
+        content << "[symbol] " << symbol.name << "\n";
+        content << "Type: " << symbolTypeName(symbol.type) << "\n";
+        if (!symbol.parentClass.empty()) {
+            content << "Parent: " << symbol.parentClass << "\n";
+        }
+        content << "Lines: " << symbol.line;
+        if (symbol.endLine > symbol.line) {
+            content << "-" << symbol.endLine;
+        }
+        content << "\n";
+        if (!symbol.signature.empty()) {
+            content << "Signature: " << symbol.signature << "\n";
+        }
+        content << "Snippet:\n" << symbol.snippet;
+        chunk.content = content.str();
+        result.push_back(std::move(chunk));
+        return true;
+    };
 
     auto queries = extractSymbolQueries(query);
     for (const auto& candidate : queries) {
@@ -272,36 +339,35 @@ std::vector<ContextChunk> ContextBuilder::buildSymbolChunks(
         }
 
         for (const auto& symbol : matches) {
-            std::string id = symbol.file + ":" + std::to_string(symbol.line) + ":" + symbol.name;
-            if (!seen.insert(id).second) continue;
-
-            ContextChunk chunk;
-            chunk.source = symbol.file;
-            chunk.chunkIndex = static_cast<int>(symbol.line);
-            chunk.relevanceScore = 1.0;
-
-            std::ostringstream content;
-            content << "[symbol] " << symbol.name << "\n";
-            content << "Type: " << symbolTypeName(symbol.type) << "\n";
-            if (!symbol.parentClass.empty()) {
-                content << "Parent: " << symbol.parentClass << "\n";
-            }
-            content << "Lines: " << symbol.line;
-            if (symbol.endLine > symbol.line) {
-                content << "-" << symbol.endLine;
-            }
-            content << "\n";
-            if (!symbol.signature.empty()) {
-                content << "Signature: " << symbol.signature << "\n";
-            }
-            content << "Snippet:\n" << symbol.snippet;
-            chunk.content = content.str();
-            result.push_back(std::move(chunk));
+            if (!addChunk(symbol)) continue;
+            matchedEntries.push_back(symbol);
+            matchedSymbols.push_back(symbolId(symbol));
 
             if (result.size() >= maxSymbols) return result;
         }
     }
 
+    auto expanded = symbolGraph_.expand(matchedEntries, 2, maxSymbols);
+    for (const auto& symbol : expanded) {
+        if (result.size() >= maxSymbols) break;
+        if (addChunk(symbol)) {
+            expandedSymbols.push_back(symbolId(symbol));
+        }
+    }
+
+    return result;
+}
+
+std::vector<std::string> ContextBuilder::topFilesFor(
+    const std::vector<ContextChunk>& chunks,
+    size_t maxFiles) const {
+    std::vector<std::string> result;
+    std::unordered_set<std::string> seen;
+    for (const auto& chunk : chunks) {
+        if (!seen.insert(chunk.source).second) continue;
+        result.push_back(chunk.source);
+        if (result.size() >= maxFiles) break;
+    }
     return result;
 }
 
@@ -371,12 +437,14 @@ BuiltContext ContextBuilder::buildContext(const std::string& question,
         indexer_.indexWorkspace(folder, engine);
         scanner_.scan(folder);
         symbolIndexer_.buildIndex(scanner_.files());
+        symbolGraph_.build(symbolIndexer_.symbols());
     }
 
     if (!files.empty()) {
         indexer_.indexFiles(files, engine);
         auto entries = fileEntriesFor(files);
         symbolIndexer_.buildIndex(entries);
+        symbolGraph_.build(symbolIndexer_.symbols());
     }
 
     FileSummaryStore* summaryStore = indexer_.summaryStore();
@@ -400,7 +468,9 @@ BuiltContext ContextBuilder::buildContext(const std::string& question,
     auto candidates = indexer_.retriever().retrieve(question, engine, 50);
     size_t finalTopK = topKForBudget(candidates, allocation.chunkTokens);
     auto chunks = reranker_.rerank(question, candidates, finalTopK);
-    auto symbolChunks = buildSymbolChunks(question, 8);
+    std::vector<std::string> matchedSymbols;
+    std::vector<std::string> expandedSymbols;
+    auto symbolChunks = buildSymbolChunks(question, 12, matchedSymbols, expandedSymbols);
 
     if (!symbolChunks.empty()) {
         std::vector<ContextChunk> merged;
@@ -470,6 +540,11 @@ BuiltContext ContextBuilder::buildContext(const std::string& question,
     ctx.diagnostics.candidateCount = candidates.size();
     ctx.diagnostics.rerankedCount = chunks.size();
     ctx.diagnostics.symbolMatchCount = symbolChunks.size();
+    ctx.diagnostics.symbolBoostApplied = !symbolChunks.empty();
+    ctx.diagnostics.retrievedChunkCount = chunks.size();
+    ctx.diagnostics.symbolMatches = matchedSymbols;
+    ctx.diagnostics.expandedSymbols = expandedSymbols;
+    ctx.diagnostics.topFiles = topFilesFor(chunks, 8);
     ctx.diagnostics.projectSummaryFound =
         !projectSummary.projectName.empty() || !projectSummary.architecture.empty();
     ctx.diagnostics.moduleSummaryCount = moduleSummaries.size();

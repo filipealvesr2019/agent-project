@@ -17,7 +17,12 @@ struct ContextDiagnostics {
     size_t moduleSummaryCount = 0;
     size_t fileSummaryCount = 0;
     size_t symbolMatchCount = 0;
+    bool symbolBoostApplied = false;
+    size_t retrievedChunkCount = 0;
     size_t promptTokens = 0;
+    std::vector<std::string> symbolMatches;
+    std::vector<std::string> expandedSymbols;
+    std::vector<std::string> topFiles;
     std::vector<std::string> filesUsed;
 };
 
